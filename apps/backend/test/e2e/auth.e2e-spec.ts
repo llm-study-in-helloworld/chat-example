@@ -98,9 +98,9 @@ describe('AuthController (e2e)', () => {
       expect(typeof response.body.token).toBe('string');
       
       // And the token should be set as a cookie
-      const cookies = response.headers['set-cookie'];
+      const cookies = response.headers['set-cookie'] as unknown as string[];
       expect(cookies).toBeDefined();
-      expect(cookies.split(';').some((cookie: string) => cookie.includes('jwt='))).toBe(true);
+      expect(cookies.some((cookie: string) => cookie.includes('jwt='))).toBe(true);
       
       // Save token for later tests
       authToken = response.body.token;
@@ -213,9 +213,9 @@ describe('AuthController (e2e)', () => {
         .expect(200);
       
       // Then the cookies should be cleared
-      const cookies = logoutResponse.headers['set-cookie'];
+      const cookies = logoutResponse.headers['set-cookie'] as unknown as string[];
       expect(cookies).toBeDefined();
-      expect(cookies.split(';').some((cookie: string) => 
+      expect(cookies.some((cookie: string) => 
         cookie.includes('jwt=;') || 
         cookie.includes('Expires=Thu, 01 Jan 1970'))
       ).toBe(true);

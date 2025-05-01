@@ -30,13 +30,21 @@ export class AuthController {
     @Res({ passthrough: true }) response: Response
   ) {
     try {
+      // First, clear any existing JWT cookie
+      response.clearCookie('jwt', {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'strict',
+        path: '/'
+      });
+      
       const user = await this.authService.validateUser(
         loginDto.email,
         loginDto.password,
       );
       const result = await this.authService.login(user);
       
-      // Set the JWT token as a cookie
+      // Set the JWT token as a new cookie
       response.cookie('jwt', result.token, {
         httpOnly: true,
         secure: process.env.NODE_ENV === 'production',

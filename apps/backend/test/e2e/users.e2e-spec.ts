@@ -21,6 +21,9 @@ describe('UsersController (e2e)', () => {
     password: 'password123',
     nickname: 'TestUser'
   };
+
+  // For password change test
+  const newPassword = 'newPassword123';
   
   const testUserUpdate = {
     nickname: 'UpdatedUser',
@@ -64,7 +67,7 @@ describe('UsersController (e2e)', () => {
       
       // When they sign up
       const response = await request(app.getHttpServer())
-        .post('/api/auth/signup')
+        .post('/api/auth/signup')  // Updated path
         .send(userData)
         .expect(201);
       
@@ -84,7 +87,7 @@ describe('UsersController (e2e)', () => {
       
       // When they try to sign up
       const response = await request(app.getHttpServer())
-        .post('/api/auth/signup')
+        .post('/api/auth/signup')  // Updated path
         .send(userData)
         .expect(409); // Conflict
       
@@ -101,7 +104,7 @@ describe('UsersController (e2e)', () => {
       
       // When they try to sign up
       const response = await request(app.getHttpServer())
-        .post('/api/auth/signup')
+        .post('/api/auth/signup')  // Updated path
         .send(invalidUser)
         .expect(400); // Bad Request
       
@@ -130,12 +133,51 @@ describe('UsersController (e2e)', () => {
       expect(response.body.user.email).toBe(testUser.email);
       
       // Check for JWT cookie
-      const cookies = response.headers['set-cookie'];
+      const cookies = response.headers['set-cookie'] as unknown as string[];
       expect(cookies).toBeDefined();
-      expect(cookies.split(';').some((cookie: string) => cookie.includes('jwt='))).toBe(true);
+      expect(cookies.some((cookie: string) => cookie.includes('jwt='))).toBe(true);
       
       // Save token for later tests
       authToken = response.body.token;
+    });
+    
+    it('Scenario: Previous token becomes invalid when user logs in again', async () => {
+      // Given a user with a valid token
+      const firstToken = authToken;
+      
+      // Add a small delay to ensure different tokens (different iat timestamp)
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      
+      // When they log in again
+      const loginData = {
+        email: testUser.email,
+        password: testUser.password
+      };
+      
+      const response = await request(app.getHttpServer())
+        .post('/api/auth/login')
+        .send(loginData)
+        .expect(201);
+      
+      // Then they should receive a new token
+      const newToken = response.body.token;
+      expect(newToken).toBeDefined();
+      expect(newToken).not.toBe(firstToken);
+      
+      // And the first token should be invalid
+      await request(app.getHttpServer())
+        .get('/api/users/me')
+        .set('Authorization', `Bearer ${firstToken}`)
+        .expect(401); // Unauthorized
+      
+      // But the new token should work
+      await request(app.getHttpServer())
+        .get('/api/users/me')
+        .set('Authorization', `Bearer ${newToken}`)
+        .expect(200);
+      
+      // Update the authToken for future tests
+      authToken = newToken;
     });
     
     it('Scenario: User tries to log in with invalid credentials', async () => {
@@ -198,7 +240,7 @@ describe('UsersController (e2e)', () => {
       const passwordChange = {
         nickname: testUserUpdate.nickname, // Required field
         currentPassword: testUser.password,
-        newPassword: 'newPassword123'
+        newPassword: newPassword
       };
       
       // When they change their password
@@ -213,7 +255,7 @@ describe('UsersController (e2e)', () => {
         .post('/api/auth/login')
         .send({
           email: testUser.email,
-          password: 'newPassword123'
+          password: newPassword
         })
         .expect(201);
       
@@ -242,21 +284,30 @@ describe('UsersController (e2e)', () => {
   
   describe('Feature: User Logout', () => {
     it('Scenario: User logs out successfully', async () => {
-      // Given an authenticated user
+      // First login again to get a fresh token
+      const loginResponse = await request(app.getHttpServer())
+        .post('/api/auth/login')
+        .send({
+          email: testUser.email,
+          password: newPassword
+        })
+        .expect(201);
+      
+      const token = loginResponse.body.token;
       
       // When they log out
       const response = await request(app.getHttpServer())
-        .post('/api/auth/logout')
-        .set('Authorization', `Bearer ${authToken}`)
+        .post('/api/auth/logout')  // Updated path
+        .set('Authorization', `Bearer ${token}`)
         .expect(200);
       
       // Then they should receive a success message
       expect(response.body.message).toContain('success');
       
       // And the cookie should be cleared
-      const cookies = response.headers['set-cookie'];
+      const cookies = response.headers['set-cookie'] as unknown as string[];
       expect(cookies).toBeDefined();
-      expect(cookies.split(';').some((cookie: string) => 
+      expect(cookies.some((cookie: string) => 
         cookie.includes('jwt=;') || 
         cookie.includes('Expires=Thu, 01 Jan 1970'))
       ).toBe(true);
@@ -264,43 +315,44 @@ describe('UsersController (e2e)', () => {
       // And their token should be invalidated (they can't access protected endpoints)
       await request(app.getHttpServer())
         .get('/api/users/me')
-        .set('Authorization', `Bearer ${authToken}`)
+        .set('Authorization', `Bearer ${token}`)
         .expect(401);
+      
+      // Login again for the next tests
+      const newLoginResponse = await request(app.getHttpServer())
+        .post('/api/auth/login')
+        .send({
+          email: testUser.email,
+          password: newPassword
+        })
+        .expect(201);
+      
+      authToken = newLoginResponse.body.token;
     });
   });
   
   describe('Feature: Account Deletion', () => {
-    // First login to get a new token
-    beforeAll(async () => {
-      // Update test user password first
-      const user = await em.findOne(User, { email: testUser.email });
-      if (user) {
-        // Hash the password
-        const saltRounds = 10;
-        user.passwordHash = await bcrypt.hash('newPassword123', saltRounds);
-        await em.flush();
-      }
-      
+    it('Scenario: User deletes their account with valid password', async () => {
+      // Given an authenticated user with correct password
       const loginResponse = await request(app.getHttpServer())
         .post('/api/auth/login')
         .send({
-          email: testUser.email,
-          password: 'newPassword123'
-        });
-      
-      authToken = loginResponse.body.token;
-    });
-    
-    it('Scenario: User deletes their account with valid password', async () => {
-      // Given an authenticated user with correct password
+          email: testUser.email, 
+          password: newPassword
+        })
+        .expect(201);
+
+      // Save the token
+      const token = loginResponse.body.token;
+
       const deleteData = {
-        password: 'newPassword123'
+        password: newPassword
       };
       
       // When they delete their account
       const response = await request(app.getHttpServer())
-        .delete('/api/auth/signout')
-        .set('Authorization', `Bearer ${authToken}`)
+        .delete('/api/auth/signout')  // Updated path
+        .set('Authorization', `Bearer ${token}`)
         .send(deleteData)
         .expect(200);
       
@@ -308,9 +360,9 @@ describe('UsersController (e2e)', () => {
       expect(response.body.message).toContain('success');
       
       // And the cookie should be cleared
-      const cookies = response.headers['set-cookie'];
+      const cookies = response.headers['set-cookie'] as unknown as string[];
       expect(cookies).toBeDefined();
-      expect(cookies.split(';').some((cookie: string) => 
+      expect(cookies.some((cookie: string) => 
         cookie.includes('jwt=;') || 
         cookie.includes('Expires=Thu, 01 Jan 1970'))
       ).toBe(true);
@@ -324,7 +376,7 @@ describe('UsersController (e2e)', () => {
       // Given a deleted user's credentials
       const loginData = {
         email: testUser.email,
-        password: 'newPassword123'
+        password: newPassword
       };
       
       // When they try to log in

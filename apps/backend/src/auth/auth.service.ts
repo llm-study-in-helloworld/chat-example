@@ -30,14 +30,21 @@ export class AuthService {
   }
 
   async login(user: any) {
+    // Create a new token
     const payload = { 
       sub: user.id, 
       email: user.email,
       nickname: user.nickname 
     };
     
+    const token = this.jwtService.sign(payload);
+    
+    // Set this as the latest token and invalidate previous ones
+    this.tokenBlacklistService.setLatestUserToken(user.id, token);
+    await this.tokenBlacklistService.blacklistUserTokens(user.id);
+    
     return {
-      token: this.jwtService.sign(payload),
+      token,
       user: {
         id: user.id,
         email: user.email,
