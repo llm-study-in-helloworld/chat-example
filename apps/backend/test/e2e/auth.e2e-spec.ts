@@ -6,7 +6,6 @@ import { EntityManager, MikroORM } from '@mikro-orm/core';
 import { User } from '../../src/entities';
 import * as bcrypt from 'bcrypt';
 import { AppTestModule } from '../app-test.module';
-import { SqliteDriver } from '@mikro-orm/sqlite';
 import testConfig from '../mikro-orm.config.test';
 
 describe('AuthController (e2e)', () => {
@@ -23,15 +22,15 @@ describe('AuthController (e2e)', () => {
   };
   
   beforeAll(async () => {
-    orm = await MikroORM.init(testConfig);
-    await orm.getSchemaGenerator().refreshDatabase();
-    
     const moduleFixture: TestingModule = await Test.createTestingModule({
       imports: [AppTestModule],
     }).compile();
 
     app = moduleFixture.createNestApplication();
     em = app.get<EntityManager>(EntityManager);
+    orm = app.get<MikroORM>(MikroORM);
+
+    await orm.getSchemaGenerator().refreshDatabase();
     
     // Apply middleware and pipes
     app.use(cookieParser());
@@ -45,14 +44,40 @@ describe('AuthController (e2e)', () => {
     );
 
     await app.init();
+    
+    // Create a test user for authentication tests
+    await request(app.getHttpServer())
+      .post('/api/auth/signup')
+      .send(testUser)
+      .expect(201);
   });
   
   afterAll(async () => {
     await app.close();
-
     await orm.close();
   });
   
+  describe('Feature: User Registration', () => {
+    it('Scenario: User signs up with valid credentials', async () => {
+      // Given a new user with valid credentials
+      const newUser = {
+        email: 'new-user@example.com',
+        password: 'password123',
+        nickname: 'NewUser'
+      };
+      
+      // When they sign up
+      const response = await request(app.getHttpServer())
+        .post('/api/auth/signup')
+        .send(newUser)
+        .expect(201);
+      
+      // Then they should receive their user info
+      expect(response.body).toBeDefined();
+      expect(response.body.email).toBe(newUser.email);
+      expect(response.body.nickname).toBe(newUser.nickname);
+    });
+  });
   
   describe('Feature: JWT Authentication', () => {
     it('Scenario: User logs in and receives a JWT token', async () => {
@@ -133,7 +158,7 @@ describe('AuthController (e2e)', () => {
       
       // When we logout (which blacklists the token)
       await request(app.getHttpServer())
-        .post('/api/users/logout')
+        .post('/api/auth/logout')
         .set('Authorization', `Bearer ${tokenToBlacklist}`)
         .expect(200);
       
@@ -184,7 +209,7 @@ describe('AuthController (e2e)', () => {
       
       // When they logout
       const logoutResponse = await agent
-        .post('/api/users/logout')
+        .post('/api/auth/logout')
         .expect(200);
       
       // Then the cookies should be cleared
@@ -199,6 +224,40 @@ describe('AuthController (e2e)', () => {
       await agent
         .get('/api/users/me')
         .expect(401);
+    });
+  });
+  
+  describe('Feature: Account Deletion', () => {
+    it('Scenario: User can delete their account', async () => {
+      // First login to get a token
+      const loginResponse = await request(app.getHttpServer())
+        .post('/api/auth/login')
+        .send({
+          email: testUser.email,
+          password: testUser.password
+        })
+        .expect(201);
+      
+      const token = loginResponse.body.token;
+      
+      // When they delete their account
+      const deleteResponse = await request(app.getHttpServer())
+        .delete('/api/auth/signout')
+        .set('Authorization', `Bearer ${token}`)
+        .send({ password: testUser.password })
+        .expect(200);
+      
+      // Then they should receive a success message
+      expect(deleteResponse.body.message).toContain('success');
+      
+      // And they should no longer be able to login
+      await request(app.getHttpServer())
+        .post('/api/auth/login')
+        .send({
+          email: testUser.email,
+          password: testUser.password
+        })
+        .expect(401); // Unauthorized
     });
   });
 }); 

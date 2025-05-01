@@ -13,21 +13,15 @@ describe('AppController (e2e)', () => {
   let orm: MikroORM;
 
   beforeAll(async () => {
-    orm = await MikroORM.init(testConfig);
-    await orm.getSchemaGenerator().refreshDatabase();
-  });
-
-  afterAll(async () => {
-    await orm.close();
-  });
-
-  beforeEach(async () => {
     const moduleFixture: TestingModule = await Test.createTestingModule({
       imports: [AppTestModule],
     }).compile();
 
     app = moduleFixture.createNestApplication();
+    orm = app.get<MikroORM>(MikroORM);
     em = app.get<EntityManager>(EntityManager);
+
+    await orm.getSchemaGenerator().refreshDatabase();
     
     // Apply the same middleware and pipes as in main.ts
     app.use(cookieParser());
@@ -43,9 +37,10 @@ describe('AppController (e2e)', () => {
     await app.init();
   });
 
-  afterEach(async () => {
+  afterAll(async () => {
     // Drop all tables
     await app?.close();
+    await orm.close();
   });
 
   it('/ (GET)', () => {

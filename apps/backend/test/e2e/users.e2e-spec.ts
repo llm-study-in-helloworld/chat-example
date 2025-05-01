@@ -6,7 +6,6 @@ import { EntityManager, MikroORM } from '@mikro-orm/core';
 import { User } from '../../src/entities';
 import bcrypt from 'bcrypt';
 import { AppTestModule } from '../app-test.module';
-import { SqliteDriver } from '@mikro-orm/sqlite';
 import testConfig from '../mikro-orm.config.test';
 
 describe('UsersController (e2e)', () => {
@@ -29,15 +28,15 @@ describe('UsersController (e2e)', () => {
   };
   
   beforeAll(async () => {
-    orm = await MikroORM.init(testConfig);
-    await orm.getSchemaGenerator().refreshDatabase();
     const moduleFixture: TestingModule = await Test.createTestingModule({
       imports: [AppTestModule],
     }).compile();
 
     app = moduleFixture.createNestApplication();
     em = app.get<EntityManager>(EntityManager);
+    orm = app.get<MikroORM>(MikroORM);
     
+    await orm.getSchemaGenerator().refreshDatabase();
     // Apply the same middleware and pipes as in main.ts
     app.use(cookieParser());
     app.setGlobalPrefix('api');
@@ -65,7 +64,7 @@ describe('UsersController (e2e)', () => {
       
       // When they sign up
       const response = await request(app.getHttpServer())
-        .post('/api/users/signup')
+        .post('/api/auth/signup')
         .send(userData)
         .expect(201);
       
@@ -85,7 +84,7 @@ describe('UsersController (e2e)', () => {
       
       // When they try to sign up
       const response = await request(app.getHttpServer())
-        .post('/api/users/signup')
+        .post('/api/auth/signup')
         .send(userData)
         .expect(409); // Conflict
       
@@ -102,7 +101,7 @@ describe('UsersController (e2e)', () => {
       
       // When they try to sign up
       const response = await request(app.getHttpServer())
-        .post('/api/users/signup')
+        .post('/api/auth/signup')
         .send(invalidUser)
         .expect(400); // Bad Request
       
@@ -247,7 +246,7 @@ describe('UsersController (e2e)', () => {
       
       // When they log out
       const response = await request(app.getHttpServer())
-        .post('/api/users/logout')
+        .post('/api/auth/logout')
         .set('Authorization', `Bearer ${authToken}`)
         .expect(200);
       
@@ -300,7 +299,7 @@ describe('UsersController (e2e)', () => {
       
       // When they delete their account
       const response = await request(app.getHttpServer())
-        .delete('/api/users/signout')
+        .delete('/api/auth/signout')
         .set('Authorization', `Bearer ${authToken}`)
         .send(deleteData)
         .expect(200);
