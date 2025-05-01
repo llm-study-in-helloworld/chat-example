@@ -34,7 +34,9 @@ export class AuthService {
     const payload = { 
       sub: user.id, 
       email: user.email,
-      nickname: user.nickname 
+      nickname: user.nickname,
+      // Add precise timestamp with milliseconds to make each token unique
+      iat: Date.now() / 1000
     };
     
     const token = this.jwtService.sign(payload);

@@ -293,12 +293,12 @@ describe('UsersController (e2e)', () => {
         })
         .expect(201);
       
-      const token = loginResponse.body.token;
+      authToken= loginResponse.body.token;
       
       // When they log out
       const response = await request(app.getHttpServer())
         .post('/api/auth/logout')  // Updated path
-        .set('Authorization', `Bearer ${token}`)
+        .set('Authorization', `Bearer ${authToken}`)
         .expect(200);
       
       // Then they should receive a success message
@@ -315,7 +315,7 @@ describe('UsersController (e2e)', () => {
       // And their token should be invalidated (they can't access protected endpoints)
       await request(app.getHttpServer())
         .get('/api/users/me')
-        .set('Authorization', `Bearer ${token}`)
+        .set('Authorization', `Bearer ${authToken}`)
         .expect(401);
       
       // Login again for the next tests
@@ -342,18 +342,13 @@ describe('UsersController (e2e)', () => {
         })
         .expect(201);
 
-      // Save the token
-      const token = loginResponse.body.token;
-
-      const deleteData = {
-        password: newPassword
-      };
+      const tempToken = loginResponse.body.token;
       
       // When they delete their account
       const response = await request(app.getHttpServer())
         .delete('/api/auth/signout')  // Updated path
-        .set('Authorization', `Bearer ${token}`)
-        .send(deleteData)
+        .set('Authorization', `Bearer ${tempToken}`)
+        .send({ password: newPassword })
         .expect(200);
       
       // Then they should receive a success message
@@ -370,6 +365,9 @@ describe('UsersController (e2e)', () => {
       // And their account should no longer exist
       const user = await em.findOne(User, { email: testUser.email });
       expect(user).toBeNull();
+
+      // Reset authToken since we've deleted the account
+      authToken = '';
     });
     
     it('Scenario: Deleted user tries to log in', async () => {

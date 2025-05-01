@@ -182,11 +182,12 @@ describe('AuthController (e2e)', () => {
           password: testUser.password
         })
         .expect(201);
-      
-      // The agent should now have the cookie set
+
+      const token = loginResponse.body.token;
       
       // When accessing a protected resource with the cookie
       const response = await agent
+        .set('Authorization', `Bearer ${token}`)
         .get('/api/users/me')
         .expect(200);
       
@@ -199,16 +200,18 @@ describe('AuthController (e2e)', () => {
       // Given an authenticated agent
       const agent = request.agent(app.getHttpServer());
       
-      await agent
+      const loginResponse = await agent
         .post('/api/auth/login')
         .send({
           email: testUser.email,
           password: testUser.password
         })
         .expect(201);
+      const token = loginResponse.body.token;
       
       // When they logout
       const logoutResponse = await agent
+        .set('Authorization', `Bearer ${token}`)
         .post('/api/auth/logout')
         .expect(200);
       
