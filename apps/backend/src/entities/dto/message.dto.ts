@@ -1,4 +1,7 @@
-import { MessageReactionDto } from './message-reaction.dto';
+import { Message } from '../Message.entity';
+import { MessageReactionResponseDto } from './message-reaction.dto';
+import { MentionResponseDto } from './mention.dto';
+import { UserResponseDto } from './user.dto';
 
 /**
  * Message 엔티티의 기본 속성을 정의하는 인터페이스
@@ -15,17 +18,48 @@ export interface MessageDto {
 }
 
 /**
- * 응답 시 사용하는 Message 인터페이스
+ * 응답 시 사용하는 Message 클래스
  */
-export interface MessageResponseDto extends Omit<MessageDto, 'createdAt' | 'updatedAt' | 'deletedAt'> {
-  createdAt: string;
-  updatedAt: string;
+export class MessageResponseDto implements Pick<MessageDto, 'id' | 'content' | 'parentId'> {
+  id: number = 0;
+  content: string = '';
+  createdAt: string = '';
+  updatedAt: string = '';
   deletedAt?: string;
-  sender: {
-    id: number;
-    nickname: string;
-    imageUrl?: string;
-  };
-  reactions: MessageReactionDto[];
+  parentId?: number;
+  isDeleted: boolean = false;
+  sender: Pick<UserResponseDto, 'id' | 'nickname' | 'imageUrl'> = { id: 0, nickname: '' };
+  reactions: MessageReactionResponseDto[] = [];
+  mentions: MentionResponseDto[] = [];
   replyCount?: number;
+
+  /**
+   * Message 엔티티를 ResponseDto로 변환
+   */
+  static fromEntity(message: Message): MessageResponseDto {
+    const dto = new MessageResponseDto();
+    dto.id = message.id;
+    dto.content = message.displayContent;
+    dto.createdAt = message.createdAt.toISOString();
+    dto.updatedAt = message.updatedAt.toISOString();
+    dto.deletedAt = message.deletedAt ? message.deletedAt.toISOString() : undefined;
+    dto.isDeleted = !!message.deletedAt;
+    dto.parentId = message.parent?.id;
+    
+    dto.sender = {
+      id: message.sender.id,
+      nickname: message.sender.nickname,
+      imageUrl: message.sender.imageUrl
+    };
+    
+    dto.reactions = message.reactions.getItems().map(reaction => 
+      MessageReactionResponseDto.fromEntity(reaction)
+    );
+    
+    dto.mentions = message.mentions.getItems().map(mention => 
+      MentionResponseDto.fromEntity(mention)
+    );
+    
+    return dto;
+  }
 } 

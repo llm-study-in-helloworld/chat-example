@@ -18,9 +18,27 @@ export interface AuthUserDto extends UserDto {
 }
 
 /**
- * 응답 시 사용하는 User 인터페이스
+ * 응답 시 사용하는 User 클래스
  */
-export interface UserResponseDto extends Omit<UserDto, 'createdAt' | 'updatedAt'> {
-  createdAt: string;
-  updatedAt: string;
+export class UserResponseDto implements Omit<UserDto, 'createdAt' | 'updatedAt'> {
+  id: number = 0;
+  email: string = '';
+  nickname: string = '';
+  imageUrl?: string;
+  createdAt: string = '';
+  updatedAt: string = '';
+
+  /**
+   * User 엔티티를 ResponseDto로 변환
+   */
+  static fromEntity(user: any): UserResponseDto {
+    const dto = new UserResponseDto();
+    dto.id = user.id;
+    dto.email = user.email;
+    dto.nickname = user.nickname;
+    dto.imageUrl = user.imageUrl;
+    dto.createdAt = user.createdAt.toISOString();
+    dto.updatedAt = user.updatedAt.toISOString();
+    return dto;
+  }
 } 
