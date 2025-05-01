@@ -8,6 +8,7 @@ import { UsersModule } from '../users/users.module';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { MikroOrmModule } from '@mikro-orm/nestjs';
 import { User } from '../entities';
+import { TokenBlacklistService } from './token-blacklist.service';
 
 @Module({
   imports: [
@@ -23,8 +24,8 @@ import { User } from '../entities';
     }),
     UsersModule,
   ],
-  providers: [AuthService, JwtStrategy],
+  providers: [AuthService, JwtStrategy, TokenBlacklistService],
   controllers: [AuthController],
-  exports: [AuthService],
+  exports: [AuthService, TokenBlacklistService],
 })
 export class AuthModule {} 

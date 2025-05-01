@@ -1,14 +1,23 @@
 import { NestFactory } from '@nestjs/core';
 import { ValidationPipe } from '@nestjs/common';
+// @ts-ignore
+import * as cookieParser from 'cookie-parser';
 import { AppModule } from './app.module';
 
 async function bootstrap() {
   // Node.js v22 성능 최적화
   const app = await NestFactory.create(AppModule, {
     logger: ['error', 'warn', 'log'],
-    cors: true,
+    cors: {
+      origin: true,
+      credentials: true // Allow cookies in CORS requests
+    },
     abortOnError: false,
   });
+
+  // 쿠키 파서 미들웨어 등록
+  // @ts-ignore
+  app.use(cookieParser());
 
   app.setGlobalPrefix('api');
   
