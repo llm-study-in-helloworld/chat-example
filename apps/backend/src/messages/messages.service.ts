@@ -7,9 +7,9 @@ import {
   User, 
   Room, 
   Mention, 
-  MessageReaction,
-  MessageResponseDto 
+  MessageReaction
 } from '../entities';
+import { MessageResponseDto } from '../entities/dto/message.dto';
 
 interface CreateMessageDto {
   roomId: number;
@@ -49,7 +49,7 @@ export class MessagesService {
       orderBy: { createdAt: QueryOrder.DESC },
       limit,
       offset,
-      populate: ['sender', 'parent', 'reactions', 'mentions']
+      populate: ['sender', 'parent', 'reactions', 'reactions.user', 'mentions', 'mentions.mentionedUser']
     });
   }
 
@@ -58,7 +58,7 @@ export class MessagesService {
    */
   async getMessage(messageId: number): Promise<Message | null> {
     return this.messageRepository.findOne({ id: messageId }, {
-      populate: ['sender', 'parent', 'reactions', 'mentions']
+      populate: ['sender', 'parent', 'reactions', 'reactions.user', 'mentions', 'mentions.mentionedUser']
     });
   }
 
@@ -70,17 +70,18 @@ export class MessagesService {
       const room = await em.findOneOrFail(Room, { id: data.roomId });
       const sender = await em.findOneOrFail(User, { id: data.senderId });
       
-      let parent: Message | undefined;
+      let parent = undefined;
       if (data.parentId) {
         parent = await em.findOne(Message, { id: data.parentId });
       }
       
-      const message = em.create(Message, {
-        room,
-        sender,
-        parent,
-        content: data.content,
-      });
+      const message = new Message();
+      message.room = room;
+      message.sender = sender;
+      if (parent) {
+        message.parent = parent;
+      }
+      message.content = data.content;
       
       await em.persistAndFlush(message);
       
@@ -168,11 +169,10 @@ export class MessagesService {
         await em.removeAndFlush(existingReaction);
         return null;
       } else {
-        const reaction = em.create(MessageReaction, {
-          message,
-          user,
-          emoji
-        });
+        const reaction = new MessageReaction();
+        reaction.message = message;
+        reaction.user = user;
+        reaction.emoji = emoji;
         
         await em.persistAndFlush(reaction);
         return reaction;
@@ -199,10 +199,9 @@ export class MessagesService {
       const user = await this.em.findOne(User, { nickname: username });
       if (user) {
         const message = await this.em.findOneOrFail(Message, { id: messageId });
-        const mention = this.em.create(Mention, {
-          message,
-          mentionedUser: user
-        });
+        const mention = new Mention();
+        mention.message = message;
+        mention.mentionedUser = user;
         
         await this.em.persist(mention);
       }
@@ -235,63 +234,48 @@ export class MessagesService {
    * 메시지를 DTO로 변환
    */
   formatMessageResponse(message: Message): MessageResponseDto {
-    return {
-      id: message.id,
-      content: message.displayContent,
-      createdAt: message.createdAt.toISOString(),
-      updatedAt: message.updatedAt.toISOString(),
-      isDeleted: message.isDeleted,
-      sender: {
-        id: message.sender.id,
-        nickname: message.sender.nickname,
-        imageUrl: message.sender.imageUrl
-      },
-      parentId: message.parent?.id,
-      reactions: message.reactions.getItems().map(reaction => ({
-        id: reaction.id,
-        emoji: reaction.emoji,
-        user: {
-          id: reaction.user.id,
-          nickname: reaction.user.nickname
-        }
-      })),
-      mentions: message.mentions.getItems().map(mention => ({
-        id: mention.id,
-        user: {
-          id: mention.mentionedUser.id,
-          nickname: mention.mentionedUser.nickname
-        }
-      }))
-    };
+    return MessageResponseDto.fromEntity(message);
   }
 
+  /**
+   * 메시지 목록 조회
+   */
   async findAll(filter: FilterQuery<Message> = {}): Promise<Message[]> {
     return this.messageRepository.find(filter, { 
-      populate: ['sender', 'reactions', 'mentions'],
+      populate: ['sender', 'reactions', 'reactions.user', 'mentions', 'mentions.mentionedUser'],
       orderBy: { createdAt: 'ASC' }
     });
   }
 
+  /**
+   * 룸에 있는 메시지 조회
+   */
   async findByRoom(roomId: number): Promise<Message[]> {
     return this.messageRepository.find(
       { room: { id: roomId }, deletedAt: null },
       { 
-        populate: ['sender', 'reactions', 'reactions.user', 'mentions'],
+        populate: ['sender', 'reactions', 'reactions.user', 'mentions', 'mentions.mentionedUser'],
         orderBy: { createdAt: 'ASC' }
       }
     );
   }
 
+  /**
+   * 답글 메시지 조회
+   */
   async findReplies(parentId: number): Promise<Message[]> {
     return this.messageRepository.find(
       { parent: { id: parentId }, deletedAt: null },
       { 
-        populate: ['sender', 'reactions', 'reactions.user', 'mentions'],
+        populate: ['sender', 'reactions', 'reactions.user', 'mentions', 'mentions.mentionedUser'],
         orderBy: { createdAt: 'ASC' } 
       }
     );
   }
 
+  /**
+   * 메시지 생성
+   */
   async create(data: {
     content: string;
     roomId: number;
@@ -303,17 +287,13 @@ export class MessagesService {
     const room = await this.roomRepository.findOneOrFail({ id: roomId });
     const sender = await this.userRepository.findOneOrFail({ id: senderId });
     
-    let parent: Message | null = null;
-    if (parentId) {
-      parent = await this.messageRepository.findOneOrFail({ id: parentId });
-    }
-
     const message = new Message();
     message.content = content;
     message.room = room;
     message.sender = sender;
     
-    if (parent) {
+    if (parentId) {
+      const parent = await this.messageRepository.findOneOrFail({ id: parentId });
       message.parent = parent;
     }
 
@@ -321,6 +301,9 @@ export class MessagesService {
     return message;
   }
 
+  /**
+   * 메시지 업데이트
+   */
   async update(id: number, content: string): Promise<Message> {
     const message = await this.messageRepository.findOneOrFail({ id });
     message.content = content;
@@ -328,12 +311,18 @@ export class MessagesService {
     return message;
   }
 
+  /**
+   * 메시지 삭제
+   */
   async delete(id: number): Promise<void> {
     const message = await this.messageRepository.findOneOrFail({ id });
     message.deletedAt = new Date();
     await this.em.flush();
   }
 
+  /**
+   * 메시지 리액션 추가
+   */
   async addReaction(data: {
     messageId: number;
     userId: number;
@@ -364,6 +353,9 @@ export class MessagesService {
     return reaction;
   }
 
+  /**
+   * 메시지 리액션 제거
+   */
   async removeReaction(messageId: number, userId: number, emoji: string): Promise<void> {
     const reaction = await this.messageReactionRepository.findOne({
       message: { id: messageId },
@@ -376,6 +368,9 @@ export class MessagesService {
     }
   }
 
+  /**
+   * 멘션 추가
+   */
   async addMention(data: {
     messageId: number;
     mentionedUserId: number;
