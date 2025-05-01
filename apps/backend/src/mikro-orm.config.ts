@@ -32,11 +32,6 @@ const config: Options<PostgreSqlDriver> = {
   },
   // TS: false로 설정하면 엔티티 불변성 체크를 하지 않아 ManyToOne에서 타입 오류 줄어듦
   strict: false,
-  // BaseEntity의 id, createdAt, updatedAt 자동 생성
-  entityGenerator: {
-    classNames: 'pascal-case',
-    propertyNames: 'camel-case',
-  },
 };
 
 export default config; 
