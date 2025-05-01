@@ -1,9 +1,10 @@
 import { Entity, PrimaryKey, Property, ManyToOne, Index, BaseEntity } from '@mikro-orm/core';
 import { v4 as uuidv4 } from 'uuid';
 import { User } from './User.entity';
+import { CommonEntity } from './CommonEntity';
 
 @Entity()
-export class RefreshToken extends BaseEntity {
+export class RefreshToken extends CommonEntity {
   @Property({ type: 'uuid' })
   @Index()
   token: string = uuidv4();

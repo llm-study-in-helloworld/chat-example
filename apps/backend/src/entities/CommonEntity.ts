@@ -1,10 +1,10 @@
-import { PrimaryKey, Property } from '@mikro-orm/core';
+import { BaseEntity, PrimaryKey, Property } from '@mikro-orm/core';
 
 /**
  * 모든 엔티티의 기본이 되는 추상 클래스
  * id, createdAt, updatedAt 필드를 공통으로 관리
  */
-export abstract class BaseEntity {
+export abstract class CommonEntity extends BaseEntity {
   @PrimaryKey()
   id!: number;
 

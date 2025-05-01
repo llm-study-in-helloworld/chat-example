@@ -6,7 +6,7 @@ import {
   Index,
   Reference
 } from '@mikro-orm/core';
-import { BaseEntity } from './BaseEntity';
+import { CommonEntity } from './CommonEntity';
 import { Message } from './Message.entity';
 import { RoomUser } from './RoomUser.entity';
 
@@ -16,7 +16,7 @@ import { RoomUser } from './RoomUser.entity';
  */
 @Entity()
 @Index({ properties: ['email'] })
-export class User extends BaseEntity {
+export class User extends CommonEntity {
   @Property({ unique: true })
   email!: string;
 

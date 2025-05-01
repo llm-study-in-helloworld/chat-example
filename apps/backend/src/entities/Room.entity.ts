@@ -5,7 +5,7 @@ import {
   Collection,
   Reference
 } from '@mikro-orm/core';
-import { BaseEntity } from './BaseEntity';
+import { CommonEntity } from './CommonEntity';
 import { RoomUser } from './RoomUser.entity';
 import { Message } from './Message.entity';
 
@@ -14,7 +14,7 @@ import { Message } from './Message.entity';
  * 일대일 대화 또는 그룹 채팅방을 나타냄
  */
 @Entity()
-export class Room extends BaseEntity {
+export class Room extends CommonEntity {
   @Property({ nullable: true })
   name?: string;
 

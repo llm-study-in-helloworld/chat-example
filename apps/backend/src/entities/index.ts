@@ -1,4 +1,3 @@
-export { BaseEntity } from './BaseEntity';
 export { User } from './User.entity';
 export { Room } from './Room.entity';
 export { RoomUser } from './RoomUser.entity';

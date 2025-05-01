@@ -6,6 +6,7 @@ import {
 } from '@mikro-orm/core';
 import { Room } from './Room.entity';
 import { User } from './User.entity';
+import { CommonEntity } from './CommonEntity';
 
 /**
  * 채팅방과 사용자 간의 다대다 관계를 저장하는 엔티티
@@ -14,7 +15,7 @@ import { User } from './User.entity';
 @Entity()
 @Index({ properties: ['user', 'room'] })
 @Index({ properties: ['room', 'lastSeenAt'] })
-export class RoomUser {
+export class RoomUser extends CommonEntity {
   @ManyToOne({
     entity: () => Room,
     primary: true,

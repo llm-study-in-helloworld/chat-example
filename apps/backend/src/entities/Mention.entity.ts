@@ -3,7 +3,7 @@ import {
   ManyToOne,
   Index 
 } from '@mikro-orm/core';
-import { BaseEntity } from './BaseEntity';
+import { CommonEntity } from './CommonEntity';
 import { Message } from './Message.entity';
 import { User } from './User.entity';
 
@@ -12,7 +12,7 @@ import { User } from './User.entity';
  */
 @Entity()
 @Index({ properties: ['mentionedUser'] })
-export class Mention extends BaseEntity {
+export class Mention extends CommonEntity {
   @ManyToOne({
     entity: () => Message,
     persist: true,

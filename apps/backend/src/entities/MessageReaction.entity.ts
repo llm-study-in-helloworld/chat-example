@@ -4,7 +4,7 @@ import {
   Property,
   Index 
 } from '@mikro-orm/core';
-import { BaseEntity } from './BaseEntity';
+import { CommonEntity } from './CommonEntity';
 import { Message } from './Message.entity';
 import { User } from './User.entity';
 
@@ -14,7 +14,7 @@ import { User } from './User.entity';
 @Entity()
 @Index({ properties: ['message', 'emoji'] })
 @Index({ properties: ['message', 'user'] })
-export class MessageReaction extends BaseEntity {
+export class MessageReaction extends CommonEntity {
   @ManyToOne({
     entity: () => Message,
     persist: true,
