@@ -18,14 +18,16 @@ export class RoomUser {
   @ManyToOne({
     entity: () => Room,
     primary: true,
-    persist: false
+    persist: true,
+    fieldName: 'room_id'
   })
   room!: Room;
 
   @ManyToOne({
     entity: () => User,
     primary: true,
-    persist: false
+    persist: true,
+    fieldName: 'user_id'
   })
   user!: User;
 

@@ -1,8 +1,8 @@
-export * from './User.entity';
-export * from './Message.entity';
-export * from './Room.entity';
-export * from './RoomUser.entity';
-export * from './MessageReaction.entity';
-export * from './Mention.entity';
-export * from './BaseEntity';
+export { BaseEntity } from './BaseEntity';
+export { User } from './User.entity';
+export { Room } from './Room.entity';
+export { RoomUser } from './RoomUser.entity';
+export { Message } from './Message.entity';
+export { MessageReaction } from './MessageReaction.entity';
+export { Mention } from './Mention.entity';
 export * from './dto'; 

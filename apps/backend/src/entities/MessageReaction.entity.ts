@@ -17,13 +17,15 @@ import { User } from './User.entity';
 export class MessageReaction extends BaseEntity {
   @ManyToOne({
     entity: () => Message,
-    persist: false
+    persist: true,
+    fieldName: 'message_id'
   })
   message!: Message;
 
   @ManyToOne({
     entity: () => User,
-    persist: false
+    persist: true,
+    fieldName: 'user_id'
   })
   user!: User;
 

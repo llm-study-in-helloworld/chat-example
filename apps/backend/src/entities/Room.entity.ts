@@ -25,7 +25,7 @@ export class Room extends BaseEntity {
     entity: () => RoomUser,
     mappedBy: 'room',
     eager: false,
-    persist: false
+    persist: false,
   })
   roomUsers = new Collection<RoomUser>(this);
 
@@ -33,7 +33,7 @@ export class Room extends BaseEntity {
     entity: () => Message,
     mappedBy: 'room',
     eager: false,
-    persist: false
+    persist: false,
   })
   messages = new Collection<Message>(this);
 

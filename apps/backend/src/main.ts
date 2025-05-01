@@ -1,7 +1,6 @@
 import { NestFactory } from '@nestjs/core';
 import { ValidationPipe } from '@nestjs/common';
-// @ts-ignore
-import * as cookieParser from 'cookie-parser';
+import cookieParser from 'cookie-parser';
 import { AppModule } from './app.module';
 
 async function bootstrap() {
@@ -16,7 +15,6 @@ async function bootstrap() {
   });
 
   // 쿠키 파서 미들웨어 등록
-  // @ts-ignore
   app.use(cookieParser());
 
   app.setGlobalPrefix('api');

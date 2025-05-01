@@ -15,13 +15,15 @@ import { User } from './User.entity';
 export class Mention extends BaseEntity {
   @ManyToOne({
     entity: () => Message,
-    persist: false
+    persist: true,
+    fieldName: 'message_id'
   })
   message!: Message;
 
   @ManyToOne({
     entity: () => User,
-    persist: false
+    persist: true,
+    fieldName: 'mentioned_user_id'
   })
   mentionedUser!: User;
 

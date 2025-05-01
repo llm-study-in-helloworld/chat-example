@@ -50,6 +50,7 @@ export class AuthService {
   async logout(token: string): Promise<boolean> {
     if (token) {
       await this.tokenBlacklistService.blacklistToken(token);
+      
       return true;
     }
     return false;

@@ -23,20 +23,23 @@ import { Mention } from './Mention.entity';
 export class Message extends BaseEntity {
   @ManyToOne({
     entity: () => Room,
-    persist: false
+    persist: true,
+    fieldName: 'room_id'
   })
   room!: Room;
 
   @ManyToOne({
     entity: () => User,
-    persist: false
+    persist: true,
+    fieldName: 'sender_id'
   })
   sender!: User;
 
   @ManyToOne({
     entity: () => Message,
     nullable: true,
-    persist: false
+    persist: true,
+    fieldName: 'parent_id'
   })
   parent?: Message;
 
@@ -50,7 +53,7 @@ export class Message extends BaseEntity {
     entity: () => MessageReaction,
     mappedBy: 'message',
     eager: false,
-    persist: false
+    persist: false,
   })
   reactions = new Collection<MessageReaction>(this);
 
@@ -58,7 +61,7 @@ export class Message extends BaseEntity {
     entity: () => Mention,
     mappedBy: 'message',
     eager: false,
-    persist: false
+    persist: false,
   })
   mentions = new Collection<Mention>(this);
 
