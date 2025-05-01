@@ -7,12 +7,12 @@ import {
   Delete,
   Put,
   UseGuards,
-  Request,
   Query,
   ParseIntPipe,
 } from '@nestjs/common';
 import { MessagesService } from './messages.service';
-import { JwtAuthGuard } from '../auth/jwt-auth.guard';
+import { JwtAuthGuard, CurrentUser } from '../auth';
+import { User } from '../entities';
 
 @Controller('messages')
 export class MessagesController {
@@ -37,40 +37,40 @@ export class MessagesController {
   @UseGuards(JwtAuthGuard)
   @Post()
   create(
-    @Request() req,
+    @CurrentUser() user: User,
     @Body() createMessageDto: { content: string; roomId: number; parentId?: number },
   ) {
     return this.messagesService.createMessage({
       ...createMessageDto,
-      senderId: req.user.id,
+      senderId: user.id,
     });
   }
 
   @UseGuards(JwtAuthGuard)
   @Put(':id')
   update(
-    @Request() req,
+    @CurrentUser() user: User,
     @Param('id', ParseIntPipe) id: number,
     @Body() updateMessageDto: { content: string },
   ) {
-    return this.messagesService.updateMessage(id, req.user.id, updateMessageDto);
+    return this.messagesService.updateMessage(id, user.id, updateMessageDto);
   }
 
   @UseGuards(JwtAuthGuard)
   @Delete(':id')
-  remove(@Request() req, @Param('id', ParseIntPipe) id: number) {
-    return this.messagesService.deleteMessage(id, req.user.id);
+  remove(@CurrentUser() user: User, @Param('id', ParseIntPipe) id: number) {
+    return this.messagesService.deleteMessage(id, user.id);
   }
 
   @UseGuards(JwtAuthGuard)
   @Post('reaction')
   toggleReaction(
-    @Request() req,
+    @CurrentUser() user: User,
     @Body() reactionDto: { messageId: number; emoji: string },
   ) {
     return this.messagesService.toggleReaction(
       reactionDto.messageId,
-      req.user.id,
+      user.id,
       reactionDto.emoji,
     );
   }
