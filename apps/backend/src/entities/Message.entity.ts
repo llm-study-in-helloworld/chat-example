@@ -24,6 +24,7 @@ export class Message extends BaseEntity {
   @ManyToOne({
     entity: () => Room,
     persist: true,
+    mapToPk: true,
     fieldName: 'room_id'
   })
   room!: Room;
@@ -31,6 +32,7 @@ export class Message extends BaseEntity {
   @ManyToOne({
     entity: () => User,
     persist: true,
+    mapToPk: true,
     fieldName: 'sender_id'
   })
   sender!: User;
@@ -39,6 +41,7 @@ export class Message extends BaseEntity {
     entity: () => Message,
     nullable: true,
     persist: true,
+    mapToPk: true,
     fieldName: 'parent_id'
   })
   parent?: Message;

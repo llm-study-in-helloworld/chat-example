@@ -1,13 +1,22 @@
-import { Controller, Post, Body, UnauthorizedException, Res, UseGuards, HttpCode, HttpStatus, Req, Delete } from '@nestjs/common';
+import { Controller, Post, Body, UnauthorizedException, Res, UseGuards, HttpCode, HttpStatus, Req, Delete, Get } from '@nestjs/common';
 import { AuthService } from './auth.service';
 import { Response, Request } from 'express';
 import { JwtAuthGuard } from './jwt-auth.guard';
+import { RefreshTokenAuthGuard } from './refresh-token-auth.guard';
 import { CurrentUser } from './user.decorator';
 import { User } from '../entities';
 import { CreateUserDto } from '../users/dto/create-user.dto';
 import { DeleteUserDto } from '../users/dto/delete-user.dto';
 import { UsersService } from '../users/users.service';
 import { UserResponseDto } from '../entities/dto/user.dto';
+
+// Define interface for Request with refreshToken
+interface RequestWithRefreshToken extends Request {
+  user?: {
+    user: User;
+    refreshToken: string;
+  };
+}
 
 @Controller('auth')
 export class AuthController {
@@ -27,11 +36,19 @@ export class AuthController {
   @Post('login')
   async login(
     @Body() loginDto: { email: string; password: string },
+    @Req() request: Request,
     @Res({ passthrough: true }) response: Response
   ) {
     try {
-      // First, clear any existing JWT cookie
+      // First, clear any existing cookies
       response.clearCookie('jwt', {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'strict',
+        path: '/'
+      });
+      
+      response.clearCookie('refresh_token', {
         httpOnly: true,
         secure: process.env.NODE_ENV === 'production',
         sameSite: 'strict',
@@ -42,20 +59,87 @@ export class AuthController {
         loginDto.email,
         loginDto.password,
       );
-      const result = await this.authService.login(user);
+      const result = await this.authService.login(user, request);
       
-      // Set the JWT token as a new cookie
-      response.cookie('jwt', result.token, {
+      // Set the access token as a cookie
+      response.cookie('jwt', result.accessToken, {
         httpOnly: true,
         secure: process.env.NODE_ENV === 'production',
         sameSite: 'strict',
-        maxAge: 24 * 60 * 60 * 1000, // 1 day
+        maxAge: 60 * 60 * 1000, // 1 hour
         path: '/'
+      });
+      
+      // Set the refresh token as a cookie with longer expiration
+      response.cookie('refresh_token', result.refreshToken, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'strict',
+        maxAge: 30 * 24 * 60 * 60 * 1000, // 30 days
+        path: '/auth/refresh' // Restrict to the refresh endpoint path
       });
       
       return result;
     } catch (error) {
       throw new UnauthorizedException('Invalid credentials');
+    }
+  }
+
+  /**
+   * 액세스 토큰 갱신 엔드포인트
+   */
+  @UseGuards(RefreshTokenAuthGuard)
+  @Post('refresh')
+  async refreshTokens(
+    @Req() request: RequestWithRefreshToken,
+    @Res({ passthrough: true }) response: Response
+  ) {
+    try {
+      const userId = request.user?.user?.id;
+      const refreshToken = request.user?.refreshToken;
+      
+      if (!userId || !refreshToken) {
+        throw new UnauthorizedException('Invalid refresh token');
+      }
+      
+      const result = await this.authService.refreshTokens(userId, refreshToken, request);
+      
+      // Set the new access token as a cookie
+      response.cookie('jwt', result.accessToken, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'strict',
+        maxAge: 60 * 60 * 1000, // 1 hour
+        path: '/'
+      });
+      
+      // Set the new refresh token as a cookie
+      response.cookie('refresh_token', result.refreshToken, {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'strict',
+        maxAge: 30 * 24 * 60 * 60 * 1000, // 30 days
+        path: '/auth/refresh' // Restrict to the refresh endpoint path
+      });
+      
+      return result;
+    } catch (error) {
+      // Clear the cookies if there's an error
+      response.clearCookie('jwt', {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'strict',
+        path: '/'
+      });
+      
+      response.clearCookie('refresh_token', {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'strict',
+        path: '/auth/refresh'
+      });
+      
+      throw new UnauthorizedException('Failed to refresh token');
     }
   }
 
@@ -72,8 +156,10 @@ export class AuthController {
   ): Promise<{ message: string }> {
     // 토큰 추출 및 블랙리스트에 추가
     const token = request.cookies?.jwt || request.headers.authorization?.split(' ')[1];
-    if (token) {
-      await this.authService.logout(token);
+    const refreshToken = request.cookies?.refresh_token;
+    
+    if (token || refreshToken) {
+      await this.authService.logout(token, refreshToken);
     }
     
     // 쿠키 제거
@@ -84,6 +170,13 @@ export class AuthController {
       path: '/'
     });
     
+    response.clearCookie('refresh_token', {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'strict',
+      path: '/auth/refresh'
+    });
+    
     // 빈 토큰으로 쿠키 설정 (만료 시간 0)
     response.cookie('jwt', '', {
       httpOnly: true,
@@ -91,6 +184,14 @@ export class AuthController {
       sameSite: 'strict',
       expires: new Date(0),
       path: '/'
+    });
+    
+    response.cookie('refresh_token', '', {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'strict',
+      expires: new Date(0),
+      path: '/auth/refresh'
     });
     
     return { message: 'Logged out successfully' };
@@ -117,8 +218,10 @@ export class AuthController {
     
     // 로그아웃 처리 (토큰 무효화 및 쿠키 제거)
     const token = request.cookies?.jwt || request.headers.authorization?.split(' ')[1];
-    if (token) {
-      await this.authService.logout(token);
+    const refreshToken = request.cookies?.refresh_token;
+    
+    if (token || refreshToken) {
+      await this.authService.logout(token, refreshToken);
     }
     
     // 쿠키 제거
@@ -129,6 +232,13 @@ export class AuthController {
       path: '/'
     });
     
+    response.clearCookie('refresh_token', {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'strict',
+      path: '/auth/refresh'
+    });
+    
     // 빈 토큰으로 쿠키 설정 (만료 시간 0)
     response.cookie('jwt', '', {
       httpOnly: true,
@@ -136,6 +246,14 @@ export class AuthController {
       sameSite: 'strict',
       expires: new Date(0),
       path: '/'
+    });
+    
+    response.cookie('refresh_token', '', {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'strict',
+      expires: new Date(0),
+      path: '/auth/refresh'
     });
     
     return { message: 'Account deleted successfully' };

@@ -19,6 +19,7 @@ export class RoomUser {
     entity: () => Room,
     primary: true,
     persist: true,
+    mapToPk: true,
     fieldName: 'room_id'
   })
   room!: Room;
@@ -27,6 +28,7 @@ export class RoomUser {
     entity: () => User,
     primary: true,
     persist: true,
+    mapToPk: true,
     fieldName: 'user_id'
   })
   user!: User;

@@ -4,13 +4,16 @@ import * as bcrypt from 'bcrypt';
 import { User } from '../entities';
 import { UsersService } from '../users/users.service';
 import { TokenBlacklistService } from './token-blacklist.service';
+import { RefreshTokenService } from './refresh-token.service';
+import { Request } from 'express';
 
 @Injectable()
 export class AuthService {
   constructor(
     private readonly usersService: UsersService,
     private readonly jwtService: JwtService,
-    private readonly tokenBlacklistService: TokenBlacklistService
+    private readonly tokenBlacklistService: TokenBlacklistService,
+    private readonly refreshTokenService: RefreshTokenService
   ) {}
 
   async validateUser(email: string, password: string): Promise<any> {
@@ -29,12 +32,12 @@ export class AuthService {
     return result;
   }
 
-  async login(user: any) {
+  async login(user: any, req?: Request) {
     // Calculate exact timestamps
     const now = Math.floor(Date.now() / 1000); // Current time in seconds
-    const expiresIn = 24 * 60 * 60; // 24 hours in seconds
+    const accessTokenExpiresIn = 60 * 60; // 1 hour in seconds
     
-    // Create a new token with precise timestamps
+    // Create access token
     const payload = { 
       sub: user.id, 
       email: user.email,
@@ -42,17 +45,21 @@ export class AuthService {
       // Add precise timestamp with milliseconds to make each token unique
       iat: now,
       // Set explicit expiration time
-      exp: now + expiresIn
+      exp: now + accessTokenExpiresIn
     };
     
-    const token = this.jwtService.sign(payload, { expiresIn: undefined }); // Override module default
+    const accessToken = this.jwtService.sign(payload, { expiresIn: undefined }); // Override module default
     
     // Set this as the latest token and invalidate previous ones
-    this.tokenBlacklistService.setLatestUserToken(user.id, token);
+    this.tokenBlacklistService.setLatestUserToken(user.id, accessToken);
     await this.tokenBlacklistService.blacklistUserTokens(user.id);
     
+    // Create refresh token
+    const refreshToken = await this.refreshTokenService.createRefreshToken(user, req);
+    
     return {
-      token,
+      accessToken,
+      refreshToken: refreshToken.token,
       user: {
         id: user.id,
         email: user.email,
@@ -62,13 +69,58 @@ export class AuthService {
     };
   }
 
-  async logout(token: string): Promise<boolean> {
+  async refreshTokens(userId: number, refreshToken: string, req?: Request) {
+    // Rotate the refresh token
+    const newRefreshToken = await this.refreshTokenService.rotateRefreshToken(refreshToken, req);
+    
+    // Generate a new access token
+    const user = await this.usersService.findById(userId);
+    
+    if (!user) {
+      throw new UnauthorizedException('User not found');
+    }
+    
+    // Calculate exact timestamps for the new access token
+    const now = Math.floor(Date.now() / 1000);
+    const accessTokenExpiresIn = 60 * 60; // 1 hour in seconds
+    
+    const payload = { 
+      sub: user.id, 
+      email: user.email,
+      nickname: user.nickname,
+      iat: now,
+      exp: now + accessTokenExpiresIn
+    };
+    
+    const accessToken = this.jwtService.sign(payload, { expiresIn: undefined });
+    
+    // Update the latest token
+    this.tokenBlacklistService.setLatestUserToken(user.id, accessToken);
+    
+    return {
+      accessToken,
+      refreshToken: newRefreshToken.token,
+      user: {
+        id: user.id,
+        email: user.email,
+        nickname: user.nickname,
+        imageUrl: user.imageUrl,
+      },
+    };
+  }
+
+  async logout(token: string, refreshToken?: string): Promise<boolean> {
+    // Blacklist the access token
     if (token) {
       await this.tokenBlacklistService.blacklistToken(token);
-      
-      return true;
     }
-    return false;
+    
+    // Revoke the refresh token if provided
+    if (refreshToken) {
+      await this.refreshTokenService.revokeRefreshToken(refreshToken);
+    }
+    
+    return true;
   }
 
   async validateToken(token: string): Promise<User | null> {

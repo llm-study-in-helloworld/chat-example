@@ -18,6 +18,7 @@ export class MessageReaction extends BaseEntity {
   @ManyToOne({
     entity: () => Message,
     persist: true,
+    mapToPk: true,
     fieldName: 'message_id'
   })
   message!: Message;
@@ -25,6 +26,7 @@ export class MessageReaction extends BaseEntity {
   @ManyToOne({
     entity: () => User,
     persist: true,
+    mapToPk: true,
     fieldName: 'user_id'
   })
   user!: User;

@@ -16,6 +16,7 @@ export class Mention extends BaseEntity {
   @ManyToOne({
     entity: () => Message,
     persist: true,
+    mapToPk: true,
     fieldName: 'message_id'
   })
   message!: Message;
@@ -23,6 +24,7 @@ export class Mention extends BaseEntity {
   @ManyToOne({
     entity: () => User,
     persist: true,
+    mapToPk: true,
     fieldName: 'mentioned_user_id'
   })
   mentionedUser!: User;
