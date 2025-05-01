@@ -30,16 +30,22 @@ export class AuthService {
   }
 
   async login(user: any) {
-    // Create a new token
+    // Calculate exact timestamps
+    const now = Math.floor(Date.now() / 1000); // Current time in seconds
+    const expiresIn = 24 * 60 * 60; // 24 hours in seconds
+    
+    // Create a new token with precise timestamps
     const payload = { 
       sub: user.id, 
       email: user.email,
       nickname: user.nickname,
       // Add precise timestamp with milliseconds to make each token unique
-      iat: Date.now() / 1000
+      iat: now,
+      // Set explicit expiration time
+      exp: now + expiresIn
     };
     
-    const token = this.jwtService.sign(payload);
+    const token = this.jwtService.sign(payload, { expiresIn: undefined }); // Override module default
     
     // Set this as the latest token and invalidate previous ones
     this.tokenBlacklistService.setLatestUserToken(user.id, token);

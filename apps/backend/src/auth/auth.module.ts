@@ -18,7 +18,9 @@ import { TokenBlacklistService } from './token-blacklist.service';
       imports: [ConfigModule],
       useFactory: async (configService: ConfigService) => ({
         secret: configService.get<string>('JWT_SECRET') || 'your-secret-key',
-        signOptions: { expiresIn: '1d' },
+        signOptions: { 
+          expiresIn: configService.get<string>('JWT_EXPIRES_IN') || '24h',
+        },
       }),
       inject: [ConfigService],
     }),

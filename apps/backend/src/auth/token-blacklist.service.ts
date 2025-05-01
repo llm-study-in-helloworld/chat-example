@@ -34,7 +34,7 @@ export class TokenBlacklistService {
         return;
       }
 
-      // 만료 시간 설정
+      // 만료 시간 설정 (use exact exp value from token)
       const expiry = new Date(decoded.exp * 1000);
       this.blacklist.set(token, expiry);
       
