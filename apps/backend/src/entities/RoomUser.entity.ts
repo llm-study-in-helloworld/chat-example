@@ -18,18 +18,14 @@ import { CommonEntity } from './CommonEntity';
 export class RoomUser extends CommonEntity {
   @ManyToOne({
     entity: () => Room,
-    primary: true,
     persist: true,
-    mapToPk: true,
     fieldName: 'room_id'
   })
   room!: Room;
 
   @ManyToOne({
     entity: () => User,
-    primary: true,
     persist: true,
-    mapToPk: true,
     fieldName: 'user_id'
   })
   user!: User;

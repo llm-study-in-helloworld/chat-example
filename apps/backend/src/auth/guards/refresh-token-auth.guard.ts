@@ -20,8 +20,8 @@ export class RefreshTokenAuthGuard implements CanActivate {
       const tokenEntity = await this.refreshTokenService.validateRefreshToken(refreshToken);
       
       // Attach the validated refresh token and user to the request for use in handlers
-      request['refreshToken'] = refreshToken;
       request['user'] = tokenEntity.user;
+      request.headers['refresh_token'] = refreshToken;
       
       return true;
     } catch (error) {
