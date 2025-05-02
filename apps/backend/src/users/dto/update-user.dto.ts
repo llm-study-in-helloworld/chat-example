@@ -1,4 +1,5 @@
 import { IsNotEmpty, IsOptional, IsString, MinLength } from 'class-validator';
+import { User } from '../../entities/User.entity';
 
 /**
  * DTO for updating user profile
@@ -13,12 +14,17 @@ export class UpdateUserDto {
   imageUrl?: string;
 
   @IsString()
-  @IsOptional()
-  @MinLength(8)
-  currentPassword?: string;
-
-  @IsString()
-  @IsOptional()
-  @MinLength(8)
-  newPassword?: string;
+  @IsNotEmpty()
+  currentPassword!: string;
+  
+  /**
+   * Apply profile updates to a User entity (excluding password)
+   */
+  applyTo(user: User): User {
+    user.nickname = this.nickname;
+    if (this.imageUrl !== undefined) {
+      user.imageUrl = this.imageUrl;
+    }
+    return user;
+  }
 } 

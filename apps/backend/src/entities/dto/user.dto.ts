@@ -1,6 +1,8 @@
 /**
  * User 엔티티의 기본 속성을 정의하는 인터페이스
  */
+import { User } from '../User.entity';
+
 export interface UserDto {
   id: number;
   email: string;
@@ -31,7 +33,7 @@ export class UserResponseDto implements Omit<UserDto, 'createdAt' | 'updatedAt'>
   /**
    * User 엔티티를 ResponseDto로 변환
    */
-  static fromEntity(user: any): UserResponseDto {
+  static fromEntity(user: User): UserResponseDto {
     const dto = new UserResponseDto();
     dto.id = user.id;
     dto.email = user.email;

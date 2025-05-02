@@ -3,10 +3,13 @@ import {
   Controller, 
   Get, 
   UseGuards,
-  Patch
+  Patch,
+  HttpCode,
+  HttpStatus,
 } from '@nestjs/common';
 import { UsersService } from './users.service';
 import { UpdateUserDto } from './dto';
+import { ChangePasswordDto } from './dto/change-password.dto';
 import { JwtAuthGuard, CurrentUser } from '../auth';
 import { User } from '../entities';
 import { UserResponseDto } from '../entities/dto/user.dto';
@@ -26,7 +29,25 @@ export class UsersController {
     @CurrentUser() user: User,
     @Body() updateUserDto: UpdateUserDto
   ): Promise<UserResponseDto> {
-    return this.usersService.updateUserProfile(user.id, updateUserDto);
+    return this.usersService.updateUser(user, updateUserDto);
+  }
+  
+  /**
+   * 비밀번호 변경 엔드포인트
+   */
+  @UseGuards(JwtAuthGuard)
+  @Patch('password')
+  @HttpCode(HttpStatus.OK)
+  async changePassword(
+    @CurrentUser() user: User,
+    @Body() changePasswordDto: ChangePasswordDto
+  ): Promise<{ success: boolean }> {
+    const success = await this.usersService.changePassword(
+      user, 
+      changePasswordDto
+    );
+    
+    return { success };
   }
 
   /**

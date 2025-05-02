@@ -214,7 +214,7 @@ export class AuthController {
     @Res({ passthrough: true }) response: Response
   ): Promise<{ message: string }> {
     // 계정 삭제
-    const success = await this.usersService.deleteUser(user.id, deleteUserDto.password);
+    const success = await this.usersService.deleteUser(user, deleteUserDto.password);
     if (!success) {
       throw new UnauthorizedException('Failed to delete account');
     }
