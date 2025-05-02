@@ -11,14 +11,11 @@ import testConfig from '../mikro-orm.config.test';
 describe('AuthController (e2e)', () => {
   let app: INestApplication;
   let em: EntityManager;
-  let authToken: string;
   let orm: MikroORM;
 
-  // Test user data
-  const testUser = {
-    email: 'auth-test@example.com',
+  // Base test user data
+  const baseTestUser = {
     password: 'password123',
-    nickname: 'AuthTestUser'
   };
   
   beforeAll(async () => {
@@ -44,26 +41,38 @@ describe('AuthController (e2e)', () => {
     );
 
     await app.init();
-    
-    // Create a test user for authentication tests
-    await request(app.getHttpServer())
-      .post('/api/auth/signup')
-      .send(testUser)
-      .expect(201);
   });
   
   afterAll(async () => {
     await app.close();
     await orm.close();
   });
+
+  // Helper function to create a test user
+  const createTestUser = async (index: number) => {
+    // Add a random string to ensure uniqueness
+    const uniqueId = `${index}-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`;
+    const userData = {
+      email: `auth-test-${uniqueId}@example.com`,
+      password: baseTestUser.password,
+      nickname: `AuthTestUser${uniqueId}`
+    };
+    
+    await request(app.getHttpServer())
+      .post('/api/auth/signup')
+      .send(userData)
+      .expect(201);
+      
+    return userData;
+  };
   
   describe('Feature: User Registration', () => {
     it('Scenario: User signs up with valid credentials', async () => {
       // Given a new user with valid credentials
       const newUser = {
-        email: 'new-user@example.com',
+        email: 'signup-test@example.com',
         password: 'password123',
-        nickname: 'NewUser'
+        nickname: 'SignUpTest'
       };
       
       // When they sign up
@@ -80,7 +89,13 @@ describe('AuthController (e2e)', () => {
   });
   
   describe('Feature: JWT Authentication', () => {
-    it('Scenario: User logs in and receives a JWT token', async () => {
+    let testUser: { email: string; password: string; nickname: string };
+
+    beforeEach(async () => {
+      testUser = await createTestUser(1);
+    });
+
+    it('Scenario: User logs in and receives access and refresh tokens', async () => {
       // Given a registered user
       const loginData = {
         email: testUser.email,
@@ -93,21 +108,31 @@ describe('AuthController (e2e)', () => {
         .send(loginData)
         .expect(201);
       
-      // Then they should receive a JWT token
-      expect(response.body.token).toBeDefined();
-      expect(typeof response.body.token).toBe('string');
+      // Then they should receive an access token
+      expect(response.body.accessToken).toBeDefined();
+      expect(typeof response.body.accessToken).toBe('string');
       
-      // And the token should be set as a cookie
+      // And they should receive a refresh token
+      expect(response.body.refreshToken).toBeDefined();
+      expect(typeof response.body.refreshToken).toBe('string');
+      
+      // And the tokens should be set as cookies
       const cookies = response.headers['set-cookie'] as unknown as string[];
       expect(cookies).toBeDefined();
       expect(cookies.some((cookie: string) => cookie.includes('jwt='))).toBe(true);
-      
-      // Save token for later tests
-      authToken = response.body.token;
+      expect(cookies.some((cookie: string) => cookie.includes('refresh_token='))).toBe(true);
     });
     
     it('Scenario: User uses JWT token to access protected resources', async () => {
       // Given an authenticated user with a valid token
+      const loginResponse = await request(app.getHttpServer())
+        .post('/api/auth/login')
+        .send({
+          email: testUser.email,
+          password: testUser.password
+        });
+      
+      const authToken = loginResponse.body.accessToken;
       
       // When they access a protected resource
       const response = await request(app.getHttpServer())
@@ -141,20 +166,122 @@ describe('AuthController (e2e)', () => {
     });
   });
   
-  describe('Feature: Token Blacklisting', () => {
-    it('Scenario: Blacklisted tokens are rejected', async () => {
-      // Given a valid token that we will blacklist
-      const loginData = {
-        email: testUser.email,
-        password: testUser.password
-      };
+  describe('Feature: Refresh Token Mechanism', () => {
+    let accessToken: string;
+    let refreshToken: string;
+    
+    it('Scenario: User can refresh their access token using refresh token', async () => {
+      // Create a new test user with unique email just for this test
+      const uniqueTestUser = await createTestUser(999); // Use a higher number to avoid collisions
       
+      // First do the login to get tokens for our unique user
       const loginResponse = await request(app.getHttpServer())
         .post('/api/auth/login')
-        .send(loginData)
+        .send({
+          email: uniqueTestUser.email,
+          password: uniqueTestUser.password
+        })
         .expect(201);
       
-      const tokenToBlacklist = loginResponse.body.token;
+      // Store the original tokens
+      const initialRefreshToken = loginResponse.body.refreshToken;
+      const initialAccessToken = loginResponse.body.accessToken;
+      
+      // Allow some time to pass to ensure tokens will be different
+      await new Promise(resolve => setTimeout(resolve, 1000)); 
+      
+      // Now use the refresh token to get a new access token
+      const response = await request(app.getHttpServer())
+        .post('/api/auth/refresh')
+        .set('Cookie', `refresh_token=${initialRefreshToken}`)
+        .expect(201);
+      
+      // Then they should receive a new access token and refresh token
+      expect(response.body.accessToken).toBeDefined();
+      expect(typeof response.body.accessToken).toBe('string');
+      expect(response.body.refreshToken).toBeDefined();
+      expect(typeof response.body.refreshToken).toBe('string');
+      
+      // The tokens should be different because we waited a second
+      expect(response.body.accessToken).not.toBe(initialAccessToken);
+      expect(response.body.refreshToken).not.toBe(initialRefreshToken);
+      
+      // And the new access token should work for protected resources
+      const protectedResponse = await request(app.getHttpServer())
+        .get('/api/users/me')
+        .set('Authorization', `Bearer ${response.body.accessToken}`)
+        .expect(200);
+      
+      expect(protectedResponse.body.email).toBe(uniqueTestUser.email);
+      
+      // And the old refresh token should no longer work
+      await request(app.getHttpServer())
+        .post('/api/auth/refresh')
+        .set('Cookie', `refresh_token=${initialRefreshToken}`)
+        .expect(401);
+      
+      accessToken = response.body.accessToken;
+      refreshToken = response.body.refreshToken;
+    });
+    
+    it('Scenario: Cannot refresh token without valid refresh token cookie', async () => {
+      // Given an access token but no refresh token cookie
+      
+      // When trying to refresh
+      await request(app.getHttpServer())
+        .post('/api/auth/refresh')
+        .set('Authorization', `Bearer ${accessToken}`)
+        .expect(401);
+    });
+    
+    it('Scenario: Refresh token is invalidated on logout', async () => {
+      // Create a user and tokens just for this test
+      const logoutTestUser = await createTestUser(1000);
+      
+      // Login to get tokens
+      const loginResponse = await request(app.getHttpServer())
+        .post('/api/auth/login')
+        .send({
+          email: logoutTestUser.email,
+          password: logoutTestUser.password
+        })
+        .expect(201);
+      
+      const logoutToken = loginResponse.body.accessToken;
+      const logoutRefreshToken = loginResponse.body.refreshToken;
+        
+      // When they logout using the access token
+      await request(app.getHttpServer())
+        .post('/api/auth/logout')
+        .set('Authorization', `Bearer ${logoutToken}`)
+        .expect(200);
+      
+      // Then the refresh token should no longer work
+      await request(app.getHttpServer())
+        .post('/api/auth/refresh')
+        .set('Cookie', `refresh_token=${logoutRefreshToken}`)
+        .expect(401);
+    });
+  });
+  
+  describe('Feature: Token Blacklisting', () => {
+    let testUser: { email: string; password: string; nickname: string };
+
+    beforeEach(async () => {
+      testUser = await createTestUser(3);
+    });
+
+    it('Scenario: Blacklisted tokens are rejected', async () => {
+      // Given a valid token that we will blacklist
+      const loginResponse = await request(app.getHttpServer())
+        .post('/api/auth/login')
+        .send({
+          email: testUser.email,
+          password: testUser.password
+        })
+        .expect(201);
+      
+      const tokenToBlacklist = loginResponse.body.accessToken;
       
       // When we logout (which blacklists the token)
       await request(app.getHttpServer())
@@ -171,6 +298,12 @@ describe('AuthController (e2e)', () => {
   });
   
   describe('Feature: Cookie Authentication', () => {
+    let testUser: { email: string; password: string; nickname: string };
+
+    beforeEach(async () => {
+      testUser = await createTestUser(4);
+    });
+
     it('Scenario: Authentication works via cookies', async () => {
       // Given a successful login that sets cookies
       const agent = request.agent(app.getHttpServer());
@@ -183,7 +316,7 @@ describe('AuthController (e2e)', () => {
         })
         .expect(201);
 
-      const token = loginResponse.body.token;
+      const token = loginResponse.body.accessToken;
       
       // When accessing a protected resource with the cookie
       const response = await agent
@@ -207,7 +340,7 @@ describe('AuthController (e2e)', () => {
           password: testUser.password
         })
         .expect(201);
-      const token = loginResponse.body.token;
+      const token = loginResponse.body.accessToken;
       
       // When they logout
       const logoutResponse = await agent
@@ -222,6 +355,10 @@ describe('AuthController (e2e)', () => {
         cookie.includes('jwt=;') || 
         cookie.includes('Expires=Thu, 01 Jan 1970'))
       ).toBe(true);
+      expect(cookies.some((cookie: string) => 
+        cookie.includes('refresh_token=;') || 
+        cookie.includes('Expires=Thu, 01 Jan 1970'))
+      ).toBe(true);
       
       // And they should no longer be able to access protected resources
       await agent
@@ -231,6 +368,12 @@ describe('AuthController (e2e)', () => {
   });
   
   describe('Feature: Account Deletion', () => {
+    let testUser: { email: string; password: string; nickname: string };
+
+    beforeEach(async () => {
+      testUser = await createTestUser(5);
+    });
+
     it('Scenario: User can delete their account', async () => {
       // First login to get a token
       const loginResponse = await request(app.getHttpServer())
@@ -241,7 +384,7 @@ describe('AuthController (e2e)', () => {
         })
         .expect(201);
       
-      const token = loginResponse.body.token;
+      const token = loginResponse.body.accessToken;
       
       // When they delete their account
       const deleteResponse = await request(app.getHttpServer())

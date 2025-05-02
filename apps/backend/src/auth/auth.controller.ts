@@ -1,22 +1,15 @@
-import { Controller, Post, Body, UnauthorizedException, Res, UseGuards, HttpCode, HttpStatus, Req, Delete, Get } from '@nestjs/common';
+import { Controller, Post, Body, UnauthorizedException, Res, UseGuards, HttpCode, HttpStatus, Req, Delete, Get, createParamDecorator, ExecutionContext } from '@nestjs/common';
 import { AuthService } from './auth.service';
 import { Response, Request } from 'express';
-import { JwtAuthGuard } from './jwt-auth.guard';
-import { RefreshTokenAuthGuard } from './refresh-token-auth.guard';
-import { CurrentUser } from './user.decorator';
+import { JwtAuthGuard } from './guards/jwt-auth.guard';
+import { RefreshTokenAuthGuard } from './guards/refresh-token-auth.guard';
 import { User } from '../entities';
 import { CreateUserDto } from '../users/dto/create-user.dto';
 import { DeleteUserDto } from '../users/dto/delete-user.dto';
 import { UsersService } from '../users/users.service';
 import { UserResponseDto } from '../entities/dto/user.dto';
-
-// Define interface for Request with refreshToken
-interface RequestWithRefreshToken extends Request {
-  user?: {
-    user: User;
-    refreshToken: string;
-  };
-}
+import { RefreshToken } from './decorators/refresh-token.decorator';
+import { CurrentUser } from './decorators/user.decorator';
 
 @Controller('auth')
 export class AuthController {
@@ -52,13 +45,15 @@ export class AuthController {
         httpOnly: true,
         secure: process.env.NODE_ENV === 'production',
         sameSite: 'strict',
-        path: '/'
+        path: '/api/auth/refresh'
       });
       
       const user = await this.authService.validateUser(
         loginDto.email,
         loginDto.password,
       );
+      
+      // Use the login method from AuthService to get tokens
       const result = await this.authService.login(user, request);
       
       // Set the access token as a cookie
@@ -76,7 +71,7 @@ export class AuthController {
         secure: process.env.NODE_ENV === 'production',
         sameSite: 'strict',
         maxAge: 30 * 24 * 60 * 60 * 1000, // 30 days
-        path: '/auth/refresh' // Restrict to the refresh endpoint path
+        path: '/api/auth/refresh' // Restrict to the refresh endpoint path
       });
       
       return result;
@@ -91,18 +86,28 @@ export class AuthController {
   @UseGuards(RefreshTokenAuthGuard)
   @Post('refresh')
   async refreshTokens(
-    @Req() request: RequestWithRefreshToken,
+    @Req() request: Request,
+    @CurrentUser() user: User,
+    @RefreshToken() refreshToken: string,
     @Res({ passthrough: true }) response: Response
   ) {
     try {
-      const userId = request.user?.user?.id;
-      const refreshToken = request.user?.refreshToken;
+      const result = await this.authService.refreshTokens(user.id, refreshToken, request);
+
+      // 쿠키 제거
+      response.clearCookie('jwt', {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'strict',
+        path: '/'
+      });
       
-      if (!userId || !refreshToken) {
-        throw new UnauthorizedException('Invalid refresh token');
-      }
-      
-      const result = await this.authService.refreshTokens(userId, refreshToken, request);
+      response.clearCookie('refresh_token', {
+        httpOnly: true,
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: 'strict',
+        path: '/api/auth/refresh'
+      });
       
       // Set the new access token as a cookie
       response.cookie('jwt', result.accessToken, {
@@ -119,11 +124,13 @@ export class AuthController {
         secure: process.env.NODE_ENV === 'production',
         sameSite: 'strict',
         maxAge: 30 * 24 * 60 * 60 * 1000, // 30 days
-        path: '/auth/refresh' // Restrict to the refresh endpoint path
+        path: '/api/auth/refresh' // Restrict to the refresh endpoint path
       });
       
       return result;
     } catch (error) {
+      console.error('Error refreshing token:', error);
+      
       // Clear the cookies if there's an error
       response.clearCookie('jwt', {
         httpOnly: true,
@@ -136,9 +143,9 @@ export class AuthController {
         httpOnly: true,
         secure: process.env.NODE_ENV === 'production',
         sameSite: 'strict',
-        path: '/auth/refresh'
-      });
-      
+        path: '/api/auth/refresh'
+      },);
+
       throw new UnauthorizedException('Failed to refresh token');
     }
   }
@@ -151,17 +158,14 @@ export class AuthController {
   @Post('logout')
   @HttpCode(HttpStatus.OK)
   async logout(
-    @Req() request: Request,
+    @CurrentUser() user: User,
     @Res({ passthrough: true }) response: Response
   ): Promise<{ message: string }> {
-    // 토큰 추출 및 블랙리스트에 추가
-    const token = request.cookies?.jwt || request.headers.authorization?.split(' ')[1];
-    const refreshToken = request.cookies?.refresh_token;
-    
-    if (token || refreshToken) {
-      await this.authService.logout(token, refreshToken);
+    // Pass the user to ensure all tokens for this user are revoked
+    if(!await this.authService.logout(user)) {
+      throw new UnauthorizedException('Failed to logout');
     }
-    
+
     // 쿠키 제거
     response.clearCookie('jwt', {
       httpOnly: true,
@@ -174,7 +178,7 @@ export class AuthController {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'strict',
-      path: '/auth/refresh'
+      path: '/api/auth/refresh'
     });
     
     // 빈 토큰으로 쿠키 설정 (만료 시간 0)
@@ -191,7 +195,7 @@ export class AuthController {
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'strict',
       expires: new Date(0),
-      path: '/auth/refresh'
+      path: '/api/auth/refresh'
     });
     
     return { message: 'Logged out successfully' };
@@ -207,7 +211,6 @@ export class AuthController {
   async signout(
     @CurrentUser() user: User,
     @Body() deleteUserDto: DeleteUserDto,
-    @Req() request: Request,
     @Res({ passthrough: true }) response: Response
   ): Promise<{ message: string }> {
     // 계정 삭제
@@ -216,12 +219,9 @@ export class AuthController {
       throw new UnauthorizedException('Failed to delete account');
     }
     
-    // 로그아웃 처리 (토큰 무효화 및 쿠키 제거)
-    const token = request.cookies?.jwt || request.headers.authorization?.split(' ')[1];
-    const refreshToken = request.cookies?.refresh_token;
-    
-    if (token || refreshToken) {
-      await this.authService.logout(token, refreshToken);
+    // Pass the user to ensure all tokens are revoked
+    if(!await this.authService.logout(user)) {
+      throw new UnauthorizedException('Failed to logout');
     }
     
     // 쿠키 제거
@@ -236,7 +236,7 @@ export class AuthController {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'strict',
-      path: '/auth/refresh'
+      path: '/api/auth/refresh'
     });
     
     // 빈 토큰으로 쿠키 설정 (만료 시간 0)
@@ -253,7 +253,7 @@ export class AuthController {
       secure: process.env.NODE_ENV === 'production',
       sameSite: 'strict',
       expires: new Date(0),
-      path: '/auth/refresh'
+      path: '/api/auth/refresh'
     });
     
     return { message: 'Account deleted successfully' };

@@ -30,7 +30,8 @@ export class RefreshTokenService {
       ipAddress,
     );
     
-    await this.em.persistAndFlush(refreshToken);
+    await this.refreshTokenRepository.create(refreshToken);
+    await this.em.flush();
 
     return refreshToken;
   }
@@ -67,7 +68,7 @@ export class RefreshTokenService {
     
     if (refreshToken && !refreshToken.isRevoked) {
       refreshToken.revoke();
-      await this.em.persistAndFlush(refreshToken);
+      await this.em.flush();
     }
   }
 
@@ -75,12 +76,11 @@ export class RefreshTokenService {
    * Revoke all refresh tokens for a user
    */
   async revokeAllUserRefreshTokens(userId: number): Promise<void> {
-    const refreshTokens = await this.refreshTokenRepository.find({
-      user: { id: userId },
-      isRevoked: false,
-    });
-    
-    refreshTokens.forEach(token => token.revoke());
+    // Use nativeUpdate to directly update all tokens in the database with a single query
+    await this.refreshTokenRepository.nativeUpdate(
+      { user: { id: userId }, isRevoked: false },
+      { isRevoked: true, revokedAt: new Date() }
+    );
     await this.em.flush();
   }
 
@@ -98,7 +98,7 @@ export class RefreshTokenService {
     
     // Revoke the old token
     existingToken.revoke();
-    await this.em.persistAndFlush(existingToken);
+    await this.em.flush();
     
     return newToken;
   }

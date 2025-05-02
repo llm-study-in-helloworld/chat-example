@@ -6,11 +6,12 @@ import { RoomUser } from '../src/entities/RoomUser.entity';
 import { Message } from '../src/entities/Message.entity';
 import { MessageReaction } from '../src/entities/MessageReaction.entity';
 import { Mention } from '../src/entities/Mention.entity';
+import { RefreshToken } from '../src/entities';
 
 const testConfig: Options = {
   driver: SqliteDriver,
   dbName: ':memory:',
-  entities: [User, Room, RoomUser, Message, MessageReaction, Mention],
+  entities: [User, Room, RoomUser, Message, MessageReaction, Mention, RefreshToken],
   debug: true,
   allowGlobalContext: true,
   discovery: {

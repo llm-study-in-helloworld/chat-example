@@ -6,7 +6,7 @@ import { AuthModule } from '../src/auth/auth.module';
 import { RoomsModule } from '../src/rooms/rooms.module';
 import { MessagesModule } from '../src/messages/messages.module';
 import { ChatGateway } from '../src/gateway/chat.gateway';
-import { User, Room, RoomUser, Message, MessageReaction, Mention } from '../src/entities';
+import { User, Room, RoomUser, Message, MessageReaction, Mention, RefreshToken } from '../src/entities';
 import testConfig from './mikro-orm.config.test';
 
 @Module({
@@ -17,7 +17,7 @@ import testConfig from './mikro-orm.config.test';
     }),
     MikroOrmModule.forRoot(testConfig),
     MikroOrmModule.forFeature({
-      entities: [User, Room, RoomUser, Message, MessageReaction, Mention]
+      entities: [User, Room, RoomUser, Message, MessageReaction, Mention, RefreshToken]
     }),
     UsersModule,
     AuthModule,

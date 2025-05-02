@@ -6,15 +6,21 @@ import { UsersService } from '../users/users.service';
 import { TokenBlacklistService } from './token-blacklist.service';
 import { RefreshTokenService } from './refresh-token.service';
 import { Request } from 'express';
+import { ConfigService } from '@nestjs/config';
 
 @Injectable()
 export class AuthService {
+  private accessTokenExpiresIn: number;
+
   constructor(
     private readonly usersService: UsersService,
     private readonly jwtService: JwtService,
     private readonly tokenBlacklistService: TokenBlacklistService,
-    private readonly refreshTokenService: RefreshTokenService
-  ) {}
+    private readonly refreshTokenService: RefreshTokenService,
+    private readonly configService: ConfigService
+  ) {
+    this.accessTokenExpiresIn = this.configService.get('JWT_ACCESS_EXPIRES_IN') ?? 60 * 60;
+  }
 
   async validateUser(email: string, password: string): Promise<any> {
     const user = await this.usersService.findByEmail(email);
@@ -35,7 +41,6 @@ export class AuthService {
   async login(user: any, req?: Request) {
     // Calculate exact timestamps
     const now = Math.floor(Date.now() / 1000); // Current time in seconds
-    const accessTokenExpiresIn = 60 * 60; // 1 hour in seconds
     
     // Create access token
     const payload = { 
@@ -45,14 +50,17 @@ export class AuthService {
       // Add precise timestamp with milliseconds to make each token unique
       iat: now,
       // Set explicit expiration time
-      exp: now + accessTokenExpiresIn
+      exp: now + this.accessTokenExpiresIn
     };
     
-    const accessToken = this.jwtService.sign(payload, { expiresIn: undefined }); // Override module default
+    const accessToken = this.jwtService.sign(payload); // Override module default
     
     // Set this as the latest token and invalidate previous ones
     this.tokenBlacklistService.setLatestUserToken(user.id, accessToken);
     await this.tokenBlacklistService.blacklistUserTokens(user.id);
+    
+    // Revoke all previous refresh tokens for this user
+    await this.refreshTokenService.revokeAllUserRefreshTokens(user.id);
     
     // Create refresh token
     const refreshToken = await this.refreshTokenService.createRefreshToken(user, req);
@@ -82,17 +90,16 @@ export class AuthService {
     
     // Calculate exact timestamps for the new access token
     const now = Math.floor(Date.now() / 1000);
-    const accessTokenExpiresIn = 60 * 60; // 1 hour in seconds
     
     const payload = { 
       sub: user.id, 
       email: user.email,
       nickname: user.nickname,
       iat: now,
-      exp: now + accessTokenExpiresIn
+      exp: now + this.accessTokenExpiresIn
     };
     
-    const accessToken = this.jwtService.sign(payload, { expiresIn: undefined });
+    const accessToken = this.jwtService.sign(payload);
     
     // Update the latest token
     this.tokenBlacklistService.setLatestUserToken(user.id, accessToken);
@@ -109,15 +116,12 @@ export class AuthService {
     };
   }
 
-  async logout(token: string, refreshToken?: string): Promise<boolean> {
-    // Blacklist the access token
-    if (token) {
-      await this.tokenBlacklistService.blacklistToken(token);
-    }
-    
-    // Revoke the refresh token if provided
-    if (refreshToken) {
-      await this.refreshTokenService.revokeRefreshToken(refreshToken);
+  async logout(user: User): Promise<boolean> {
+    try {
+      await this.refreshTokenService.revokeAllUserRefreshTokens(user.id);
+      await this.tokenBlacklistService.blacklistUserTokens(user.id);
+    } catch (error) {
+      return false;
     }
     
     return true;

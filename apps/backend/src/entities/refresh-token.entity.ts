@@ -12,7 +12,8 @@ export class RefreshToken extends CommonEntity {
   @ManyToOne(() => User, {
     persist: true,
     mapToPk: true,
-    fieldName: 'user_id'
+    fieldName: 'user_id',
+    eager: true,
   })
   user: User;
 

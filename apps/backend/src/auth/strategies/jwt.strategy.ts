@@ -2,9 +2,10 @@ import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { PassportStrategy } from '@nestjs/passport';
 import { ExtractJwt, Strategy } from 'passport-jwt';
 import { ConfigService } from '@nestjs/config';
-import { UsersService } from '../users/users.service';
+import { UsersService } from '../../users/users.service';
 import { Request } from 'express';
-import { TokenBlacklistService } from './token-blacklist.service';
+import { TokenBlacklistService } from '../token-blacklist.service';
+import { extractJwtFromCookieOrAuthHeader } from '../helpers/extractor';
 
 interface JwtPayload {
   sub: number; // 사용자 ID
@@ -14,15 +15,6 @@ interface JwtPayload {
   exp: number; // 만료 시간
 }
 
-/**
- * JWT 추출 함수 - 쿠키 또는 Authorization 헤더에서 토큰 추출
- */
-const extractJwtFromCookieOrAuthHeader = (req: Request): string | null => {
-  if (req.cookies && req.cookies.jwt) {
-    return req.cookies.jwt;
-  }
-  return ExtractJwt.fromAuthHeaderAsBearerToken()(req);
-};
 
 @Injectable()
 export class JwtStrategy extends PassportStrategy(Strategy) {
