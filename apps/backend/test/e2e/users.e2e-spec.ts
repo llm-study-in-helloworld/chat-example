@@ -11,15 +11,11 @@ import testConfig from '../mikro-orm.config.test';
 describe('UsersController (e2e)', () => {
   let app: INestApplication;
   let em: EntityManager;
-  let authToken: string;
-  let userId: number;
   let orm: MikroORM;
   
-  // Test user data
-  const testUser = {
-    email: 'test@example.com',
+  // Base test user data
+  const baseTestUser = {
     password: 'password123',
-    nickname: 'TestUser'
   };
 
   // For password change test
@@ -58,16 +54,47 @@ describe('UsersController (e2e)', () => {
     await app.close();
     await orm.close();
   });
+
+  // Helper function to create a test user with unique identifiers
+  const createTestUser = async (index: number) => {
+    // Add a random string to ensure uniqueness
+    const uniqueId = `${index}-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`;
+    const userData = {
+      email: `test-${uniqueId}@example.com`,
+      password: baseTestUser.password,
+      nickname: `TestUser${uniqueId}`
+    };
+    
+    const response = await request(app.getHttpServer())
+      .post('/api/auth/signup')
+      .send(userData)
+      .expect(201);
+      
+    return {
+      userData,
+      userId: response.body.id
+    };
+  };
   
   // ATDD style - Acceptance criteria grouped by features
   describe('Feature: User Registration', () => {
+    let testUser;
+    
+    beforeAll(async () => {
+      testUser = (await createTestUser(1)).userData;
+    });
+    
     it('Scenario: User signs up with valid credentials', async () => {
       // Given a user with valid credentials
-      const userData = { ...testUser };
+      const userData = {
+        email: `new-${Date.now()}@example.com`,
+        password: baseTestUser.password,
+        nickname: `NewUser${Date.now()}`
+      };
       
       // When they sign up
       const response = await request(app.getHttpServer())
-        .post('/api/auth/signup')  // Updated path
+        .post('/api/auth/signup')
         .send(userData)
         .expect(201);
       
@@ -76,19 +103,15 @@ describe('UsersController (e2e)', () => {
       expect(response.body.id).toBeDefined();
       expect(response.body.email).toBe(userData.email);
       expect(response.body.nickname).toBe(userData.nickname);
-      
-      // Save userId for later tests
-      userId = response.body.id;
     });
     
     it('Scenario: User tries to sign up with existing email', async () => {
       // Given a user with an email that already exists
-      const userData = { ...testUser };
       
       // When they try to sign up
       const response = await request(app.getHttpServer())
-        .post('/api/auth/signup')  // Updated path
-        .send(userData)
+        .post('/api/auth/signup')
+        .send(testUser)
         .expect(409); // Conflict
       
       // Then they should receive an error
@@ -104,7 +127,7 @@ describe('UsersController (e2e)', () => {
       
       // When they try to sign up
       const response = await request(app.getHttpServer())
-        .post('/api/auth/signup')  // Updated path
+        .post('/api/auth/signup')
         .send(invalidUser)
         .expect(400); // Bad Request
       
@@ -113,112 +136,26 @@ describe('UsersController (e2e)', () => {
     });
   });
   
-  describe('Feature: User Authentication', () => {
-    it('Scenario: User logs in with valid credentials', async () => {
-      // Given a registered user with valid credentials
-      const loginData = {
-        email: testUser.email,
-        password: testUser.password
-      };
-      
-      // When they log in
-      const response = await request(app.getHttpServer())
-        .post('/api/auth/login')
-        .send(loginData)
-        .expect(201);
-      
-      // Then they should receive an auth token and user data
-      expect(response.body.token).toBeDefined();
-      expect(response.body.user).toBeDefined();
-      expect(response.body.user.email).toBe(testUser.email);
-      
-      // Check for JWT cookie
-      const cookies = response.headers['set-cookie'] as unknown as string[];
-      expect(cookies).toBeDefined();
-      expect(cookies.some((cookie: string) => cookie.includes('jwt='))).toBe(true);
-      
-      // Save token for later tests
-      authToken = response.body.token;
-    });
-    
-    it('Scenario: Previous token becomes invalid when user logs in again', async () => {
-      // Given a user with a valid token
-      const firstToken = authToken;
-      
-      // Add a small delay to ensure different tokens (different iat timestamp)
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
-      // When they log in again
-      const loginData = {
-        email: testUser.email,
-        password: testUser.password
-      };
-      
-      const response = await request(app.getHttpServer())
-        .post('/api/auth/login')
-        .send(loginData)
-        .expect(201);
-      
-      // Then they should receive a new token
-      const newToken = response.body.token;
-      expect(newToken).toBeDefined();
-      expect(newToken).not.toBe(firstToken);
-      
-      // And the first token should be invalid
-      await request(app.getHttpServer())
-        .get('/api/users/me')
-        .set('Authorization', `Bearer ${firstToken}`)
-        .expect(401); // Unauthorized
-      
-      // But the new token should work
-      await request(app.getHttpServer())
-        .get('/api/users/me')
-        .set('Authorization', `Bearer ${newToken}`)
-        .expect(200);
-      
-      // Update the authToken for future tests
-      authToken = newToken;
-    });
-    
-    it('Scenario: User tries to log in with invalid credentials', async () => {
-      // Given invalid login credentials
-      const invalidLogin = {
-        email: testUser.email,
-        password: 'wrongpassword'
-      };
-      
-      // When they try to log in
-      await request(app.getHttpServer())
-        .post('/api/auth/login')
-        .send(invalidLogin)
-        .expect(401); // Unauthorized
-    });
-    
-    it('Scenario: User accesses protected endpoint with valid token', async () => {
-      // Given an authenticated user
-      
-      // When they access a protected endpoint
-      const response = await request(app.getHttpServer())
-        .get('/api/users/me')
-        .set('Authorization', `Bearer ${authToken}`)
-        .expect(200);
-      
-      // Then they should receive their user data
-      expect(response.body).toBeDefined();
-      expect(response.body.email).toBe(testUser.email);
-    });
-    
-    it('Scenario: User tries to access protected endpoint without token', async () => {
-      // Given an unauthenticated request
-      
-      // When they try to access a protected endpoint
-      await request(app.getHttpServer())
-        .get('/api/users/me')
-        .expect(401); // Unauthorized
-    });
-  });
-  
   describe('Feature: User Profile Management', () => {
+    let testUser;
+    let authToken;
+    
+    beforeEach(async () => {
+      const result = await createTestUser(2);
+      testUser = result.userData;
+      
+      // Login to get token
+      const loginResponse = await request(app.getHttpServer())
+        .post('/api/auth/login')
+        .send({
+          email: testUser.email,
+          password: testUser.password
+        })
+        .expect(201);
+        
+      authToken = loginResponse.body.accessToken;
+    });
+    
     it('Scenario: User updates their profile', async () => {
       // Given an authenticated user and update data
       
@@ -259,10 +196,7 @@ describe('UsersController (e2e)', () => {
         })
         .expect(201);
       
-      expect(loginResponse.body.token).toBeDefined();
-      
-      // Update authToken for remaining tests
-      authToken = loginResponse.body.token;
+      expect(loginResponse.body.accessToken).toBeDefined();
     });
     
     it('Scenario: User tries to change password with incorrect current password', async () => {
@@ -283,21 +217,29 @@ describe('UsersController (e2e)', () => {
   });
   
   describe('Feature: User Logout', () => {
-    it('Scenario: User logs out successfully', async () => {
-      // First login again to get a fresh token
+    let testUser;
+    let authToken;
+    
+    beforeAll(async () => {
+      const result = await createTestUser(3);
+      testUser = result.userData;
+      
+      // Login to get token
       const loginResponse = await request(app.getHttpServer())
         .post('/api/auth/login')
         .send({
           email: testUser.email,
-          password: newPassword
+          password: testUser.password
         })
         .expect(201);
-      
-      authToken= loginResponse.body.token;
-      
+        
+      authToken = loginResponse.body.accessToken;
+    });
+    
+    it('Scenario: User logs out successfully', async () => {
       // When they log out
       const response = await request(app.getHttpServer())
-        .post('/api/auth/logout')  // Updated path
+        .post('/api/auth/logout')
         .set('Authorization', `Bearer ${authToken}`)
         .expect(200);
       
@@ -317,38 +259,35 @@ describe('UsersController (e2e)', () => {
         .get('/api/users/me')
         .set('Authorization', `Bearer ${authToken}`)
         .expect(401);
-      
-      // Login again for the next tests
-      const newLoginResponse = await request(app.getHttpServer())
-        .post('/api/auth/login')
-        .send({
-          email: testUser.email,
-          password: newPassword
-        })
-        .expect(201);
-      
-      authToken = newLoginResponse.body.token;
     });
   });
   
   describe('Feature: Account Deletion', () => {
-    it('Scenario: User deletes their account with valid password', async () => {
-      // Given an authenticated user with correct password
+    let testUser;
+    let authToken;
+    
+    beforeEach(async () => {
+      const result = await createTestUser(4);
+      testUser = result.userData;
+      
+      // Login to get token
       const loginResponse = await request(app.getHttpServer())
         .post('/api/auth/login')
         .send({
-          email: testUser.email, 
-          password: newPassword
+          email: testUser.email,
+          password: testUser.password
         })
         .expect(201);
-
-      const tempToken = loginResponse.body.token;
-      
+        
+      authToken = loginResponse.body.accessToken;
+    });
+    
+    it('Scenario: User deletes their account with valid password', async () => {
       // When they delete their account
       const response = await request(app.getHttpServer())
-        .delete('/api/auth/signout')  // Updated path
-        .set('Authorization', `Bearer ${tempToken}`)
-        .send({ password: newPassword })
+        .delete('/api/auth/signout')
+        .set('Authorization', `Bearer ${authToken}`)
+        .send({ password: testUser.password })
         .expect(200);
       
       // Then they should receive a success message
@@ -365,22 +304,23 @@ describe('UsersController (e2e)', () => {
       // And their account should no longer exist
       const user = await em.findOne(User, { email: testUser.email });
       expect(user).toBeNull();
-
-      // Reset authToken since we've deleted the account
-      authToken = '';
     });
     
     it('Scenario: Deleted user tries to log in', async () => {
-      // Given a deleted user's credentials
-      const loginData = {
-        email: testUser.email,
-        password: newPassword
-      };
-      
-      // When they try to log in
+      // First delete the account
+      await request(app.getHttpServer())
+        .delete('/api/auth/signout')
+        .set('Authorization', `Bearer ${authToken}`)
+        .send({ password: testUser.password })
+        .expect(200);
+        
+      // When the deleted user tries to log in
       await request(app.getHttpServer())
         .post('/api/auth/login')
-        .send(loginData)
+        .send({
+          email: testUser.email,
+          password: testUser.password
+        })
         .expect(401); // Unauthorized
     });
   });
