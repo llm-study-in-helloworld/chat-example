@@ -56,8 +56,8 @@ export class AuthService {
     const accessToken = this.jwtService.sign(payload); // Override module default
     
     // Set this as the latest token and invalidate previous ones
-    this.tokenBlacklistService.setLatestUserToken(user.id, accessToken);
     await this.tokenBlacklistService.blacklistUserTokens(user.id);
+    this.tokenBlacklistService.setLatestUserToken(user.id, accessToken);
     
     // Revoke all previous refresh tokens for this user
     await this.refreshTokenService.revokeAllUserRefreshTokens(user.id);

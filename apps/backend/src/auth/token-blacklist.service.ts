@@ -61,32 +61,29 @@ export class TokenBlacklistService {
       return;
     }
     
-    // We don't invalidate the latest token
-    const latestToken = this.latestUserTokens.get(userId);
-    
-    // Blacklist all other tokens for this user
+    // Get all tokens for this user
     const userTokens = this.userTokens.get(userId);
-    if (userTokens && userTokens.size > 0) {
-      for (const token of userTokens) {
-        // Skip the latest token
-        if (latestToken === token) {
-          continue;
-        }
-        
-        // Add other tokens to blacklist
+    if (!userTokens || userTokens.size === 0) {
+      return;
+    }
+
+    // When logging out, we want to blacklist ALL tokens including the latest one
+    for (const token of userTokens) {
+      try {
         if (!this.blacklist.has(token)) {
-          try {
-            const decoded = this.jwtService.decode(token);
-            if (decoded && typeof decoded === 'object' && decoded.exp) {
-              const expiry = new Date(decoded.exp * 1000);
-              this.blacklist.set(token, expiry);
-            }
-          } catch (error) {
-            console.error('Failed to blacklist user token:', error);
+          const decoded = this.jwtService.decode(token);
+          if (decoded && typeof decoded === 'object' && decoded.exp) {
+            const expiry = new Date(decoded.exp * 1000);
+            this.blacklist.set(token, expiry);
           }
         }
+      } catch (error) {
+        console.error('Failed to blacklist user token:', error);
       }
     }
+    
+    // When logging out completely, remove the latest token reference
+    this.latestUserTokens.delete(userId);
   }
   
   /**
