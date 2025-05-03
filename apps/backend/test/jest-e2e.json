@@ -4,16 +4,13 @@
   "testEnvironment": "node",
   "testRegex": "e2e/.*\\.e2e-spec\\.ts$",
   "transform": {
-    "^.+\\.(t|j)s$": "ts-jest"
+    "^.+\\.(t|j)s$": ["ts-jest", {
+      "tsconfig": "<rootDir>/../tsconfig.json"
+    }]
   },
   "moduleNameMapper": {
     "^src/(.*)$": "<rootDir>/../src/$1"
   },
   "testTimeout": 30000,
-  "setupFilesAfterEnv": ["jest-extended/all", "<rootDir>/global.d.ts"],
-  "globals": {
-    "ts-jest": {
-      "tsconfig": "<rootDir>/../tsconfig.json"
-    }
-  }
+  "setupFilesAfterEnv": ["jest-extended/all", "<rootDir>/global.d.ts"]
 } 
