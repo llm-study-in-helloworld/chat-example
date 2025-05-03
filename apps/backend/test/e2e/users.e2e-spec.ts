@@ -158,12 +158,17 @@ describe('UsersController (e2e)', () => {
     
     it('Scenario: User updates their profile', async () => {
       // Given an authenticated user and update data
+      const profileUpdate = {
+        nickname: testUserUpdate.nickname,
+        imageUrl: testUserUpdate.imageUrl,
+        currentPassword: testUser.password
+      };
       
       // When they update their profile
       const response = await request(app.getHttpServer())
         .patch('/api/users/profile')
         .set('Authorization', `Bearer ${authToken}`)
-        .send(testUserUpdate)
+        .send(profileUpdate)
         .expect(200);
       
       // Then their profile should be updated
@@ -175,17 +180,18 @@ describe('UsersController (e2e)', () => {
     it('Scenario: User changes their password', async () => {
       // Given an authenticated user and password change data
       const passwordChange = {
-        nickname: testUserUpdate.nickname, // Required field
         currentPassword: testUser.password,
         newPassword: newPassword
       };
       
       // When they change their password
-      await request(app.getHttpServer())
-        .patch('/api/users/profile')
+      const response = await request(app.getHttpServer())
+        .patch('/api/users/password')
         .set('Authorization', `Bearer ${authToken}`)
         .send(passwordChange)
         .expect(200);
+        
+      expect(response.body.success).toBe(true);
       
       // Then they should be able to log in with the new password
       const loginResponse = await request(app.getHttpServer())
@@ -202,14 +208,13 @@ describe('UsersController (e2e)', () => {
     it('Scenario: User tries to change password with incorrect current password', async () => {
       // Given incorrect current password
       const incorrectPasswordChange = {
-        nickname: testUserUpdate.nickname, // Required field
         currentPassword: 'wrongPassword',
         newPassword: 'anotherPassword123'
       };
       
       // When they try to change their password
       await request(app.getHttpServer())
-        .patch('/api/users/profile')
+        .patch('/api/users/password')
         .set('Authorization', `Bearer ${authToken}`)
         .send(incorrectPasswordChange)
         .expect(401); // Unauthorized
