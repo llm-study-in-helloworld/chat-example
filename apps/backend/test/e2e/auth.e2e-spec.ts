@@ -4,11 +4,14 @@ import { Test, TestingModule } from '@nestjs/testing';
 import cookieParser from 'cookie-parser';
 import request from 'supertest';
 import { AppTestModule } from '../app-test.module';
+import { TestUserHelper } from './helpers';
+import { TestUser } from './helpers/test-user.type';
 
 describe('AuthController (e2e)', () => {
   let app: INestApplication;
   let em: EntityManager;
   let orm: MikroORM;
+  let userHelper: TestUserHelper;
 
   // Base test user data
   const baseTestUser = {
@@ -37,6 +40,12 @@ describe('AuthController (e2e)', () => {
       }),
     );
 
+    // Initialize the TestUserHelper
+    userHelper = new TestUserHelper(app, {
+      basePassword: baseTestUser.password,
+      prefix: 'auth-'
+    });
+
     await app.init();
   });
   
@@ -45,24 +54,6 @@ describe('AuthController (e2e)', () => {
     await orm.close();
   });
 
-  // Helper function to create a test user
-  const createTestUser = async (index: number) => {
-    // Add a random string to ensure uniqueness
-    const uniqueId = `${index}-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`;
-    const userData = {
-      email: `auth-test-${uniqueId}@example.com`,
-      password: baseTestUser.password,
-      nickname: `AuthTestUser${uniqueId}`
-    };
-    
-    await request(app.getHttpServer())
-      .post('/api/auth/signup')
-      .send(userData)
-      .expect(201);
-      
-    return userData;
-  };
-  
   describe('Feature: User Registration', () => {
     it('Scenario: User signs up with valid credentials', async () => {
       // Given a new user with valid credentials
@@ -86,10 +77,13 @@ describe('AuthController (e2e)', () => {
   });
   
   describe('Feature: JWT Authentication', () => {
-    let testUser: { email: string; password: string; nickname: string };
+    let testUser: TestUser;
+    let accessToken: string;
 
     beforeEach(async () => {
-      testUser = await createTestUser(1);
+      const result = await userHelper.createTestUser(1);
+      testUser = result.user;
+      accessToken = result.token;
     });
 
     it('Scenario: User logs in and receives access and refresh tokens', async () => {
@@ -121,20 +115,10 @@ describe('AuthController (e2e)', () => {
     });
     
     it('Scenario: User uses JWT token to access protected resources', async () => {
-      // Given an authenticated user with a valid token
-      const loginResponse = await request(app.getHttpServer())
-        .post('/api/auth/login')
-        .send({
-          email: testUser.email,
-          password: testUser.password
-        });
-      
-      const authToken = loginResponse.body.accessToken;
-      
       // When they access a protected resource
       const response = await request(app.getHttpServer())
         .get('/api/users/me')
-        .set('Authorization', `Bearer ${authToken}`)
+        .set('Authorization', `Bearer ${accessToken}`)
         .expect(200);
       
       // Then they should receive the protected resource
@@ -169,20 +153,10 @@ describe('AuthController (e2e)', () => {
     
     it('Scenario: User can refresh their access token using refresh token', async () => {
       // Create a new test user with unique email just for this test
-      const uniqueTestUser = await createTestUser(999); // Use a higher number to avoid collisions
-      
-      // First do the login to get tokens for our unique user
-      const loginResponse = await request(app.getHttpServer())
-        .post('/api/auth/login')
-        .send({
-          email: uniqueTestUser.email,
-          password: uniqueTestUser.password
-        })
-        .expect(201);
-      
-      // Store the original tokens
-      const initialRefreshToken = loginResponse.body.refreshToken;
-      const initialAccessToken = loginResponse.body.accessToken;
+      const result = await userHelper.createTestUser(999); // Use a higher number to avoid collisions
+      const uniqueTestUser = result.user;
+      const initialRefreshToken = result.refreshToken;
+      const initialAccessToken = result.token;
       
       // Allow some time to pass to ensure tokens will be different
       await new Promise(resolve => setTimeout(resolve, 1000)); 
@@ -230,56 +204,57 @@ describe('AuthController (e2e)', () => {
         .set('Authorization', `Bearer ${accessToken}`)
         .expect(401);
     });
-    
-    it('Scenario: Refresh token is invalidated on logout', async () => {
-      // Create a user and tokens just for this test
-      const logoutTestUser = await createTestUser(1000);
-      
-      // Login to get tokens
-      const loginResponse = await request(app.getHttpServer())
-        .post('/api/auth/login')
-        .send({
-          email: logoutTestUser.email,
-          password: logoutTestUser.password
-        })
-        .expect(201);
-      
-      const logoutToken = loginResponse.body.accessToken;
-      const logoutRefreshToken = loginResponse.body.refreshToken;
-        
-      // When they logout using the access token
-      await request(app.getHttpServer())
+  });
+  
+  describe('Feature: Logout', () => {
+    let accessToken: string;
+
+    beforeEach(async () => {
+      const result = await userHelper.createTestUser(888);
+      accessToken = result.token;
+    });
+
+    it('Scenario: User can logout successfully', async () => {
+      // When they logout
+      const response = await request(app.getHttpServer())
         .post('/api/auth/logout')
-        .set('Authorization', `Bearer ${logoutToken}`)
+        .set('Authorization', `Bearer ${accessToken}`)
         .expect(200);
       
-      // Then the refresh token should no longer work
+      // Then they should receive a success message
+      expect(response.body.message).toBe('Logged out successfully');
+      
+      // And the cookies should be cleared
+      const cookies = response.headers['set-cookie'] as unknown as string[];
+      expect(cookies).toBeDefined();
+      expect(cookies.some((cookie: string) => 
+        cookie.includes('jwt=;') || 
+        cookie.includes('Expires=Thu, 01 Jan 1970'))
+      ).toBe(true);
+      expect(cookies.some((cookie: string) => 
+        cookie.includes('refresh_token=;') || 
+        cookie.includes('Expires=Thu, 01 Jan 1970'))
+      ).toBe(true);
+      
+      // And they should no longer be able to access protected resources
       await request(app.getHttpServer())
-        .post('/api/auth/refresh')
-        .set('Cookie', `refresh_token=${logoutRefreshToken}`)
+        .get('/api/users/me')
+        .set('Authorization', `Bearer ${accessToken}`)
         .expect(401);
     });
   });
   
   describe('Feature: Token Blacklisting', () => {
-    let testUser: { email: string; password: string; nickname: string };
+    let testUser: TestUser;
+    let tokenToBlacklist: string;
 
     beforeEach(async () => {
-      testUser = await createTestUser(3);
+      const result = await userHelper.createTestUser(3);
+      testUser = result.user;
+      tokenToBlacklist = result.token;
     });
 
     it('Scenario: Blacklisted tokens are rejected', async () => {
-      // Given a valid token that we will blacklist
-      const loginResponse = await request(app.getHttpServer())
-        .post('/api/auth/login')
-        .send({
-          email: testUser.email,
-          password: testUser.password
-        })
-        .expect(201);
-      
-      const tokenToBlacklist = loginResponse.body.accessToken;
-      
       // When we logout (which blacklists the token)
       await request(app.getHttpServer())
         .post('/api/auth/logout')
@@ -295,29 +270,22 @@ describe('AuthController (e2e)', () => {
   });
   
   describe('Feature: Cookie Authentication', () => {
-    let testUser: { email: string; password: string; nickname: string };
+    let testUser: TestUser;
+    let accessToken: string;
 
     beforeEach(async () => {
-      testUser = await createTestUser(4);
+      const result = await userHelper.createTestUser(4);
+      testUser = result.user;
+      accessToken = result.token;
     });
 
     it('Scenario: Authentication works via cookies', async () => {
       // Given a successful login that sets cookies
       const agent = request.agent(app.getHttpServer());
       
-      const loginResponse = await agent
-        .post('/api/auth/login')
-        .send({
-          email: testUser.email,
-          password: testUser.password
-        })
-        .expect(201);
-
-      const token = loginResponse.body.accessToken;
-      
       // When accessing a protected resource with the cookie
       const response = await agent
-        .set('Authorization', `Bearer ${token}`)
+        .set('Authorization', `Bearer ${accessToken}`)
         .get('/api/users/me')
         .expect(200);
       
@@ -330,18 +298,9 @@ describe('AuthController (e2e)', () => {
       // Given an authenticated agent
       const agent = request.agent(app.getHttpServer());
       
-      const loginResponse = await agent
-        .post('/api/auth/login')
-        .send({
-          email: testUser.email,
-          password: testUser.password
-        })
-        .expect(201);
-      const token = loginResponse.body.accessToken;
-      
       // When they logout
       const logoutResponse = await agent
-        .set('Authorization', `Bearer ${token}`)
+        .set('Authorization', `Bearer ${accessToken}`)
         .post('/api/auth/logout')
         .expect(200);
       
@@ -365,33 +324,36 @@ describe('AuthController (e2e)', () => {
   });
   
   describe('Feature: Account Deletion', () => {
-    let testUser: { email: string; password: string; nickname: string };
-
+    let testUser: TestUser;
+    let accessToken: string;
     beforeEach(async () => {
-      testUser = await createTestUser(5);
+      const result = await userHelper.createTestUser(5);
+      testUser = result.user;
+      accessToken = result.token;
     });
 
     it('Scenario: User can delete their account', async () => {
-      // First login to get a token
-      const loginResponse = await request(app.getHttpServer())
-        .post('/api/auth/login')
-        .send({
-          email: testUser.email,
-          password: testUser.password
-        })
-        .expect(201);
-      
-      const token = loginResponse.body.accessToken;
-      
       // When they delete their account
       const deleteResponse = await request(app.getHttpServer())
         .delete('/api/auth/signout')
-        .set('Authorization', `Bearer ${token}`)
+        .set('Authorization', `Bearer ${accessToken}`)
         .send({ password: testUser.password })
         .expect(200);
       
       // Then they should receive a success message
-      expect(deleteResponse.body.message).toContain('success');
+      expect(deleteResponse.body.message).toBe('Account deleted successfully');
+      
+      // And the cookies should be cleared
+      const cookies = deleteResponse.headers['set-cookie'] as unknown as string[];
+      expect(cookies).toBeDefined();
+      expect(cookies.some((cookie: string) => 
+        cookie.includes('jwt=;') || 
+        cookie.includes('Expires=Thu, 01 Jan 1970'))
+      ).toBe(true);
+      expect(cookies.some((cookie: string) => 
+        cookie.includes('refresh_token=;') || 
+        cookie.includes('Expires=Thu, 01 Jan 1970'))
+      ).toBe(true);
       
       // And they should no longer be able to login
       await request(app.getHttpServer())

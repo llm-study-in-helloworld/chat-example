@@ -1,4 +1,4 @@
-import { RoomResponse } from '@chat-example/types';
+import { MessageUser, RoomResponse } from '@chat-example/types';
 import { Room as RoomEntity } from '../entities';
 
 /**
@@ -16,6 +16,7 @@ export class RoomResponseDto implements RoomResponse {
   createdAt: string = '';
   updatedAt: string = '';
   unreadCount?: number;
+  otherUser?: MessageUser;
   
 
   /**

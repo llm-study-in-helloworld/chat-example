@@ -10,19 +10,18 @@ import { ReactionResponseDto, ReactionUpdateEventDto, SocketErrorDto, SocketSucc
 import { CreateMessageDto } from '../../src/messages/dto/create-message.dto';
 import { ReactionDto } from '../../src/messages/dto/reaction.dto';
 import { AppTestModule } from '../app-test.module';
-import { AccessTokensDict, TestUser, TestUserResponse } from '../types/test-user.type';
+import { TestUserHelper } from './helpers';
+import { AccessTokensDict, TestUser } from './helpers/test-user.type';
 
 // Define type for socket responses
 type SocketResponse<T> = T | SocketErrorDto;
-
-// Increase timeouts for test stability
-jest.setTimeout(30000);
 
 describe('ChatGateway (e2e)', () => {
   let app: INestApplication;
   let httpServer: any;
   let em: EntityManager;
   let orm: MikroORM;
+  let userHelper: TestUserHelper;
   
   // Test users and their tokens
   const testUsers: TestUser[] = [];
@@ -56,12 +55,17 @@ describe('ChatGateway (e2e)', () => {
       }),
     );
     
+    // Initialize the TestUserHelper
+    userHelper = new TestUserHelper(app, {
+      prefix: 'socket-'
+    });
+    
     await app.init();
     await app.listen(0); // random port for testing
     
     // Create test users
     for (let i = 1; i <= 3; i++) {
-      const userData = await createTestUser(i);
+      const userData = await userHelper.createTestUser(i);
       testUsers.push(userData.user);
       accessTokens[`user${i}`] = userData.token;
     }
@@ -109,39 +113,6 @@ describe('ChatGateway (e2e)', () => {
     await app.close();
     await orm.close();
   });
-  
-  // Helper function to create a test user
-  const createTestUser = async (index: number): Promise<TestUserResponse> => {
-    const uniqueId = `${index}-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`;
-    const userData = {
-      email: `socket-test-${uniqueId}@example.com`,
-      password: 'password123',
-      nickname: `SocketTestUser${uniqueId}`
-    };
-    
-    // Register user
-    await request(app.getHttpServer())
-      .post('/api/auth/signup')
-      .send(userData)
-      .expect(201);
-      
-    // Login to get token
-    const loginResponse = await request(app.getHttpServer())
-      .post('/api/auth/login')
-      .send({
-        email: userData.email,
-        password: userData.password
-      })
-      .expect(201);
-    
-    return {
-      user: {
-        ...userData,
-        id: loginResponse.body.user.id
-      },
-      token: loginResponse.body.accessToken
-    };
-  };
   
   // Helper function to wait for a specific event
   const waitForEvent = <T>(socket: Socket, event: string, timeout = 10000): Promise<T> => {
@@ -268,7 +239,7 @@ describe('ChatGateway (e2e)', () => {
     
     it('should reject joining a room without permissions', async () => {
       // Create a new user not in the room
-      const outsiderData = await createTestUser(99);
+      const outsiderData = await userHelper.createTestUser(99);
       const outsiderSocket = io(`http://localhost:${app.getHttpServer().address().port}`, {
         extraHeaders: {
           authorization: `Bearer ${outsiderData.token}`

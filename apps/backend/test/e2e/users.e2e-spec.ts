@@ -5,12 +5,14 @@ import cookieParser from 'cookie-parser';
 import request from 'supertest';
 import { User } from '../../src/entities';
 import { AppTestModule } from '../app-test.module';
-import { TestUser, TestUserResponse } from '../types/test-user.type';
+import { TestUserHelper } from './helpers';
+import { TestUser } from './helpers/test-user.type';
 
 describe('UsersController (e2e)', () => {
   let app: INestApplication;
   let em: EntityManager;
   let orm: MikroORM;
+  let userHelper: TestUserHelper;
   
   // Base test user data
   const baseTestUser = {
@@ -45,6 +47,12 @@ describe('UsersController (e2e)', () => {
         forbidNonWhitelisted: true,
       }),
     );
+    
+    // Initialize the TestUserHelper
+    userHelper = new TestUserHelper(app, {
+      basePassword: baseTestUser.password,
+      prefix: 'users-'
+    });
        
     await app.init();
   });
@@ -54,49 +62,12 @@ describe('UsersController (e2e)', () => {
     await orm.close();
   });
 
-  // Helper function to create a test user with unique identifiers
-  const createTestUser = async (index: number): Promise<TestUserResponse> => {
-    // Add a random string to ensure uniqueness
-    const uniqueId = `${index}-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`;
-    const userData = {
-      email: `test-${uniqueId}@example.com`,
-      password: baseTestUser.password,
-      nickname: `TestUser${uniqueId}`
-    };
-    
-    const response = await request(app.getHttpServer())
-      .post('/api/auth/signup')
-      .send(userData)
-      .expect(201);
-      
-    // Login to get the token
-    const loginResponse = await request(app.getHttpServer())
-      .post('/api/auth/login')
-      .send({
-        email: userData.email,
-        password: userData.password
-      })
-      .expect(201);
-    
-    const user: TestUser = {
-      id: response.body.id,
-      email: userData.email,
-      password: userData.password,
-      nickname: userData.nickname
-    };
-    
-    return {
-      user,
-      token: loginResponse.body.accessToken
-    };
-  };
-  
   // ATDD style - Acceptance criteria grouped by features
   describe('Feature: User Registration', () => {
     let testUser: TestUser;
     
     beforeAll(async () => {
-      const result = await createTestUser(1);
+      const result = await userHelper.createTestUser(1);
       testUser = result.user;
     });
     
@@ -161,7 +132,7 @@ describe('UsersController (e2e)', () => {
     let authToken: string;
     
     beforeEach(async () => {
-      const result = await createTestUser(2);
+      const result = await userHelper.createTestUser(2);
       testUser = result.user;
       authToken = result.token;
     });
@@ -236,7 +207,7 @@ describe('UsersController (e2e)', () => {
     let authToken: string;
     
     beforeAll(async () => {
-      const result = await createTestUser(3);
+      const result = await userHelper.createTestUser(3);
       testUser = result.user;
       authToken = result.token;
     });
@@ -272,7 +243,7 @@ describe('UsersController (e2e)', () => {
     let authToken: string;
     
     beforeEach(async () => {
-      const result = await createTestUser(4);
+      const result = await userHelper.createTestUser(4);
       testUser = result.user;
       authToken = result.token;
     });

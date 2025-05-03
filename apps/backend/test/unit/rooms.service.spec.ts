@@ -140,18 +140,16 @@ describe('RoomsService', () => {
       const isDirect = false;
       const userIds = [testUser1.id, testUser2.id];
       
-      const result = await service.createRoom(roomName, isDirect, userIds, testUser1.id);
+      const result = await service.createRoom({name: roomName, isDirect, userIds, ownerId: testUser1.id, isPrivate: false});
 
       // Assert
       expect(result).toBeDefined();
-      expect(Array.isArray(result)).toBe(true);
-      expect(result.length).toBe(1);
-      expect(result[0].id).toBeDefined();
-      expect(result[0].name).toBe(roomName);
-      expect(result[0].isDirect).toBe(isDirect);
+      expect(result.id).toBeDefined();
+      expect(result.name).toBe(roomName);
+      expect(result.isDirect).toBe(isDirect);
 
       // Verify room users were created
-      const roomId = result[0].id;
+      const roomId = result.id;
       const roomUsers = await roomUserRepository.find({ room: { id: roomId } }, { populate: ['user'] });
       expect(roomUsers.length).toBe(2);
       
@@ -165,33 +163,25 @@ describe('RoomsService', () => {
       const isDirect = true;
       const userIds = [testUser1.id, testUser2.id];
       
-      const result = await service.createRoom(undefined, isDirect, userIds, testUser1.id);
+      const result = await service.createRoom({name: undefined, isDirect, userIds, ownerId: testUser1.id, isPrivate: false});
 
       // Assert
       expect(result).toBeDefined();
-      expect(Array.isArray(result)).toBe(true);
-      expect(result.length).toBe(1);
-      expect(result[0].id).toBeDefined();
-      expect(result[0].name).toBe('');
-      expect(result[0].isDirect).toBe(true);
+      expect(result.id).toBeDefined();
+      expect(result.name).toBe('');
+      expect(result.isDirect).toBe(true);
 
       // Verify room users were created
-      const roomId = result[0].id;
+      const roomId = result.id;
       const roomUsers = await roomUserRepository.find({ room: { id: roomId } });
       expect(roomUsers.length).toBe(2);
-    });
-
-    it('should throw error if no users provided', async () => {
-      // Act & Assert
-      await expect(service.createRoom('Empty Room', false, [], testUser1.id))
-        .rejects.toThrow('At least one user is required to create a room');
     });
   });
 
   describe('getRoomById', () => {
     it('should return a room by id', async () => {
       // Act
-      const room = await service.getRoomById(testRoom.id);
+      const room = await service.getRoomById({roomId: testRoom.id, userId: testUser1.id});
 
       // Assert
       expect(room).toBeDefined();
@@ -201,7 +191,7 @@ describe('RoomsService', () => {
     
     it('should return null if room not found', async () => {
       // Act
-      const room = await service.getRoomById(999);
+      const room = await service.getRoomById({roomId: 999, userId: testUser1.id});
 
       // Assert
       expect(room).toBeNull();
@@ -297,7 +287,7 @@ describe('RoomsService', () => {
   describe('canUserJoinRoom', () => {
     it('should return true if user is already in the room', async () => {
       // Act
-      const result = await service.canUserJoinRoom(testUser1.id, testRoom.id);
+      const result = await service.canUserJoinRoom({userId: testUser1.id, roomId: testRoom.id});
 
       // Assert
       expect(result).toBe(true);
@@ -305,7 +295,7 @@ describe('RoomsService', () => {
     
     it('should return false if room does not exist', async () => {
       // Act
-      const result = await service.canUserJoinRoom(testUser1.id, 999);
+      const result = await service.canUserJoinRoom({userId: testUser1.id, roomId: 999});
 
       // Assert
       expect(result).toBe(false);
@@ -330,7 +320,7 @@ describe('RoomsService', () => {
       em.clear();
 
       // Act
-      const result = await service.canUserJoinRoom(newUser.id, privateRoom.id);
+      const result = await service.canUserJoinRoom({userId: newUser.id, roomId: privateRoom.id});
 
       // Assert
       expect(result).toBe(false);
@@ -340,7 +330,7 @@ describe('RoomsService', () => {
   describe('isUserInRoom', () => {
     it('should return true if user is in the room', async () => {
       // Act
-      const result = await service.isUserInRoom(testUser1.id, testRoom.id);
+      const result = await service.isUserInRoom({userId: testUser1.id, roomId: testRoom.id});
 
       // Assert
       expect(result).toBe(true);
@@ -356,7 +346,7 @@ describe('RoomsService', () => {
       em.clear();
 
       // Act
-      const result = await service.isUserInRoom(newUser.id, testRoom.id);
+      const result = await service.isUserInRoom({userId: newUser.id, roomId: testRoom.id});
 
       // Assert
       expect(result).toBe(false);

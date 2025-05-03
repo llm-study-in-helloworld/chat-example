@@ -1,3 +1,4 @@
+import { RoomRole } from '@chat-example/types';
 import {
   BadRequestException,
   Body,
@@ -33,31 +34,6 @@ export class RoomsController {
   ) {
     const result = await this.roomsService.getUserRoomsWithFilters(user.id, query);
     
-    // For these tests, always return an array of items 
-    // - type filtering tests
-    // - search test
-    // - rooms list test
-    if (query.type === 'direct' || query.type === 'group' || 
-        query.search !== undefined || 
-        (Object.keys(query).length === 0 || (query.page === 1 && query.limit === 10 && !query.type && !query.search))) {
-      return result.items;
-    }
-    
-    // Return paginated response only if both page and limit parameters are explicitly provided
-    // and no other filters
-    if (query.page !== undefined && query.limit !== undefined) {
-      return {
-        items: result.items,
-        meta: {
-          totalItems: result.totalItems,
-          itemCount: result.items.length,
-          itemsPerPage: result.limit,
-          totalPages: Math.ceil(result.totalItems / result.limit),
-          currentPage: result.page
-        }
-      };
-    }
-    
     // Return array of rooms for all other cases
     return result.items;
   }
@@ -87,14 +63,14 @@ export class RoomsController {
   }
 
   @Get(':id')
-  async findOne(@CurrentUser() user: User, @Param('id', ParseIntPipe) id: number) {
-    const room = await this.roomsService.getRoomById(id);
+  async findOne(@CurrentUser() user: User, @Param('id', ParseIntPipe) roomId: number) {
+    const room = await this.roomsService.getRoomById({roomId, userId: user.id});
     if (!room) {
-      throw new NotFoundException(`Room with ID ${id} not found`);
+      throw new NotFoundException(`Room with ID ${roomId} not found`);
     }
 
     // Check if user is in the room
-    const isUserInRoom = await this.roomsService.isUserInRoom(user.id, id);
+    const isUserInRoom = await this.roomsService.isUserInRoom({userId: user.id, roomId: roomId});
     if (!isUserInRoom) {
       throw new ForbiddenException('You do not have access to this room');
     }
@@ -104,38 +80,19 @@ export class RoomsController {
 
   @Post()
   async create(@CurrentUser() user: User, @Body() createRoomDto: CreateRoomRequestDto) {
-    // Validate room data
-    try {
-      // For testing the validation error case - handle it as a string for test only
-      if (createRoomDto.name === 'Invalid Type Room' && createRoomDto.isDirect !== true && createRoomDto.isDirect !== false) {
-        throw new Error('Invalid type for isDirect');
-      }
-      
-      // Custom validation
-      createRoomDto.validate();
-      
-      // Validate user IDs
-      if (createRoomDto.userIds.includes(999999)) {
-        throw new BadRequestException('Invalid user IDs. One or more users do not exist.');
-      }
-    } catch (error: any) {
-      throw new BadRequestException(error.message);
-    }
-    
-    // Make sure the current user is included in the room
-    const userIds = new Set(createRoomDto.userIds || []);
-    userIds.add(user.id);
+    // Custom validation
+    createRoomDto.validate();
 
     try {
-      const rooms = await this.roomsService.createRoom(
-        createRoomDto.name || '',
-        createRoomDto.isDirect || false,
-        Array.from(userIds),
-        user.id,
-        createRoomDto.isPrivate || false
-      );
+      const room = await this.roomsService.createRoom({
+        name: createRoomDto.name || '',
+        isDirect: createRoomDto.isDirect || false,
+        userIds: createRoomDto.userIds,
+        isPrivate: createRoomDto.isPrivate || false,
+        ownerId: user.id,
+      });
       
-      return rooms[0];
+      return room;
     } catch (error: any) {
       // Handle specific errors
       if (error.message && error.message.includes('User not found')) {
@@ -152,7 +109,17 @@ export class RoomsController {
     @Param('id', ParseIntPipe) id: number,
     @Body() addUserDto: AddUserRequestDto,
   ) {
-    const canJoin = await this.roomsService.canUserJoinRoom(user.id, id);
+    const room = await this.roomsService.getRoomById({roomId: id, userId: user.id});
+    if (!room) {
+      throw new NotFoundException(`Room with ID ${id} not found`);
+    }
+
+    // Check if it's a direct message room
+    if (room.isDirect) {
+      throw new BadRequestException('Cannot add users to direct message rooms');
+    }
+
+    const canJoin = await this.roomsService.canUserJoinRoom({userId: user.id, roomId: id});
     if (!canJoin) {
       throw new ForbiddenException('You do not have access to this room');
     }
@@ -167,23 +134,41 @@ export class RoomsController {
     @Param('id', ParseIntPipe) id: number,
     @Param('userId', ParseIntPipe) userId: number,
   ) {
-    const room = await this.roomsService.getRoomById(id);
+    const room = await this.roomsService.getRoomById({roomId: id, userId: user.id});
     if (!room) {
       throw new NotFoundException(`Room with ID ${id} not found`);
     }
 
-    const isUserInRoom = await this.roomsService.isUserInRoom(user.id, id);
+    const isUserInRoom = await this.roomsService.isUserInRoom({userId, roomId: id});
     if (!isUserInRoom) {
       throw new ForbiddenException('You do not have access to this room');
     }
 
-    // Users can only remove themselves from a room, unless it's a group and future implementation
-    // for admin/moderator roles
-    if (userId !== user.id) {
-      throw new ForbiddenException('You can only remove yourself from a room');
+    const isOwner = await this.roomsService.isOwner({roomId: id, userId: user.id});
+    if (!isOwner) {
+      throw new ForbiddenException('You cannot remove the owner from the room');
     }
 
     const success = await this.roomsService.removeUserFromRoom(id, userId);
+    return { success };
+  }
+
+  @Delete(':id/leave')
+  async leaveRoom(
+    @CurrentUser() user: User,
+    @Param('id', ParseIntPipe) id: number,
+  ) {
+    const room = await this.roomsService.getRoomById({roomId: id, userId: user.id});
+    if (!room) {
+      throw new NotFoundException(`Room with ID ${id} not found`);
+    }
+
+    const isUserInRoom = await this.roomsService.isUserInRoom({userId: user.id, roomId: id});
+    if (!isUserInRoom) {
+      throw new ForbiddenException('You do not have access to this room');
+    }
+
+    const success = await this.roomsService.removeUserFromRoom(id, user.id);
     return { success };
   }
 
@@ -192,12 +177,12 @@ export class RoomsController {
     @CurrentUser() user: User,
     @Param('id', ParseIntPipe) id: number,
   ) {
-    const room = await this.roomsService.getRoomById(id);
+    const room = await this.roomsService.getRoomById({roomId: id, userId: user.id});
     if (!room) {
       throw new NotFoundException(`Room with ID ${id} not found`);
     }
 
-    const isUserInRoom = await this.roomsService.isUserInRoom(user.id, id);
+    const isUserInRoom = await this.roomsService.isUserInRoom({userId: user.id, roomId: id});
     if (!isUserInRoom) {
       throw new ForbiddenException('You do not have access to this room');
     }
@@ -212,12 +197,12 @@ export class RoomsController {
     @Param('id', ParseIntPipe) id: number,
     @Body() updateRoomDto: UpdateRoomRequestDto,
   ) {
-    const room = await this.roomsService.getRoomById(id);
+    const room = await this.roomsService.getRoomById({roomId: id, userId: user.id});
     if (!room) {
       throw new NotFoundException(`Room with ID ${id} not found`);
     }
 
-    const isUserInRoom = await this.roomsService.isUserInRoom(user.id, id);
+    const isUserInRoom = await this.roomsService.isUserInRoom({userId: user.id, roomId: id});
     if (!isUserInRoom) {
       throw new ForbiddenException('You do not have access to this room');
     }
@@ -233,12 +218,12 @@ export class RoomsController {
 
   @Get(':id/users')
   async getRoomUsers(@CurrentUser() user: User, @Param('id', ParseIntPipe) id: number) {
-    const room = await this.roomsService.getRoomById(id);
+    const room = await this.roomsService.getRoomById({roomId: id, userId: user.id});
     if (!room) {
       throw new NotFoundException(`Room with ID ${id} not found`);
     }
 
-    const isUserInRoom = await this.roomsService.isUserInRoom(user.id, id);
+    const isUserInRoom = await this.roomsService.isUserInRoom({userId: user.id, roomId: id});
     if (!isUserInRoom) {
       throw new ForbiddenException('You do not have access to this room');
     }
@@ -246,9 +231,35 @@ export class RoomsController {
     return await this.roomsService.getRoomUsers(id);
   }
 
+  @Patch(':id/users/:userId/role')
+  async updateUserRole(
+    @CurrentUser() user: User,
+    @Param('id', ParseIntPipe) roomId: number,
+    @Param('userId', ParseIntPipe) userId: number,
+    @Body() body: { role: RoomRole }
+  ) {
+    const room = await this.roomsService.getRoomById({roomId, userId: user.id});
+    if (!room) {
+      throw new NotFoundException(`Room with ID ${roomId} not found`);
+    }
+
+    const isUserInRoom = await this.roomsService.isUserInRoom({userId: user.id, roomId});
+    if (!isUserInRoom) {
+      throw new ForbiddenException('You do not have access to this room');
+    }
+
+    // Only admin can update roles
+    if (room.ownerId !== user.id) {
+      throw new ForbiddenException('Only the room owner can update user roles');
+    }
+
+    const updated = await this.roomsService.updateUserRole(roomId, userId, body.role);
+    return updated;
+  }
+
   @Delete(':id')
   async deleteRoom(@CurrentUser() user: User, @Param('id', ParseIntPipe) id: number) {
-    const room = await this.roomsService.getRoomById(id);
+    const room = await this.roomsService.getRoomById({roomId: id, userId: user.id});
     if (!room) {
       throw new NotFoundException(`Room with ID ${id} not found`);
     }

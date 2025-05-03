@@ -21,6 +21,16 @@ export class RoomsService {
     private readonly em: EntityManager
   ) {}
 
+  async isOwner({roomId, userId}: {roomId: number, userId: number}): Promise<boolean> {
+    const roomUser = await this.roomUserRepository.findOne({
+      room: { id: roomId },
+      user: { id: userId },
+      role: RoomRole.OWNER
+    }, { fields: ['id'] });
+
+    return roomUser !== null;
+  }
+
   /**
    * 특정 사용자가 참여 중인 모든 채팅방 목록 조회
    */
@@ -35,17 +45,34 @@ export class RoomsService {
   /**
    * 새로운 채팅방 생성
    */
-  async createRoom(
+  async createRoom({name, isDirect, userIds, ownerId, isPrivate}: {
     name: string | undefined,
     isDirect: boolean,
     userIds: number[],
     ownerId: number,
-    isPrivate: boolean = false
-  ): Promise<RoomResponseDto[]> {
+    isPrivate: boolean
+  }): Promise<RoomResponseDto> {
     // 트랜잭션 시작
+    const userIdsSet = new Set([...userIds, ownerId]);
+
     const result = await this.em.transactional(async (em) => {
-      if (userIds.length === 0) {
-        throw new Error('At least one user is required to create a room');
+      if(isDirect) {
+        const existingRoom = await this.roomRepository.createQueryBuilder('r')
+          .select('r.*')
+          .leftJoin('r.roomUsers', 'ru')
+          .leftJoin('ru.user', 'u')
+          .where({
+            isDirect: true,
+            isActive: true,
+            roomUsers: { user: { id: { $in: Array.from(userIdsSet) } } }
+          })
+          .groupBy('r.id')
+          .having('COUNT(distinct ru.user_id) = ?', [userIdsSet.size])
+          .getResult();
+          
+        if(existingRoom.length > 0) {
+          return existingRoom[0];
+        }
       }
 
       const room = new Room();
@@ -57,40 +84,47 @@ export class RoomsService {
       
       await em.persistAndFlush(room);
       
-      // 사용자들을 채팅방에 추가
-      for (const userId of userIds) {
-        const user = await this.userRepository.findOneOrFail({ id: userId });
+      // Create room users in bulk
+      const roomUsers = [];
+      const users = await this.userRepository.find({ id: { $in: Array.from(userIdsSet) } });
+
+      for (const user of users) {
         const roomUser = new RoomUser();
         roomUser.room = room;
         roomUser.user = user;
         roomUser.joinedAt = new Date();
         roomUser.lastSeenAt = new Date();
-        roomUser.role = userId === ownerId ? RoomRole.OWNER : RoomRole.MEMBER;
+        roomUser.role = user.id === ownerId ? RoomRole.OWNER : RoomRole.MEMBER;
         
-        await em.persist(roomUser);
+        roomUsers.push(roomUser);
       }
-      await em.flush();
+      
+      // Persist all roomUsers at once
+      await em.persistAndFlush(roomUsers);
       
       return room;
     });
 
-    return await this.formatRoomResponse([result], ownerId);
+    return (await this.formatRoomResponse([result], result.ownerId))[0];
   }
 
   /**
    * 채팅방 정보 조회
    */
-  async getRoomById(roomId: number): Promise<RoomResponseDto | null> {
+  async getRoomById({roomId, userId}: {roomId: number, userId: number}): Promise<RoomResponseDto | null> {
+    // Use a direct SQL query to efficiently load room with its users in a single operation
     const room = await this.roomRepository.findOne(
-      { id: roomId, isActive: true }, 
-      { populate: ['roomUsers.user'] }
+      { id: roomId, isActive: true }
     );
 
     if (!room) {
       return null;
     }
+    
+    // Use the roomId to get all roomUsers in one query to avoid N+1 issue
+    await this.em.populate(room, ['roomUsers.user']);
 
-    const roomDtos = await this.formatRoomResponse([room], room.ownerId);
+    const roomDtos = await this.formatRoomResponse([room], userId);
     return roomDtos[0];
   }
   /**
@@ -109,21 +143,24 @@ export class RoomsService {
    * 사용자를 채팅방에 추가
    */
   async addUserToRoom(roomId: number, userId: number): Promise<RoomUser> {
-    const room = await this.roomRepository.findOneOrFail({ id: roomId });
-    const user = await this.userRepository.findOneOrFail({ id: userId });
+    // Find both the room and user in parallel to avoid sequential queries
+    const [room, user, existingRoomUser] = await Promise.all([
+      this.roomRepository.findOneOrFail({ id: roomId }),
+      this.userRepository.findOneOrFail({ id: userId }),
+      this.roomUserRepository.findOne({
+        room: { id: roomId },
+        user: { id: userId }
+      })
+    ]);
     
-    // 이미 참여 중인지 확인
-    const existingRoomUser = await this.roomUserRepository.findOne({
-      room: { id: roomId },
-      user: { id: userId }
-    });
-    
+    // If user is already in the room, return the existing roomUser
     if (existingRoomUser) {
       return existingRoomUser;
     }
     
+    // Create new RoomUser entity
     const roomUser = new RoomUser();
-    roomUser.room= room;
+    roomUser.room = room;
     roomUser.user = user;
     roomUser.joinedAt = new Date();
     roomUser.lastSeenAt = new Date();
@@ -137,30 +174,23 @@ export class RoomsService {
    * 사용자를 채팅방에서 제거
    */
   async removeUserFromRoom(roomId: number, userId: number): Promise<boolean> {
-    const roomUser = await this.roomUserRepository.findOne({
-      room: { id: roomId },
-      user: { id: userId }
-    });
+    const result = await this.roomUserRepository.nativeDelete({ room: { id: roomId }, user: { id: userId }});
+    await this.em.flush();
     
-    if (!roomUser) {
-      return false;
-    }
-    
-    await this.em.removeAndFlush(roomUser);
-    return true;
+    return result > 0;
   }
 
   /**
    * 사용자가 채팅방에 접근할 권한이 있는지 확인
    */
-  async canUserJoinRoom(userId: number, roomId: number): Promise<boolean> {
+  async canUserJoinRoom({userId, roomId}: {userId: number, roomId: number}): Promise<boolean> {
     const room = await this.roomRepository.findOne({ id: roomId }, { fields: ['ownerId', 'isPrivate', 'isDirect', 'isActive'] });
     if (!room) {
       return false;
     }
 
     // Check if user is already in the room
-    const isUserInRoom = await this.isUserInRoom(userId, roomId);
+    const isUserInRoom = await this.isUserInRoom({userId, roomId});
     
     // If user is not in the room, they can only join public, non-direct rooms
     if (!isUserInRoom) {
@@ -170,10 +200,14 @@ export class RoomsService {
     return true;
   }
 
-  async isUserInRoom(userId: number, roomId: number): Promise<boolean> {
-    const roomUser = await this.roomUserRepository.count({ room: { id: roomId }, user: { id: userId } });
+  async isUserInRoom({userId, roomId}: {userId: number, roomId: number}): Promise<boolean> {
+    // Use a direct SQL query to check for existence
+    const result = await this.roomUserRepository.findOne({
+      room: { id: roomId },
+      user: { id: userId }
+    }, { fields: ['id'] });
 
-    return roomUser > 0;
+    return result !== null;
   }
 
   /**
@@ -206,6 +240,9 @@ export class RoomsService {
     // Get unread counts for all rooms
     const counts = await this.calculateUnreadCounts(roomIds, userId);
     
+    // For direct messages, get all other users' information in one query
+    const otherUsersByRoomId: Record<number, any> = await this.getDirectMessageUser(rooms, userId);
+    
     // Process rooms one at a time to avoid circular references
     const roomDtos: RoomResponseDto[] = [];
     
@@ -216,12 +253,43 @@ export class RoomsService {
       // Add unread count
       dto.unreadCount = counts[room.id] || 0;
       
+      dto.otherUser = otherUsersByRoomId[room.id];
+      
       roomDtos.push(dto);
     }
     
     return roomDtos;
   }
   
+  private async getDirectMessageUser(rooms: Room[], userId: number) {
+    const directRooms = rooms.filter(room => room.isDirect);
+    const directRoomIds = directRooms.map(room => room.id);
+
+    // Create a map to store otherUsers by roomId
+    const otherUsersByRoomId: Record<number, any> = {};
+
+    if (directRoomIds.length > 0) {
+      // Get all room users for direct rooms in a single query
+      const otherUsersQuery = await this.em.getConnection().execute(`
+        SELECT ru.room_id, u.id, u.nickname, u.image_url 
+        FROM room_user ru
+        JOIN "user" u ON ru.user_id = u.id
+        WHERE ru.room_id IN (${directRoomIds.join(',')})
+        AND ru.user_id != ${userId}
+      `);
+
+      // Organize results by room ID
+      for (const result of otherUsersQuery) {
+        otherUsersByRoomId[result.room_id] = {
+          id: result.id,
+          nickname: result.nickname,
+          imageUrl: result.image_url
+        };
+      }
+    }
+    return otherUsersByRoomId;
+  }
+
   /**
    * 사용자의 각 채팅방 별 읽지 않은 메시지 수 계산
    * @private
@@ -293,6 +361,25 @@ export class RoomsService {
     await this.em.flush();
     
     return true;
+  }
+
+  /**
+   * 사용자의 채팅방 역할 업데이트
+   */
+  async updateUserRole(roomId: number, userId: number, role: RoomRole): Promise<RoomUserResponseDto> {
+    const roomUser = await this.roomUserRepository.findOne({
+      room: { id: roomId },
+      user: { id: userId }
+    }, { populate: ['user'] });
+    
+    if (!roomUser) {
+      throw new NotFoundException(`User with ID ${userId} not found in room with ID ${roomId}`);
+    }
+    
+    roomUser.role = role;
+    await this.em.flush();
+    
+    return RoomUserResponseDto.fromEntity(roomUser);
   }
 
   /**

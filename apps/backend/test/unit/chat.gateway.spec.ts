@@ -274,7 +274,7 @@ describe('ChatGateway', () => {
       const result = await gateway.handleJoinRoom(mockSocket as Socket, { roomId: testRoom1.id });
 
       // Assert
-      expect(roomsService.canUserJoinRoom).toHaveBeenCalledWith(testUser1.id, testRoom1.id);
+      expect(roomsService.canUserJoinRoom).toHaveBeenCalledWith({userId: testUser1.id, roomId: testRoom1.id});
       expect(mockSocket.join).toHaveBeenCalledWith(`room:${testRoom1.id}`);
       expect(roomsService.updateLastSeen).toHaveBeenCalledWith(testUser1.id, testRoom1.id);
       expect(result).toEqual({ success: true });
@@ -311,7 +311,7 @@ describe('ChatGateway', () => {
       const result = await gateway.handleNewMessage(mockSocket as Socket, createMessageDto);
 
       // Assert
-      expect(roomsService.canUserJoinRoom).toHaveBeenCalledWith(testUser1.id, testRoom1.id);
+      expect(roomsService.canUserJoinRoom).toHaveBeenCalledWith({userId: testUser1.id, roomId: testRoom1.id});
       expect(messagesService.createMessage).toHaveBeenCalledWith({
         content: 'Test message content',
         roomId: testRoom1.id,
@@ -612,7 +612,7 @@ describe('ChatGateway', () => {
       });
 
       // Assert
-      expect(roomsService.canUserJoinRoom).toHaveBeenCalledWith(testUser1.id, testRoom1.id);
+      expect(roomsService.canUserJoinRoom).toHaveBeenCalledWith({userId: testUser1.id, roomId: testRoom1.id});
       expect(messagesService.getMessage).toHaveBeenCalledWith(10);
       expect(messagesService.createMessage).toHaveBeenCalledWith({
         roomId: testRoom1.id,

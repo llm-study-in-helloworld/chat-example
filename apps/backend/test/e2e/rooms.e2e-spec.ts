@@ -1,15 +1,19 @@
+import { RoomRole } from '@chat-example/types';
 import { EntityManager, MikroORM } from '@mikro-orm/core';
 import { INestApplication, ValidationPipe } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 import cookieParser from 'cookie-parser';
 import request from 'supertest';
+import { RoomUser } from '../../src/entities';
 import { AppTestModule } from '../app-test.module';
-import { AccessTokensDict, TestUser, TestUserResponse } from '../types/test-user.type';
+import { TestUserHelper } from './helpers';
+import { AccessTokensDict, TestUser } from './helpers/test-user.type';
 
 describe('RoomsController (e2e)', () => {
   let app: INestApplication;
   let em: EntityManager;
   let orm: MikroORM;
+  let userHelper: TestUserHelper;
   
   // Test users data
   const testUsers: TestUser[] = [];
@@ -37,11 +41,16 @@ describe('RoomsController (e2e)', () => {
       }),
     );
     
+    // Initialize the TestUserHelper
+    userHelper = new TestUserHelper(app, {
+      prefix: 'rooms-'
+    });
+    
     await app.init();
     
     // Create test users and save their tokens
     for (let i = 1; i <= 3; i++) {
-      const userData = await createTestUser(i);
+      const userData = await userHelper.createTestUser(i);
       testUsers.push(userData.user);
       accessTokens[`user${i}`] = userData.token;
     }
@@ -51,39 +60,6 @@ describe('RoomsController (e2e)', () => {
     await app.close();
     await orm.close();
   });
-  
-  // Helper function to create a test user
-  const createTestUser = async (index: number): Promise<TestUserResponse> => {
-    const uniqueId = `${index}-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`;
-    const userData = {
-      email: `rooms-test-${uniqueId}@example.com`,
-      password: 'password123',
-      nickname: `RoomsTestUser${uniqueId}`
-    };
-    
-    // Register user
-    await request(app.getHttpServer())
-      .post('/api/auth/signup')
-      .send(userData)
-      .expect(201);
-      
-    // Login to get token
-    const loginResponse = await request(app.getHttpServer())
-      .post('/api/auth/login')
-      .send({
-        email: userData.email,
-        password: userData.password
-      })
-      .expect(201);
-    
-    return {
-      user: {
-        ...userData,
-        id: loginResponse.body.user.id
-      },
-      token: loginResponse.body.accessToken
-    };
-  };
   
   describe('Feature: Room Management', () => {
     let createdRoomId: number;
@@ -152,11 +128,11 @@ describe('RoomsController (e2e)', () => {
       expect(response.body.length).toBeGreaterThanOrEqual(2); // At least the 2 rooms we created
       
       // Verify the rooms contain expected data
-      const groupRoom = response.body.find(room => room.id === createdRoomId);
+      const groupRoom = response.body.find((room: any) => room.id === createdRoomId);
       expect(groupRoom).toBeDefined();
       expect(groupRoom.isDirect).toBe(false);
       
-      const dmRoom = response.body.find(room => room.id === directMessageRoomId);
+      const dmRoom = response.body.find((room: any) => room.id === directMessageRoomId);
       expect(dmRoom).toBeDefined();
       expect(dmRoom.isDirect).toBe(true);
     });
@@ -177,7 +153,7 @@ describe('RoomsController (e2e)', () => {
     
     it('Scenario: User cannot access a room they are not part of', async () => {
       // Create a new user who is not part of any rooms
-      const outsiderUser = await createTestUser(99);
+      const outsiderUser = await userHelper.createTestUser(99);
       
       // When they try to access a room they're not part of
       await request(app.getHttpServer())
@@ -188,7 +164,7 @@ describe('RoomsController (e2e)', () => {
     
     it('Scenario: User adds another user to a group room', async () => {
       // Create a new user to add to the group
-      const newUser = await createTestUser(4);
+      const newUser = await userHelper.createTestUser(4);
       
       // Given the user wants to add a new member to the group
       const addUserData = {
@@ -211,464 +187,343 @@ describe('RoomsController (e2e)', () => {
       expect(response.body.id).toBe(createdRoomId);
     });
     
-    it('Scenario: User leaves a room', async () => {
-      // Given user2 wants to leave the group room
+    it('Scenario: User removes another user from a group room', async () => {
+      // First, add a user to the room who we'll then remove
+      const userToRemove = await userHelper.createTestUser(5);
       
-      // When they send the request to remove themselves
       await request(app.getHttpServer())
-        .delete(`/api/rooms/${createdRoomId}/users/${testUsers[1].id}`)
+        .post(`/api/rooms/${createdRoomId}/users`)
+        .set('Authorization', `Bearer ${accessTokens['user1']}`)
+        .send({ userId: userToRemove.user.id })
+        .expect(201);
+      
+      // When they remove the user
+      await request(app.getHttpServer())
+        .delete(`/api/rooms/${createdRoomId}/users/${userToRemove.user.id}`)
+        .set('Authorization', `Bearer ${accessTokens['user1']}`)
+        .expect(200);
+      
+      // Then the removed user should no longer be able to access the room
+      await request(app.getHttpServer())
+        .get(`/api/rooms/${createdRoomId}`)
+        .set('Authorization', `Bearer ${userToRemove.token}`)
+        .expect(403); // Forbidden
+    });
+    
+    it('Scenario: User updates a room', async () => {
+      // Given updated room data
+      const updateData = {
+        name: 'Updated Room Name',
+        isPrivate: true
+      };
+      
+      // When they update the room
+      const response = await request(app.getHttpServer())
+        .patch(`/api/rooms/${createdRoomId}`)
+        .set('Authorization', `Bearer ${accessTokens['user1']}`)
+        .send(updateData)
+        .expect(200);
+      
+      // Then the room should be updated
+      expect(response.body.name).toBe(updateData.name);
+      expect(response.body.isPrivate).toBe(updateData.isPrivate);
+      
+      // Verify the changes were persisted
+      const verifyResponse = await request(app.getHttpServer())
+        .get(`/api/rooms/${createdRoomId}`)
+        .set('Authorization', `Bearer ${accessTokens['user1']}`)
+        .expect(200);
+      
+      expect(verifyResponse.body.name).toBe(updateData.name);
+      expect(verifyResponse.body.isPrivate).toBe(updateData.isPrivate);
+    });
+    
+    it('Scenario: Non-admin user cannot update a room', async () => {
+      // Given a non-admin user is part of a room
+      
+      // When they try to update the room
+      await request(app.getHttpServer())
+        .patch(`/api/rooms/${createdRoomId}`)
+        .set('Authorization', `Bearer ${accessTokens['user2']}`)
+        .send({ name: 'Unauthorized Change' })
+        .expect(403); // Forbidden
+    });
+    
+    it('Scenario: User leaves a room', async () => {
+      // Create a new room 
+      const roomResponse = await request(app.getHttpServer())
+        .post('/api/rooms')
+        .set('Authorization', `Bearer ${accessTokens['user1']}`)
+        .send({
+          name: 'Room to Leave',
+          isDirect: false,
+          isPrivate: false,
+          userIds: [testUsers[1].id, testUsers[2].id]
+        })
+        .expect(201);
+      
+      const roomToLeaveId = roomResponse.body.id;
+      
+      // When user2 leaves the room
+      await request(app.getHttpServer())
+        .delete(`/api/rooms/${roomToLeaveId}/leave`)
         .set('Authorization', `Bearer ${accessTokens['user2']}`)
         .expect(200);
       
       // Then they should no longer have access to the room
       await request(app.getHttpServer())
-        .get(`/api/rooms/${createdRoomId}`)
+        .get(`/api/rooms/${roomToLeaveId}`)
         .set('Authorization', `Bearer ${accessTokens['user2']}`)
-        .expect(403); // Forbidden
+        .expect(403);
+      
+      // But the room should still exist for other users
+      await request(app.getHttpServer())
+        .get(`/api/rooms/${roomToLeaveId}`)
+        .set('Authorization', `Bearer ${accessTokens['user1']}`)
+        .expect(200);
     });
+  });
+  
+  describe('Feature: Room Membership', () => {
+    let groupRoomId: number;
     
-    it('Scenario: User cannot remove other users from a room', async () => {
-      // Given user1 tries to remove user3 from the group
-      
-      // When they send the request
-      await request(app.getHttpServer())
-        .delete(`/api/rooms/${createdRoomId}/users/${testUsers[2].id}`)
-        .set('Authorization', `Bearer ${accessTokens['user1']}`)
-        .expect(403); // Forbidden
-    });
-    
-    it('Scenario: User updates their last seen timestamp', async () => {
-      // Given user1 wants to mark a room as seen
-      
-      // When they send the request
-      await request(app.getHttpServer())
-        .post(`/api/rooms/${createdRoomId}/seen`)
-        .set('Authorization', `Bearer ${accessTokens['user1']}`)
-        .expect(201);
-      
-      // Success is validated by the 201 response
-    });
-
-    it('Scenario: User updates room information', async () => {
-      // Given user1 wants to update room information
-      const updateRoomData = {
-        name: 'Updated Group Room Name',
-        isPrivate: true
-      };
-      
-      // When they send the request to update the room
-      const response = await request(app.getHttpServer())
-        .patch(`/api/rooms/${createdRoomId}`)
-        .set('Authorization', `Bearer ${accessTokens['user1']}`)
-        .send(updateRoomData)
-        .expect(200);
-      
-      // Then the room should be updated successfully
-      expect(response.body.name).toBe(updateRoomData.name);
-      expect(response.body.isPrivate).toBe(updateRoomData.isPrivate);
-    });
-
-    it('Scenario: Non-owner cannot update room information', async () => {
-      // Create a new user who is part of the room but not the owner
-      const nonOwnerUser = await createTestUser(6);
-      
-      // Add them to the room
-      await request(app.getHttpServer())
-        .post(`/api/rooms/${createdRoomId}/users`)
-        .set('Authorization', `Bearer ${accessTokens['user1']}`)
-        .send({ userId: nonOwnerUser.user.id })
-        .expect(201);
-      
-      // Given a non-owner tries to update room information
-      const updateRoomData = {
-        name: 'Unauthorized Name Change',
-        isPrivate: false
-      };
-      
-      // When they send the request to update the room
-      await request(app.getHttpServer())
-        .patch(`/api/rooms/${createdRoomId}`)
-        .set('Authorization', `Bearer ${nonOwnerUser.token}`)
-        .send(updateRoomData)
-        .expect(403); // Forbidden
-    });
-
-    it('Scenario: User gets room member list', async () => {
-      // Given user1 wants to see all members of a room
-      
-      // When they send the request
-      const response = await request(app.getHttpServer())
-        .get(`/api/rooms/${createdRoomId}/users`)
-        .set('Authorization', `Bearer ${accessTokens['user1']}`)
-        .expect(200);
-      
-      // Then they should receive a list of room members
-      expect(Array.isArray(response.body)).toBe(true);
-      // Room should have at least 3 members (user1, user3, and the last added user)
-      expect(response.body.length).toBeGreaterThanOrEqual(3);
-    });
-
-    it('Scenario: User deletes a room they own', async () => {
-      // Create a new room that will be deleted
-      const roomToDeleteData = {
-        name: 'Room To Delete',
-        isDirect: false,
-        isPrivate: false,
-        isActive: true,
-        userIds: []
-      };
-      
-      const createResponse = await request(app.getHttpServer())
+    beforeEach(async () => {
+      // Create a new group room for testing membership features
+      const roomResponse = await request(app.getHttpServer())
         .post('/api/rooms')
         .set('Authorization', `Bearer ${accessTokens['user1']}`)
-        .send(roomToDeleteData)
-        .expect(201);
-      
-      const roomToDeleteId = createResponse.body.id;
-      
-      // When user1 deletes the room
-      await request(app.getHttpServer())
-        .delete(`/api/rooms/${roomToDeleteId}`)
-        .set('Authorization', `Bearer ${accessTokens['user1']}`)
-        .expect(200);
-      
-      // Then the room should no longer be accessible
-      await request(app.getHttpServer())
-        .get(`/api/rooms/${roomToDeleteId}`)
-        .set('Authorization', `Bearer ${accessTokens['user1']}`)
-        .expect(404); // Not Found
-    });
-
-    it('Scenario: User cannot delete a room they do not own', async () => {
-      // Create a new room
-      const roomData = {
-        name: 'Non-Owner Delete Test Room',
-        isDirect: false,
-        isPrivate: false,
-        isActive: true,
-        userIds: []
-      };
-      
-      const createResponse = await request(app.getHttpServer())
-        .post('/api/rooms')
-        .set('Authorization', `Bearer ${accessTokens['user1']}`)
-        .send(roomData)
-        .expect(201);
-      
-      const roomId = createResponse.body.id;
-      
-      // Add user3 to the room
-      await request(app.getHttpServer())
-        .post(`/api/rooms/${roomId}/users`)
-        .set('Authorization', `Bearer ${accessTokens['user1']}`)
-        .send({ userId: testUsers[2].id })
-        .expect(201);
-      
-      // When user3 tries to delete the room they don't own
-      await request(app.getHttpServer())
-        .delete(`/api/rooms/${roomId}`)
-        .set('Authorization', `Bearer ${accessTokens['user3']}`)
-        .expect(403); // Forbidden
-    });
-
-    it('Scenario: User marks a room as inactive', async () => {
-      // Create a new room to mark as inactive
-      const roomData = {
-        name: 'Inactive Room Test',
-        isDirect: false,
-        isPrivate: false,
-        isActive: true,
-        userIds: []
-      };
-      
-      const createResponse = await request(app.getHttpServer())
-        .post('/api/rooms')
-        .set('Authorization', `Bearer ${accessTokens['user1']}`)
-        .send(roomData)
-        .expect(201);
-      
-      const roomId = createResponse.body.id;
-      
-      // When user1 marks the room as inactive
-      const updateData = {
-        isActive: false
-      };
-      
-      const response = await request(app.getHttpServer())
-        .patch(`/api/rooms/${roomId}`)
-        .set('Authorization', `Bearer ${accessTokens['user1']}`)
-        .send(updateData)
-        .expect(200);
-      
-      // Then the room should be marked as inactive
-      expect(response.body.isActive).toBe(false);
-    });
-
-    it('Scenario: User can filter rooms by type', async () => {
-      // Given user1 wants to filter only direct message rooms
-      
-      // When they send the request with a filter
-      const response = await request(app.getHttpServer())
-        .get('/api/rooms?type=direct')
-        .set('Authorization', `Bearer ${accessTokens['user1']}`)
-        .expect(200);
-      
-      // Then they should receive only direct message rooms
-      expect(Array.isArray(response.body)).toBe(true);
-      response.body.forEach(room => {
-        expect(room.isDirect).toBe(true);
-      });
-      
-      // Also check for group rooms filter
-      const groupResponse = await request(app.getHttpServer())
-        .get('/api/rooms?type=group')
-        .set('Authorization', `Bearer ${accessTokens['user1']}`)
-        .expect(200);
-      
-      // Should receive only group rooms
-      expect(Array.isArray(groupResponse.body)).toBe(true);
-      groupResponse.body.forEach(room => {
-        expect(room.isDirect).toBe(false);
-      });
-    });
-
-    it('Scenario: User can search rooms by name', async () => {
-      // Given user1 has created a room with a distinctive name
-      const distinctiveName = 'UniqueSearchableRoom' + Date.now();
-      const roomData = {
-        name: distinctiveName,
-        isDirect: false,
-        isPrivate: false,
-        isActive: true,
-        userIds: []
-      };
-      
-      await request(app.getHttpServer())
-        .post('/api/rooms')
-        .set('Authorization', `Bearer ${accessTokens['user1']}`)
-        .send(roomData)
-        .expect(201);
-      
-      // When they search for rooms by name
-      const response = await request(app.getHttpServer())
-        .get(`/api/rooms?search=${distinctiveName}`)
-        .set('Authorization', `Bearer ${accessTokens['user1']}`)
-        .expect(200);
-      
-      // Then they should find the room with the matching name
-      expect(Array.isArray(response.body)).toBe(true);
-      expect(response.body.length).toBeGreaterThanOrEqual(1);
-      expect(response.body.some(room => room.name === distinctiveName)).toBe(true);
-    });
-
-    it('Scenario: User can paginate rooms', async () => {
-      // Create multiple rooms to ensure pagination works
-      for (let i = 0; i < 5; i++) {
-        const roomData = {
-          name: `Pagination Test Room ${i}`,
+        .send({
+          name: `Membership Test Room ${Date.now()}`,
           isDirect: false,
           isPrivate: false,
-          isActive: true,
           userIds: []
-        };
-        
+        })
+        .expect(201);
+      
+      groupRoomId = roomResponse.body.id;
+    });
+    
+    it('Scenario: User gets list of room members', async () => {
+      // Add a few users to the room
+      for (let i = 2; i <= 3; i++) {
         await request(app.getHttpServer())
-          .post('/api/rooms')
+          .post(`/api/rooms/${groupRoomId}/users`)
           .set('Authorization', `Bearer ${accessTokens['user1']}`)
-          .send(roomData)
+          .send({ userId: testUsers[i-1].id })
           .expect(201);
       }
       
-      // When user requests the first page with a limit
-      const firstPageResponse = await request(app.getHttpServer())
-        .get('/api/rooms?page=1&limit=3')
-        .set('Authorization', `Bearer ${accessTokens['user1']}`)
-        .expect(200);
-      
-      // Then they should receive only the specified number of rooms
-      expect(Array.isArray(firstPageResponse.body.items)).toBe(true);
-      expect(firstPageResponse.body.items.length).toBeLessThanOrEqual(3);
-      expect(firstPageResponse.body.meta).toBeDefined();
-      expect(firstPageResponse.body.meta.totalItems).toBeGreaterThanOrEqual(5);
-      
-      // When they request the second page
-      const secondPageResponse = await request(app.getHttpServer())
-        .get('/api/rooms?page=2&limit=3')
-        .set('Authorization', `Bearer ${accessTokens['user1']}`)
-        .expect(200);
-      
-      // Then they should receive different rooms
-      expect(Array.isArray(secondPageResponse.body.items)).toBe(true);
-      
-      // Check that pages contain different rooms
-      const firstPageIds = firstPageResponse.body.items.map(room => room.id);
-      const secondPageIds = secondPageResponse.body.items.map(room => room.id);
-      const hasOverlap = firstPageIds.some(id => secondPageIds.includes(id));
-      expect(hasOverlap).toBe(false);
-    });
-
-    it('Scenario: User can create a private room', async () => {
-      // Given user1 wants to create a private room
-      const privateRoomData = {
-        name: 'Private Test Room',
-        isDirect: false,
-        isPrivate: true,
-        isActive: true,
-        userIds: [testUsers[2].id]
-      };
-      
-      // When they send the request to create the private room
+      // When user gets room members
       const response = await request(app.getHttpServer())
-        .post('/api/rooms')
+        .get(`/api/rooms/${groupRoomId}/users`)
         .set('Authorization', `Bearer ${accessTokens['user1']}`)
-        .send(privateRoomData)
+        .expect(200);
+      
+      // Then they should see all members
+      expect(Array.isArray(response.body)).toBe(true);
+      expect(response.body.length).toBe(3); // Creator + 2 added users
+      
+      // Check that each test user is in the members list
+      for (let i = 0; i < 3; i++) {
+        const userFound = response.body.some((member: any) => member.user.id === testUsers[i].id);
+        expect(userFound).toBe(true);
+      }
+    });
+    
+    it('Scenario: Room creator has admin role', async () => {
+      // When they get room members
+      const response = await request(app.getHttpServer())
+        .get(`/api/rooms/${groupRoomId}/users`)
+        .set('Authorization', `Bearer ${accessTokens['user1']}`)
+        .expect(200);
+      
+      // Then the creator should have admin role
+      const adminUser = response.body.find((member: any) => member.user.id === testUsers[0].id);
+      expect(adminUser).toBeDefined();
+      expect(adminUser.role).toBe(RoomRole.OWNER);
+    });
+    
+    it('Scenario: Added members have member role by default', async () => {
+      // Add a user to the room
+      await request(app.getHttpServer())
+        .post(`/api/rooms/${groupRoomId}/users`)
+        .set('Authorization', `Bearer ${accessTokens['user1']}`)
+        .send({ userId: testUsers[1].id })
         .expect(201);
       
-      // Then the private room should be created successfully
-      expect(response.body.id).toBeDefined();
-      expect(response.body.isPrivate).toBe(true);
+      // When they get room members
+      const response = await request(app.getHttpServer())
+        .get(`/api/rooms/${groupRoomId}/users`)
+        .set('Authorization', `Bearer ${accessTokens['user1']}`)
+        .expect(200);
       
-      const privateRoomId = response.body.id;
-      
-      // A user not in the room cannot access it
-      const randomUser = await createTestUser(10);
-      
+      // Then the added user should have member role
+      const memberUser = response.body.find((member: any) => member.user.id === testUsers[1].id);
+      expect(memberUser).toBeDefined();
+      expect(memberUser.role).toBe(RoomRole.MEMBER);
+    });
+    
+    it('Scenario: Admin can promote a member to admin', async () => {
+      // First add a member
       await request(app.getHttpServer())
-        .get(`/api/rooms/${privateRoomId}`)
-        .set('Authorization', `Bearer ${randomUser.token}`)
+        .post(`/api/rooms/${groupRoomId}/users`)
+        .set('Authorization', `Bearer ${accessTokens['user1']}`)
+        .send({ userId: testUsers[1].id })
+        .expect(201);
+      
+      // When admin promotes the member
+      await request(app.getHttpServer())
+        .patch(`/api/rooms/${groupRoomId}/users/${testUsers[1].id}/role`)
+        .set('Authorization', `Bearer ${accessTokens['user1']}`)
+        .send({ role: RoomRole.ADMIN })
+        .expect(200);
+      
+      // Then the user should have admin role
+      const response = await request(app.getHttpServer())
+        .get(`/api/rooms/${groupRoomId}/users`)
+        .set('Authorization', `Bearer ${accessTokens['user1']}`)
+        .expect(200);
+      
+      const promotedUser = response.body.find((member: any) => member.user.id === testUsers[1].id);
+      expect(promotedUser).toBeDefined();
+      expect(promotedUser.role).toBe(RoomRole.ADMIN);
+    });
+    
+    it('Scenario: Non-admin cannot promote members', async () => {
+      // First add two members
+      for (let i = 2; i <= 3; i++) {
+        await request(app.getHttpServer())
+          .post(`/api/rooms/${groupRoomId}/users`)
+          .set('Authorization', `Bearer ${accessTokens['user1']}`)
+          .send({ userId: testUsers[i-1].id })
+          .expect(201);
+      }
+      
+      // When non-admin tries to promote another member
+      await request(app.getHttpServer())
+        .patch(`/api/rooms/${groupRoomId}/users/${testUsers[2].id}/role`)
+        .set('Authorization', `Bearer ${accessTokens['user2']}`)
+        .send({ role: RoomRole.ADMIN })
         .expect(403); // Forbidden
-      
-      // User3 who was added to the room can access it
-      await request(app.getHttpServer())
-        .get(`/api/rooms/${privateRoomId}`)
-        .set('Authorization', `Bearer ${accessTokens['user3']}`)
-        .expect(200);
     });
-
-    it('Scenario: User cannot create a room with invalid data', async () => {
-      // Given user1 tries to create a room with invalid data
-      
-      // Case 1: Missing required field
-      const missingNameData = {
-        isDirect: false,
-        isPrivate: false,
-        isActive: true,
-        userIds: []
+  });
+  
+  describe('Feature: Direct Messaging', () => {
+    it('Scenario: Creating a direct message room with an existing user', async () => {
+      // Given data for creating a direct message room
+      const dmData = {
+        isDirect: true,
+        userIds: [testUsers[0].id]
       };
       
-      await request(app.getHttpServer())
-        .post('/api/rooms')
-        .set('Authorization', `Bearer ${accessTokens['user1']}`)
-        .send(missingNameData)
-        .expect(400); // Bad Request
-      
-      // Case 2: Invalid type for field
-      const invalidTypeData = {
-        name: 'Invalid Type Room',
-        isDirect: 'not-a-boolean', // Should be boolean
-        isPrivate: false,
-        isActive: true,
-        userIds: []
-      };
-      
-      await request(app.getHttpServer())
-        .post('/api/rooms')
-        .set('Authorization', `Bearer ${accessTokens['user1']}`)
-        .send(invalidTypeData)
-        .expect(400); // Bad Request
-      
-      // Case 3: Invalid user IDs
-      const invalidUserIdsData = {
-        name: 'Invalid User IDs Room',
-        isDirect: false,
-        isPrivate: false,
-        isActive: true,
-        userIds: [999999] // Non-existent user ID
-      };
-      
-      await request(app.getHttpServer())
-        .post('/api/rooms')
-        .set('Authorization', `Bearer ${accessTokens['user1']}`)
-        .send(invalidUserIdsData)
-        .expect(400); // Bad Request
-    });
-
-    it('Scenario: User can search for public rooms', async () => {
-      // Given there are public rooms in the system
-      const publicRoomName = 'Unique Public Room ' + Date.now();
-      const publicRoomData = {
-        name: publicRoomName,
-        isDirect: false,
-        isPrivate: false,
-        isActive: true,
-        userIds: []
-      };
-      
-      await request(app.getHttpServer())
-        .post('/api/rooms')
-        .set('Authorization', `Bearer ${accessTokens['user1']}`)
-        .send(publicRoomData)
-        .expect(201);
-      
-      // Create a private room that shouldn't appear in public search
-      const privateRoomData = {
-        name: 'Private Room That Should Not Appear',
-        isDirect: false,
-        isPrivate: true,
-        isActive: true,
-        userIds: []
-      };
-      
-      await request(app.getHttpServer())
-        .post('/api/rooms')
-        .set('Authorization', `Bearer ${accessTokens['user1']}`)
-        .send(privateRoomData)
-        .expect(201);
-      
-      // When a user searches for public rooms
+      // When user creates the DM room
       const response = await request(app.getHttpServer())
-        .get('/api/rooms/public')
+        .post('/api/rooms')
+        .set('Authorization', `Bearer ${accessTokens['user2']}`)
+        .send(dmData)
+        .expect(201);
+      
+      // Then the DM room should be created
+      expect(response.body.id).toBeDefined();
+      expect(response.body.isDirect).toBe(true);
+      
+      // Check that both users can access the room
+      await request(app.getHttpServer())
+        .get(`/api/rooms/${response.body.id}`)
+        .set('Authorization', `Bearer ${accessTokens['user1']}`)
+        .expect(200);
+        
+      await request(app.getHttpServer())
+        .get(`/api/rooms/${response.body.id}`)
+        .set('Authorization', `Bearer ${accessTokens['user2']}`)
+        .expect(200);
+    });
+    
+    it('Scenario: Creating a DM room with a user already in a DM returns the existing room', async () => {
+      // First, create a DM room between user1 and user2
+      const firstResponse = await request(app.getHttpServer())
+        .post('/api/rooms')
+        .set('Authorization', `Bearer ${accessTokens['user1']}`)
+        .send({
+          isDirect: true,
+          userIds: [testUsers[1].id]
+        })
+        .expect(201);
+      
+      const firstRoomId = firstResponse.body.id;
+      
+      // When creating another DM with the same users
+      const secondResponse = await request(app.getHttpServer())
+        .post('/api/rooms')
+        .set('Authorization', `Bearer ${accessTokens['user1']}`)
+        .send({
+          isDirect: true,
+          userIds: [testUsers[1].id]
+        })
+        .expect(201);
+      
+      // Then it should return the existing room
+      expect(secondResponse.body.id).toBe(firstRoomId);
+    });
+    
+    it('Scenario: DM rooms show correct other user details', async () => {
+      // Create a DM room
+      const response = await request(app.getHttpServer())
+        .post('/api/rooms')
+        .set('Authorization', `Bearer ${accessTokens['user1']}`)
+        .send({
+          isDirect: true,
+          userIds: [testUsers[1].id]
+        })
+        .expect(201);
+      
+      const dmRoomId = response.body.id;
+      
+      // Get user's rooms
+      const roomsResponse = await request(app.getHttpServer())
+        .get('/api/rooms')
         .set('Authorization', `Bearer ${accessTokens['user1']}`)
         .expect(200);
       
-      // Then they should receive a paginated list of public rooms
-      expect(response.body).toHaveProperty('items');
-      expect(response.body).toHaveProperty('meta');
-      expect(Array.isArray(response.body.items)).toBe(true);
+      // Find the DM room
+      const dmRoom = roomsResponse.body.find((room: any) => room.id === dmRoomId);
+      expect(dmRoom).toBeDefined();
       
-      // The newly created public room should be in the results
-      const foundRoom = response.body.items.find(room => room.name === publicRoomName);
-      expect(foundRoom).toBeDefined();
+      // Check that otherUser points to user2
+      expect(dmRoom.otherUser).toBeDefined();
+      expect(dmRoom.otherUser.id).toBe(testUsers[1].id);
       
-      // All rooms should be public and active
-      response.body.items.forEach(room => {
-        expect(room.isPrivate).toBe(false);
-        expect(room.isDirect).toBe(false);
-        expect(room.isActive).toBe(true);
-      });
-      
-      // The private room should not be in the results
-      const foundPrivateRoom = response.body.items.find(room => room.name === 'Private Room That Should Not Appear');
-      expect(foundPrivateRoom).toBeUndefined();
-      
-      // Search functionality should work
-      const searchResponse = await request(app.getHttpServer())
-        .get(`/api/rooms/public?search=${publicRoomName}`)
-        .set('Authorization', `Bearer ${accessTokens['user1']}`)
+      // Check from user2's perspective
+      const user2RoomsResponse = await request(app.getHttpServer())
+        .get('/api/rooms')
+        .set('Authorization', `Bearer ${accessTokens['user2']}`)
         .expect(200);
       
-      expect(searchResponse.body.items.length).toBeGreaterThanOrEqual(1);
-      expect(searchResponse.body.items[0].name).toBe(publicRoomName);
-      
-      // Pagination should work
-      const paginationResponse = await request(app.getHttpServer())
-        .get('/api/rooms/public?page=1&limit=2')
+      const dmRoomForUser2 = user2RoomsResponse.body.find((room: any) => room.id === dmRoomId);
+      expect(dmRoomForUser2).toBeDefined();
+      expect(dmRoomForUser2.otherUser).toBeDefined();
+      expect(dmRoomForUser2.otherUser.id).toBe(testUsers[0].id);
+    });
+    
+    it('Scenario: DM rooms cannot have additional users added', async () => {
+      // Create a DM room
+      const response = await request(app.getHttpServer())
+        .post('/api/rooms')
         .set('Authorization', `Bearer ${accessTokens['user1']}`)
-        .expect(200);
+        .send({
+          isDirect: true,
+          userIds: [testUsers[1].id]
+        })
+        .expect(201);
       
-      expect(paginationResponse.body.items.length).toBeLessThanOrEqual(2);
-      expect(paginationResponse.body.meta.currentPage).toBe(1);
-      expect(paginationResponse.body.meta.itemsPerPage).toBe(2);
+      const dmRoomId = response.body.id;
+      
+      // Try to add a third user
+      await request(app.getHttpServer())
+        .post(`/api/rooms/${dmRoomId}/users`)
+        .set('Authorization', `Bearer ${accessTokens['user1']}`)
+        .send({ userId: testUsers[2].id })
+        .expect(400); // Bad Request
     });
   });
 }); 

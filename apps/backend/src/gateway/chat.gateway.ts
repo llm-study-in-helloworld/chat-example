@@ -79,10 +79,10 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
   @SubscribeMessage('join_room')
   async handleJoinRoom(client: Socket, payload: { roomId: number }): Promise<SocketSuccessDto | SocketErrorDto> {
     // 권한 확인
-    const canJoin = await this.roomsService.canUserJoinRoom(
-      client.data.user.id, 
-      payload.roomId
-    );
+    const canJoin = await this.roomsService.canUserJoinRoom({
+      userId: client.data.user.id, 
+      roomId: payload.roomId
+    });
     
     if (!canJoin) {
       return { error: '접근 권한이 없습니다' };
@@ -100,10 +100,10 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
   async handleNewMessage(client: Socket, payload: CreateMessageDto) {
     try {
       // Check user can access the room
-      const canJoin = await this.roomsService.canUserJoinRoom(
-        client.data.user.id, 
-        payload.roomId
-      );
+      const canJoin = await this.roomsService.canUserJoinRoom({
+        userId: client.data.user.id, 
+        roomId: payload.roomId
+      });
       
       if (!canJoin) {
         return { error: '접근 권한이 없습니다' };
@@ -149,10 +149,10 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
   }) {
     try {
       // Check user can access the room
-      const canJoin = await this.roomsService.canUserJoinRoom(
-        client.data.user.id, 
-        payload.roomId
-      );
+      const canJoin = await this.roomsService.canUserJoinRoom({
+        userId: client.data.user.id, 
+        roomId: payload.roomId
+      });
       
       if (!canJoin) {
         return { error: '접근 권한이 없습니다' };
