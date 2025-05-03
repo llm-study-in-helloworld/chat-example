@@ -11,6 +11,6 @@
     "emitDecoratorMetadata": true,
     "esModuleInterop": true
   },
-  "include": ["src/**/*", "test/units/token-blacklist.service.spec.ts", "test/units/users.service.spec.ts"],
+  "include": ["src/**/*", "test/**/*"],
   "exclude": ["node_modules", "dist", "test", "**/*spec.ts"]
 } 

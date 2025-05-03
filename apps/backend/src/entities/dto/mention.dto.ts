@@ -23,7 +23,6 @@ export class MentionResponseDto implements Pick<MentionDto, 'id' | 'messageId' |
   createdAt: string = '';
   updatedAt: string = '';
   mentionedUser: Pick<UserResponseDto, 'id' | 'nickname' | 'imageUrl'> = { id: 0, nickname: '' };
-  message: Pick<MessageResponseDto, 'id' | 'content'> = { id: 0, content: '' };
 
   /**
    * Mention 엔티티를 ResponseDto로 변환
@@ -31,7 +30,7 @@ export class MentionResponseDto implements Pick<MentionDto, 'id' | 'messageId' |
   static fromEntity(mention: Mention): MentionResponseDto {
     const dto = new MentionResponseDto();
     dto.id = mention.id;
-    dto.messageId = mention.message.id;
+    dto.messageId = mention.message;
     dto.mentionedUserId = mention.mentionedUser.id;
     dto.createdAt = mention.createdAt.toISOString();
     dto.updatedAt = mention.updatedAt.toISOString();
@@ -39,10 +38,6 @@ export class MentionResponseDto implements Pick<MentionDto, 'id' | 'messageId' |
       id: mention.mentionedUser.id,
       nickname: mention.mentionedUser.nickname,
       imageUrl: mention.mentionedUser.imageUrl
-    };
-    dto.message = {
-      id: mention.message.id,
-      content: mention.message.content
     };
     return dto;
   }

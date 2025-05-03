@@ -8,6 +8,12 @@ import {
 import { Server, Socket } from 'socket.io';
 import { AuthService } from '../auth/auth.service';
 import { Injectable } from '@nestjs/common';
+import { MessagesService } from '../messages/messages.service';
+import { RoomsService } from '../rooms/rooms.service';
+import { CreateMessageDto } from '../messages/dto/create-message.dto';
+import { UpdateMessageDto } from '../messages/dto/update-message.dto';
+import { ReactionDto } from '../messages/dto/reaction.dto';
+import { SocketErrorDto, SocketSuccessDto, ReactionResponseDto, ReactionUpdateEventDto, UserPresenceEventDto } from './dto/socket-response.dto';
 
 /**
  * 실시간 채팅을 위한 웹소켓 게이트웨이
@@ -20,6 +26,8 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
 
   constructor(
     private readonly authService: AuthService,
+    private readonly messagesService: MessagesService,
+    private readonly roomsService: RoomsService,
   ) {}
 
   async handleConnection(client: Socket) {
@@ -38,14 +46,18 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
       
       client.data.user = user;
       
-      // 사용자 참여 룸 자동 연결 (RoomService 구현 후 추가 예정)
-      // const rooms = await this.roomService.getUserRooms(user.id);
-      // rooms.forEach(room => {
-      //   client.join(`room:${room.id}`);
-      // });
+      // 사용자 참여 룸 자동 연결
+      const rooms = await this.roomsService.getUserRooms(user.id);
+      rooms.forEach(room => {
+        client.join(`room:${room.id}`);
+      });
       
       // presence 업데이트
-      this.server.emit('user_presence', { userId: user.id, status: 'online' });
+      const presenceEvent: UserPresenceEventDto = { 
+        userId: user.id, 
+        status: 'online' 
+      };
+      this.server.emit('user_presence', presenceEvent);
     } catch (e) {
       client.disconnect();
     }
@@ -53,69 +65,77 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
 
   async handleDisconnect(client: Socket) {
     if (client.data.user) {
-      this.server.emit('user_presence', { 
+      const presenceEvent: UserPresenceEventDto = { 
         userId: client.data.user.id, 
         status: 'offline' 
-      });
+      };
+      this.server.emit('user_presence', presenceEvent);
     }
   }
 
   @SubscribeMessage('join_room')
-  async handleJoinRoom(client: Socket, payload: { roomId: number }) {
-    // 권한 확인 (RoomService 구현 후 추가 예정)
-    // const canJoin = await this.roomService.canUserJoinRoom(
-    //   client.data.user.id, 
-    //   payload.roomId
-    // );
+  async handleJoinRoom(client: Socket, payload: { roomId: number }): Promise<SocketSuccessDto | SocketErrorDto> {
+    // 권한 확인
+    const canJoin = await this.roomsService.canUserJoinRoom(
+      client.data.user.id, 
+      payload.roomId
+    );
     
-    // if (!canJoin) {
-    //   return { error: '접근 권한이 없습니다' };
-    // }
+    if (!canJoin) {
+      return { error: '접근 권한이 없습니다' };
+    }
     
     client.join(`room:${payload.roomId}`);
+    
+    // Update last seen timestamp
+    await this.roomsService.updateLastSeen(client.data.user.id, payload.roomId);
+    
     return { success: true };
   }
 
   @SubscribeMessage('new_message')
-  async handleNewMessage(client: Socket, payload: { 
-    roomId: number;
-    content: string;
-    parentId?: number;
-  }) {
-    // 메시지 저장 (MessageService 구현 후 추가 예정)
-    // const message = await this.messageService.createMessage({
-    //   roomId: payload.roomId,
-    //   senderId: client.data.user.id,
-    //   content: payload.content,
-    //   parentId: payload.parentId,
-    // });
-    
-    // 임시 메시지
-    const message = {
-      id: Math.floor(Math.random() * 1000),
-      roomId: payload.roomId,
-      senderId: client.data.user.id,
-      content: payload.content,
-      createdAt: new Date().toISOString(),
-      parentId: payload.parentId,
-    };
-    
-    // 메시지 브로드캐스트
-    this.server.to(`room:${payload.roomId}`).emit('new_message', message);
-    
-    // 멘션 처리 (MessageService 구현 후 추가 예정)
-    // const mentions = this.messageService.extractMentions(payload.content);
-    // if (mentions.length > 0) {
-    //   await this.messageService.saveMentions(message.id, mentions);
-    //   for (const userId of mentions) {
-    //     this.server.to(`user:${userId}`).emit('mention_alert', {
-    //       messageId: message.id,
-    //       roomId: payload.roomId,
-    //     });
-    //   }
-    // }
-    
-    return message;
+  async handleNewMessage(client: Socket, payload: CreateMessageDto) {
+    try {
+      // Check user can access the room
+      const canJoin = await this.roomsService.canUserJoinRoom(
+        client.data.user.id, 
+        payload.roomId
+      );
+      
+      if (!canJoin) {
+        return { error: '접근 권한이 없습니다' };
+      }
+      
+      // Create the message
+      const message = await this.messagesService.createMessage({
+        roomId: payload.roomId,
+        senderId: client.data.user.id,
+        content: payload.content,
+        parentId: payload.parentId,
+      });
+      
+      // Broadcast message to room
+      this.server.to(`room:${payload.roomId}`).emit('new_message', message);
+      
+      // Process mentions if any
+      if (message.mentions && message.mentions.length > 0) {
+        // Extract user IDs from mentions
+        const mentionedUserIds = message.mentions.map(mention => mention.mentionedUser.id);
+        
+        // Notify mentioned users
+        for (const userId of mentionedUserIds) {
+          this.server.to(`user:${userId}`).emit('mention_alert', {
+            messageId: message.id,
+            roomId: payload.roomId,
+          });
+        }
+      }
+      
+      return message;
+    } catch (error: any) {
+      const errorResponse: SocketErrorDto = { error: error.message || 'Failed to create message' };
+      return errorResponse;
+    }
   }
 
   @SubscribeMessage('edit_message')
@@ -123,61 +143,73 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
     messageId: number;
     content: string;
   }) {
-    // 권한 확인 및 메시지 업데이트 (MessageService 구현 후 추가 예정)
-    // const canEdit = await this.messageService.canEditMessage(
-    //   client.data.user.id,
-    //   payload.messageId
-    // );
-    
-    // if (!canEdit) {
-    //   return { error: '메시지를 수정할 권한이 없습니다' };
-    // }
-    
-    // const message = await this.messageService.updateMessage(
-    //   payload.messageId,
-    //   payload.content
-    // );
-    
-    // 임시 메시지
-    const message = {
-      id: payload.messageId,
-      content: payload.content,
-      updatedAt: new Date().toISOString(),
-      room: { id: 1 } // 임시 데이터
-    };
-    
-    // 룸에 변경사항 브로드캐스트
-    this.server.to(`room:${message.room.id}`).emit('message_updated', message);
-    
-    return message;
+    try {
+      // Check permission
+      const canEdit = await this.messagesService.canEditMessage(
+        client.data.user.id,
+        payload.messageId
+      );
+      
+      if (!canEdit) {
+        const errorResponse: SocketErrorDto = { error: '메시지를 수정할 권한이 없습니다' };
+        return errorResponse;
+      }
+      
+      // Update the message
+      const updatedMessageDto = new UpdateMessageDto();
+      updatedMessageDto.content = payload.content;
+      
+      const message = await this.messagesService.updateMessage(
+        payload.messageId,
+        client.data.user.id,
+        updatedMessageDto
+      );
+      
+      // Access roomId directly from the message DTO
+      if (message.roomId) {
+        // Broadcast update to everyone in the room
+        this.server.to(`room:${message.roomId}`).emit('message_updated', message);
+      }
+      
+      return message;
+    } catch (error: any) {
+      const errorResponse: SocketErrorDto = { error: error.message || 'Failed to update message' };
+      return errorResponse;
+    }
   }
 
   @SubscribeMessage('react_message')
-  async handleReaction(client: Socket, payload: {
-    messageId: number;
-    emoji: string;
-  }) {
-    // 리액션 토글 (MessageService 구현 후 추가 예정)
-    // const reaction = await this.messageService.toggleReaction(
-    //   payload.messageId,
-    //   client.data.user.id,
-    //   payload.emoji
-    // );
-    
-    // const message = await this.messageService.getMessage(payload.messageId);
-    
-    // 임시 데이터
-    const reaction = {
-      id: Math.floor(Math.random() * 1000),
-      emoji: payload.emoji,
-      userId: client.data.user.id,
-    };
-    
-    this.server.to(`room:1`).emit('reaction_updated', {
-      messageId: payload.messageId,
-      reactions: [reaction]
-    });
-    
-    return reaction;
+  async handleReaction(client: Socket, payload: ReactionDto): Promise<ReactionResponseDto | SocketErrorDto> {
+    try {
+      // Toggle reaction
+      const reaction = await this.messagesService.toggleReaction(
+        payload.messageId,
+        client.data.user.id,
+        payload.emoji
+      );
+      
+      // Get the message to find the room
+      const message = await this.messagesService.getMessage(payload.messageId);
+      
+      if (message && message.roomId) {
+        // Broadcast reaction update to the room
+        const updateEvent: ReactionUpdateEventDto = {
+          messageId: payload.messageId,
+          reactions: message.reactions
+        };
+        this.server.to(`room:${message.roomId}`).emit('reaction_updated', updateEvent);
+      }
+      
+      const response: ReactionResponseDto = { 
+        success: true, 
+        added: !!reaction,
+        reaction: reaction,
+      };
+      
+      return response;
+    } catch (error: any) {
+      const errorResponse: SocketErrorDto = { error: error.message || 'Failed to process reaction' };
+      return errorResponse;
+    }
   }
 } 

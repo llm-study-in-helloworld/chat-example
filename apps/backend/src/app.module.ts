@@ -5,7 +5,7 @@ import { UsersModule } from './users/users.module';
 import { AuthModule } from './auth/auth.module';
 import { RoomsModule } from './rooms/rooms.module';
 import { MessagesModule } from './messages/messages.module';
-import { ChatGateway } from './gateway/chat.gateway';
+import { GatewayModule } from './gateway/gateway.module';
 import mikroOrmConfig from './mikro-orm.config';
 import * as entities from './entities';
 
@@ -23,7 +23,7 @@ import * as entities from './entities';
     AuthModule,
     RoomsModule,
     MessagesModule,
+    GatewayModule,
   ],
-  providers: [ChatGateway],
 })
 export class AppModule {} 

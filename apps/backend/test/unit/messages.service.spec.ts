@@ -401,7 +401,7 @@ describe('MessagesService', () => {
       expect(reaction).toBeDefined();
       expect(reaction!.emoji).toBe('👍');
       expect(reaction!.user.id).toBe(testUser2.id);
-      expect(reaction!.message).toBe(testMessage.id);
+      expect(reaction!.messageId).toBe(testMessage.id);
       
       // Verify reaction was saved to database
       const message = await messageRepository.findOne(

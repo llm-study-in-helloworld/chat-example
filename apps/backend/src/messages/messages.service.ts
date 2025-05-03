@@ -7,7 +7,8 @@ import {
   User, 
   Room, 
   Mention, 
-  MessageReaction
+  MessageReaction,
+  MessageReactionResponseDto
 } from '../entities';
 import { MessageResponseDto } from '../entities/dto/message.dto';
 
@@ -214,7 +215,7 @@ export class MessagesService {
   /**
    * 메시지 리액션 토글
    */
-  async toggleReaction(messageId: number, userId: number, emoji: string): Promise<MessageReaction | null> {
+  async toggleReaction(messageId: number, userId: number, emoji: string): Promise<MessageReactionResponseDto | null> {
     return this.em.transactional(async (em) => {
       const user = await em.findOneOrFail(User, { id: userId });
       
@@ -236,7 +237,7 @@ export class MessagesService {
         reaction.emoji = emoji;
         
         await em.persistAndFlush(reaction);
-        return reaction;
+        return MessageReactionResponseDto.fromEntity(reaction);
       }
     });
   }

@@ -33,7 +33,7 @@ export class MessageReactionResponseDto implements Pick<MessageReactionDto, 'id'
     dto.id = reaction.id;
     dto.emoji = reaction.emoji;
     dto.userId = reaction.user.id;
-    dto.messageId = reaction.message.id;
+    dto.messageId = reaction.message;
     dto.createdAt = reaction.createdAt.toISOString();
     dto.updatedAt = reaction.updatedAt.toISOString();
     dto.user = {
