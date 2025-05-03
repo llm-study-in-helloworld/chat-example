@@ -14,7 +14,7 @@
     "test": "jest --config ./test/jest.json",
     "test:watch": "jest --watch --config ./test/jest.json",
     "test:cov": "jest --coverage --config ./test/jest.json",
-    "test:debug": "node --inspect-brk -r tsconfig-paths/register -r ts-node/register node_modules/.bin/jest --runInBand --config ./test/jest.json",
+    "test:debug": "node --inspect-brk -r tsconfig-paths/register -r ts-node/register ../../node_modules/.bin/jest --runInBand --config ./test/jest.json",
     "test:e2e": "jest --config ./test/jest-e2e.json",
     "test:e2e:all": "jest --config ./test/jest-e2e.json test/e2e/auth.e2e-spec.ts test/e2e/users.e2e-spec.ts test/e2e/rooms.e2e-spec.ts test/e2e/messages.e2e-spec.ts"
   },

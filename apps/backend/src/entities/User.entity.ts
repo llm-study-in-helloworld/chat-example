@@ -4,9 +4,7 @@ import {
   OneToMany, 
   Collection,
   Index,
-  Reference,
-  BeforeCreate,
-  BeforeUpdate
+  Reference
 } from '@mikro-orm/core';
 import { CommonEntity } from './CommonEntity';
 import { Message } from './Message.entity';
@@ -25,9 +23,6 @@ export class User extends CommonEntity {
 
   @Property()
   passwordHash!: string;
-
-  // Private field to store password temporarily
-  #password?: string;
 
   @Property()
   nickname!: string;
@@ -66,30 +61,9 @@ export class User extends CommonEntity {
   }
 
   /**
-   * Set password - will be hashed during create/update
-   */
-  set password(password: string) {
-    this.#password = password;
-  }
-
-  /**
    * Verify if provided password matches the stored hash
    */
   async verifyPassword(password: string): Promise<boolean> {
     return await bcrypt.compare(password, this.passwordHash);
-  }
-
-  /**
-   * Hash password before entity is created
-   */
-  @BeforeCreate()
-  @BeforeUpdate()
-  async hashPassword(): Promise<void> {
-    // Only hash the password if it was changed
-    if (this.#password) {
-      const saltRounds = 10;
-      this.passwordHash = await bcrypt.hash(this.#password, saltRounds);
-      this.#password = undefined; // Clear the temporary password
-    }
   }
 } 
