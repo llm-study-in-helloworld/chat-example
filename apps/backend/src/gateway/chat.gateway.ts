@@ -46,6 +46,9 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
       
       client.data.user = user;
       
+      // Join user's personal room for direct notifications
+      client.join(`user:${user.id}`);
+      
       // 사용자 참여 룸 자동 연결
       const rooms = await this.roomsService.getUserRooms(user.id);
       rooms.forEach(room => {
@@ -134,6 +137,75 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
       return message;
     } catch (error: any) {
       const errorResponse: SocketErrorDto = { error: error.message || 'Failed to create message' };
+      return errorResponse;
+    }
+  }
+
+  @SubscribeMessage('reply_message')
+  async handleReplyMessage(client: Socket, payload: {
+    roomId: number;
+    parentId: number;
+    content: string;
+  }) {
+    try {
+      // Check user can access the room
+      const canJoin = await this.roomsService.canUserJoinRoom(
+        client.data.user.id, 
+        payload.roomId
+      );
+      
+      if (!canJoin) {
+        return { error: '접근 권한이 없습니다' };
+      }
+      
+      // Check if parent message exists
+      const parentMessage = await this.messagesService.getMessage(payload.parentId);
+      if (!parentMessage) {
+        return { error: '답장할 메시지를 찾을 수 없습니다' };
+      }
+      
+      // Verify parent message belongs to the same room
+      if (parentMessage.roomId !== payload.roomId) {
+        return { error: '잘못된 요청입니다' };
+      }
+      
+      // Create the reply message
+      const message = await this.messagesService.createMessage({
+        roomId: payload.roomId,
+        senderId: client.data.user.id,
+        content: payload.content,
+        parentId: payload.parentId,
+      });
+      
+      // Broadcast message to room
+      this.server.to(`room:${payload.roomId}`).emit('new_message', message);
+      
+      // Notify the original message author if they're not the same as reply author
+      if (parentMessage.sender.id !== client.data.user.id) {
+        this.server.to(`user:${parentMessage.sender.id}`).emit('reply_alert', {
+          messageId: message.id,
+          parentId: payload.parentId,
+          roomId: payload.roomId,
+        });
+      }
+      
+      // Process mentions if any
+      if (message.mentions && message.mentions.length > 0) {
+        // Extract user IDs from mentions
+        const mentionedUserIds = message.mentions.map(mention => mention.mentionedUser.id);
+        
+        // Notify mentioned users
+        for (const userId of mentionedUserIds) {
+          this.server.to(`user:${userId}`).emit('mention_alert', {
+            messageId: message.id,
+            roomId: payload.roomId,
+          });
+        }
+      }
+      
+      return message;
+    } catch (error: any) {
+      const errorResponse: SocketErrorDto = { error: error.message || 'Failed to create reply' };
       return errorResponse;
     }
   }

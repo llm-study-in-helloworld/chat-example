@@ -316,7 +316,7 @@ describe('ChatGateway (e2e)', () => {
   });
   
   describe('Messaging', () => {
-    let testMessageId: number;
+    // We'll now create messages within each test that needs one
     
     beforeEach(async () => {
       // Ensure all sockets are connected
@@ -344,9 +344,6 @@ describe('ChatGateway (e2e)', () => {
       
       const response = await emitAndWait<MessageResponseDto>(senderSocket, 'new_message', message);
       
-      // Store message ID for later tests
-      testMessageId = response.id;
-      
       // Then the message should be saved and broadcast to all room members
       expect(response).toBeDefined();
       expect(response.id).toBeDefined();
@@ -362,8 +359,78 @@ describe('ChatGateway (e2e)', () => {
     });
     
     it('should handle replies to messages', async () => {
-      // Given a message exists
-      expect(testMessageId).toBeDefined();
+      // Create a message to reply to first
+      const senderSocket = socketClients['user1'];
+      const message: CreateMessageDto = {
+        roomId,
+        content: 'Message for reply test'
+      };
+      
+      const parentMessage = await emitAndWait<MessageResponseDto>(senderSocket, 'new_message', message);
+      expect(parentMessage).toBeDefined();
+      expect(parentMessage.id).toBeDefined();
+      
+      // Ensure sockets join their user-specific channels for receiving direct alerts
+      await emitAndWait<SocketResponse<SocketSuccessDto>>(socketClients['user1'], 'join_room', { roomId });
+      await emitAndWait<SocketResponse<SocketSuccessDto>>(socketClients['user2'], 'join_room', { roomId });
+      
+      // Wait for sockets to fully set up
+      await new Promise(resolve => setTimeout(resolve, 1000));
+      
+      // Set up reply test
+      const replierSocket = socketClients['user2'];
+      const originalSenderSocket = socketClients['user1'];
+      
+      // Set up listener for new message event
+      const newMessagePromise = waitForEvent<MessageResponseDto>(originalSenderSocket, 'new_message');
+      
+      // Set up listener for reply alert event
+      const replyAlertPromise = waitForEvent<{ messageId: number, parentId: number, roomId: number }>(
+        originalSenderSocket, 
+        'reply_alert',
+        15000 // Increase timeout for reliability
+      );
+      
+      // When a user replies to a message
+      const replyData = {
+        roomId,
+        parentId: parentMessage.id,
+        content: 'This is a reply through the reply_message event'
+      };
+      
+      const response = await emitAndWait<MessageResponseDto>(replierSocket, 'reply_message', replyData);
+      
+      // Then the reply should be saved with the parent reference
+      expect(response).toBeDefined();
+      expect(response.id).toBeDefined();
+      expect(response.content).toBe(replyData.content);
+      expect(response.parentId).toBe(parentMessage.id);
+      
+      // And the original sender should receive the reply notification
+      const receivedReply = await newMessagePromise;
+      expect(receivedReply).toBeDefined();
+      expect(receivedReply.content).toBe(replyData.content);
+      expect(receivedReply.parentId).toBe(parentMessage.id);
+      
+      // And the original sender should also receive a reply alert
+      const replyAlert = await replyAlertPromise;
+      expect(replyAlert).toBeDefined();
+      expect(replyAlert.messageId).toBe(response.id);
+      expect(replyAlert.parentId).toBe(parentMessage.id);
+      expect(replyAlert.roomId).toBe(roomId);
+    });
+    
+    it('should handle replies to messages using new_message event', async () => {
+      // Create a message to reply to first
+      const senderSocket = socketClients['user1'];
+      const message: CreateMessageDto = {
+        roomId,
+        content: 'Message for new_message reply test'
+      };
+      
+      const parentMessage = await emitAndWait<MessageResponseDto>(senderSocket, 'new_message', message);
+      expect(parentMessage).toBeDefined();
+      expect(parentMessage.id).toBeDefined();
       
       // And users are in the room
       const replierSocket = socketClients['user2'];
@@ -376,7 +443,7 @@ describe('ChatGateway (e2e)', () => {
       const replyMessage: CreateMessageDto = {
         roomId,
         content: 'This is a reply to the original message',
-        parentId: testMessageId
+        parentId: parentMessage.id
       };
       
       const response = await emitAndWait<MessageResponseDto>(replierSocket, 'new_message', replyMessage);
@@ -385,21 +452,52 @@ describe('ChatGateway (e2e)', () => {
       expect(response).toBeDefined();
       expect(response.id).toBeDefined();
       expect(response.content).toBe(replyMessage.content);
-      expect(response.parentId).toBe(testMessageId);
+      expect(response.parentId).toBe(parentMessage.id);
       
       // And the original sender should receive the reply notification
       const receivedReply = await newMessagePromise;
       expect(receivedReply).toBeDefined();
       expect(receivedReply.content).toBe(replyMessage.content);
-      expect(receivedReply.parentId).toBe(testMessageId);
+      expect(receivedReply.parentId).toBe(parentMessage.id);
+    });
+
+    it('should reject replies to non-existent messages', async () => {
+      // Given a non-existent message ID
+      const nonExistentId = 999999;
+      
+      // When a user tries to reply to it
+      const replierSocket = socketClients['user2'];
+      
+      const replyData = {
+        roomId,
+        parentId: nonExistentId,
+        content: 'This reply should fail'
+      };
+      
+      const response = await emitAndWait<SocketResponse<MessageResponseDto>>(
+        replierSocket, 
+        'reply_message', 
+        replyData
+      );
+      
+      // Then they should receive an error
+      expect(response).toHaveProperty('error');
+      expect((response as SocketErrorDto).error).toContain('답장할 메시지를 찾을 수 없습니다');
     });
     
     it('should edit messages', async () => {
-      // Given a message exists
-      expect(testMessageId).toBeDefined();
+      // Create a message to edit
+      const senderSocket = socketClients['user1'];
+      const message: CreateMessageDto = {
+        roomId,
+        content: 'Message for edit test'
+      };
+      
+      const createdMessage = await emitAndWait<MessageResponseDto>(senderSocket, 'new_message', message);
+      expect(createdMessage).toBeDefined();
+      expect(createdMessage.id).toBeDefined();
       
       // And users are in the room
-      const senderSocket = socketClients['user1'];
       const otherUserSocket = socketClients['user2'];
       
       // Set up listener for message updated event
@@ -407,7 +505,7 @@ describe('ChatGateway (e2e)', () => {
       
       // When the sender edits their message
       const editData = {
-        messageId: testMessageId,
+        messageId: createdMessage.id,
         content: 'This message has been edited via WebSocket'
       };
       
@@ -419,26 +517,34 @@ describe('ChatGateway (e2e)', () => {
       if ('error' in response) {
         fail(`Expected success but got error: ${response.error}`);
       } else {
-        expect(response.id).toBe(testMessageId);
+        expect(response.id).toBe(createdMessage.id);
         expect(response.content).toBe(editData.content);
       }
       
       // And other users should receive the update
       const updateEvent = await updatePromise;
       expect(updateEvent).toBeDefined();
-      expect(updateEvent.id).toBe(testMessageId);
+      expect(updateEvent.id).toBe(createdMessage.id);
       expect(updateEvent.content).toBe(editData.content);
     });
     
     it('should prevent editing another user\'s message', async () => {
-      // Given a message exists
-      expect(testMessageId).toBeDefined();
+      // Create a message for the test
+      const senderSocket = socketClients['user1'];
+      const message: CreateMessageDto = {
+        roomId,
+        content: 'Message that should not be editable by others'
+      };
+      
+      const createdMessage = await emitAndWait<MessageResponseDto>(senderSocket, 'new_message', message);
+      expect(createdMessage).toBeDefined();
+      expect(createdMessage.id).toBeDefined();
       
       // When another user tries to edit it
       const unauthorizedSocket = socketClients['user3'];
       
       const editData = {
-        messageId: testMessageId,
+        messageId: createdMessage.id,
         content: 'This edit should fail'
       };
       
@@ -451,7 +557,7 @@ describe('ChatGateway (e2e)', () => {
   });
   
   describe('Reactions', () => {
-    let testMessageId: number;
+    // Create test message within each test
     
     beforeEach(async () => {
       // Ensure all sockets are connected
@@ -461,34 +567,30 @@ describe('ChatGateway (e2e)', () => {
       for (const clientKey in socketClients) {
         await emitAndWait<SocketResponse<SocketSuccessDto>>(socketClients[clientKey], 'join_room', { roomId });
       }
-      
-      // Create a test message if we don't have one
-      if (!testMessageId) {
-        const message: CreateMessageDto = {
-          roomId,
-          content: 'Message for reaction tests'
-        };
-        
-        const response = await emitAndWait<MessageResponseDto>(
-          socketClients['user1'], 
-          'new_message', 
-          message
-        );
-        
-        testMessageId = response.id;
-      }
     });
     
     it('should add reactions to messages', async () => {
-      // Given a message exists
-      expect(testMessageId).toBeDefined();
+      // Create a message for reactions
+      const message: CreateMessageDto = {
+        roomId,
+        content: 'Message for reaction test'
+      };
+      
+      const createdMessage = await emitAndWait<MessageResponseDto>(
+        socketClients['user1'], 
+        'new_message', 
+        message
+      );
+      
+      expect(createdMessage).toBeDefined();
+      expect(createdMessage.id).toBeDefined();
       
       // Set up listener for reaction events
       const reactionPromise = waitForEvent<ReactionUpdateEventDto>(socketClients['user1'], 'reaction_updated');
       
       // When a user reacts to a message
       const reactionData: ReactionDto = {
-        messageId: testMessageId,
+        messageId: createdMessage.id,
         emoji: '👍'
       };
       
@@ -504,25 +606,41 @@ describe('ChatGateway (e2e)', () => {
       // And all users should receive the reaction update
       const reactionEvent = await reactionPromise;
       expect(reactionEvent).toBeDefined();
-      expect(reactionEvent.messageId).toBe(testMessageId);
+      expect(reactionEvent.messageId).toBe(createdMessage.id);
       expect(Array.isArray(reactionEvent.reactions)).toBe(true);
       expect(reactionEvent.reactions.length).toBeGreaterThan(0);
       expect(reactionEvent.reactions[0].emoji).toBe('👍');
     });
     
     it('should toggle reactions when the same user reacts twice', async () => {
-      // Given a user has already reacted to a message
+      // Create a message for reactions
+      const message: CreateMessageDto = {
+        roomId,
+        content: 'Message for reaction toggle test'
+      };
+      
+      const createdMessage = await emitAndWait<MessageResponseDto>(
+        socketClients['user1'], 
+        'new_message', 
+        message
+      );
+      
+      expect(createdMessage).toBeDefined();
+      expect(createdMessage.id).toBeDefined();
+      
+      // First add a reaction
       const reactorSocket = socketClients['user2'];
+      const reactionData: ReactionDto = {
+        messageId: createdMessage.id,
+        emoji: '👍'
+      };
+      
+      await emitAndWait<ReactionResponseDto>(reactorSocket, 'react_message', reactionData);
       
       // Set up listener for reaction update events
       const reactionPromise = waitForEvent<ReactionUpdateEventDto>(socketClients['user1'], 'reaction_updated');
       
       // When they react with the same emoji again
-      const reactionData: ReactionDto = {
-        messageId: testMessageId,
-        emoji: '👍'
-      };
-      
       const response = await emitAndWait<ReactionResponseDto>(reactorSocket, 'react_message', reactionData);
       
       // Then the reaction should be removed
@@ -533,7 +651,7 @@ describe('ChatGateway (e2e)', () => {
       // And all users should receive the reaction update
       const reactionEvent = await reactionPromise as ReactionUpdateEventDto;
       expect(reactionEvent).toBeDefined();
-      expect(reactionEvent.messageId).toBe(testMessageId);
+      expect(reactionEvent.messageId).toBe(createdMessage.id);
       
       // The reactions array should no longer contain the removed reaction
       const thumbsUpReaction = reactionEvent.reactions.find(r => r.emoji === '👍' && r.userId === testUsers[1].id);

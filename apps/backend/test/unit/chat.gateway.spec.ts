@@ -168,8 +168,9 @@ describe('ChatGateway', () => {
       expect(authService.validateToken).toHaveBeenCalledWith('valid-token');
       expect(mockSocket.data!.user).toEqual(testUser1);
       
-      // Should join both rooms
-      expect(mockSocket.join).toHaveBeenCalledTimes(2);
+      // Should join user's personal room and both chat rooms
+      expect(mockSocket.join).toHaveBeenCalledTimes(3);
+      expect(mockSocket.join).toHaveBeenCalledWith(`user:${testUser1.id}`);
       expect(mockSocket.join).toHaveBeenCalledWith('room:1');
       expect(mockSocket.join).toHaveBeenCalledWith('room:2');
       
@@ -558,6 +559,206 @@ describe('ChatGateway', () => {
 
       // Assert
       expect(result).toEqual({ error: 'Reaction failed' });
+    });
+  });
+
+  describe('handleReplyMessage', () => {
+    it('should create and broadcast a reply to a message', async () => {
+      // Arrange
+      mockSocket.data = { user: testUser1 };
+      jest.spyOn(roomsService, 'canUserJoinRoom').mockResolvedValue(true);
+      
+      // Mock parent message
+      const parentMessage = {
+        ...testMessageResponse,
+        id: 10,
+        sender: testUser2,
+        roomId: testRoom1.id
+      } as MessageResponseDto;
+      
+      jest.spyOn(messagesService, 'getMessage').mockResolvedValue(parentMessage);
+      
+      // Mock the reply
+      const replyMessage = {
+        ...testMessageResponse,
+        id: 20,
+        content: 'This is a reply',
+        parentId: 10,
+        roomId: testRoom1.id
+      } as MessageResponseDto;
+      
+      jest.spyOn(messagesService, 'createMessage').mockResolvedValue(replyMessage);
+
+      // Act
+      const result = await gateway.handleReplyMessage(mockSocket as Socket, {
+        roomId: testRoom1.id,
+        parentId: 10,
+        content: 'This is a reply'
+      });
+
+      // Assert
+      expect(roomsService.canUserJoinRoom).toHaveBeenCalledWith(testUser1.id, testRoom1.id);
+      expect(messagesService.getMessage).toHaveBeenCalledWith(10);
+      expect(messagesService.createMessage).toHaveBeenCalledWith({
+        roomId: testRoom1.id,
+        senderId: testUser1.id,
+        content: 'This is a reply',
+        parentId: 10
+      });
+      
+      // Should broadcast the message to the room
+      expect(mockServer.to).toHaveBeenCalledWith(`room:${testRoom1.id}`);
+      expect(mockServer.to!(`room:${testRoom1.id}`).emit).toHaveBeenCalledWith('new_message', replyMessage);
+      
+      // Should notify the original message author
+      expect(mockServer.to).toHaveBeenCalledWith(`user:${testUser2.id}`);
+      expect(mockServer.to!(`user:${testUser2.id}`).emit).toHaveBeenCalledWith(
+        'reply_alert',
+        {
+          messageId: replyMessage.id,
+          parentId: 10,
+          roomId: testRoom1.id
+        }
+      );
+      
+      expect(result).toBe(replyMessage);
+    });
+
+    it('should not send notification when replying to own message', async () => {
+      // Arrange
+      mockSocket.data = { user: testUser1 };
+      jest.spyOn(roomsService, 'canUserJoinRoom').mockResolvedValue(true);
+      
+      // Mock parent message (from the same user)
+      const parentMessage = {
+        ...testMessageResponse,
+        id: 10,
+        sender: testUser1, // Same as the socket user
+        roomId: testRoom1.id
+      } as MessageResponseDto;
+      
+      jest.spyOn(messagesService, 'getMessage').mockResolvedValue(parentMessage);
+      
+      // Mock the reply
+      const replyMessage = {
+        ...testMessageResponse,
+        id: 20,
+        content: 'This is a reply to my own message',
+        parentId: 10,
+        roomId: testRoom1.id
+      } as MessageResponseDto;
+      
+      jest.spyOn(messagesService, 'createMessage').mockResolvedValue(replyMessage);
+
+      // Act
+      const result = await gateway.handleReplyMessage(mockSocket as Socket, {
+        roomId: testRoom1.id,
+        parentId: 10,
+        content: 'This is a reply to my own message'
+      });
+
+      // Assert
+      expect(messagesService.createMessage).toHaveBeenCalled();
+      
+      // Should broadcast the message to the room
+      expect(mockServer.to).toHaveBeenCalledWith(`room:${testRoom1.id}`);
+      expect(mockServer.to!(`room:${testRoom1.id}`).emit).toHaveBeenCalledWith('new_message', replyMessage);
+      
+      // Should NOT send reply_alert to self
+      const toUserCalls = jest.mocked(mockServer.to!).mock.calls.filter(
+        call => call[0] === `user:${testUser1.id}`
+      );
+      expect(toUserCalls.length).toBe(0);
+      
+      expect(result).toBe(replyMessage);
+    });
+
+    it('should return error if parent message does not exist', async () => {
+      // Arrange
+      mockSocket.data = { user: testUser1 };
+      jest.spyOn(roomsService, 'canUserJoinRoom').mockResolvedValue(true);
+      jest.spyOn(messagesService, 'getMessage').mockResolvedValue(null);
+
+      // Act
+      const result = await gateway.handleReplyMessage(mockSocket as Socket, {
+        roomId: testRoom1.id,
+        parentId: 999,
+        content: 'This should fail'
+      });
+
+      // Assert
+      expect(result).toEqual({ error: '답장할 메시지를 찾을 수 없습니다' });
+      expect(messagesService.createMessage).not.toHaveBeenCalled();
+    });
+
+    it('should return error if parent message is in a different room', async () => {
+      // Arrange
+      mockSocket.data = { user: testUser1 };
+      jest.spyOn(roomsService, 'canUserJoinRoom').mockResolvedValue(true);
+      
+      // Mock parent message in a different room
+      const parentMessage = {
+        ...testMessageResponse,
+        id: 10,
+        roomId: 999 // Different from the requested room
+      } as MessageResponseDto;
+      
+      jest.spyOn(messagesService, 'getMessage').mockResolvedValue(parentMessage);
+
+      // Act
+      const result = await gateway.handleReplyMessage(mockSocket as Socket, {
+        roomId: testRoom1.id,
+        parentId: 10,
+        content: 'This should fail'
+      });
+
+      // Assert
+      expect(result).toEqual({ error: '잘못된 요청입니다' });
+      expect(messagesService.createMessage).not.toHaveBeenCalled();
+    });
+
+    it('should return error if user has no access to the room', async () => {
+      // Arrange
+      mockSocket.data = { user: testUser1 };
+      jest.spyOn(roomsService, 'canUserJoinRoom').mockResolvedValue(false);
+
+      // Act
+      const result = await gateway.handleReplyMessage(mockSocket as Socket, {
+        roomId: testRoom1.id,
+        parentId: 10,
+        content: 'This should fail'
+      });
+
+      // Assert
+      expect(result).toEqual({ error: '접근 권한이 없습니다' });
+      expect(messagesService.getMessage).not.toHaveBeenCalled();
+      expect(messagesService.createMessage).not.toHaveBeenCalled();
+    });
+
+    it('should handle service errors gracefully', async () => {
+      // Arrange
+      mockSocket.data = { user: testUser1 };
+      jest.spyOn(roomsService, 'canUserJoinRoom').mockResolvedValue(true);
+      
+      // Mock parent message
+      const parentMessage = {
+        ...testMessageResponse,
+        id: 10,
+        roomId: testRoom1.id
+      } as MessageResponseDto;
+      
+      jest.spyOn(messagesService, 'getMessage').mockResolvedValue(parentMessage);
+      jest.spyOn(messagesService, 'createMessage').mockRejectedValue(new Error('Database error'));
+
+      // Act
+      const result = await gateway.handleReplyMessage(mockSocket as Socket, {
+        roomId: testRoom1.id,
+        parentId: 10,
+        content: 'This will cause an error'
+      });
+
+      // Assert
+      expect(result).toEqual({ error: 'Database error' });
     });
   });
 }); 
