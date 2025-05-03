@@ -1,0 +1,47 @@
+services:
+  backend:
+    build:
+      context: .
+      dockerfile: apps/backend/Dockerfile.dev
+    ports:
+      - "3000:3000"
+      - "9229:9229" # for debugging
+    volumes:
+      - ./apps/backend:/app/apps/backend
+      - ./packages:/app/packages
+      - turbo_cache:/app/.turbo/cache
+      - pnpm_store:/pnpm/store
+    environment:
+      - NODE_ENV=development
+      - DB_HOST=postgres
+      - DB_PORT=5432
+      - DB_NAME=postgres
+      - DB_USER=postgres
+      - DB_PASSWORD=postgres
+      - JWT_SECRET=dev-secret-key
+      - PORT=3000
+      - TURBO_TELEMETRY_DISABLED=1
+      - PNPM_VERSION=8.6.0
+    depends_on:
+      - postgres
+    working_dir: /app/apps/backend
+    restart: unless-stopped
+
+  postgres:
+    image: postgres:16-alpine
+    ports:
+      - "12312:5432"
+    environment:
+      - POSTGRES_DB=chat_app
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    restart: unless-stopped
+  
+volumes:
+  postgres_data:
+  backend_node_modules:
+  turbo_cache:
+  pnpm_store:
+  migration_cache: 
