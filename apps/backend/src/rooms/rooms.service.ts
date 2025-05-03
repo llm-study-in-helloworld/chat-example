@@ -2,9 +2,10 @@ import { RoomRole } from '@chat-example/types';
 import { EntityManager, QueryOrder } from '@mikro-orm/core';
 import { InjectRepository } from '@mikro-orm/nestjs';
 import { EntityRepository } from '@mikro-orm/postgresql';
-import { Injectable } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { RoomResponseDto, RoomUserResponseDto } from '../dto';
 import { Room, RoomUser, User } from '../entities';
+import { UpdateRoomRequestDto } from './dto';
 /**
  * 채팅방 관련 비즈니스 로직을 처리하는 서비스
  */
@@ -38,7 +39,8 @@ export class RoomsService {
     name: string | undefined,
     isDirect: boolean,
     userIds: number[],
-    ownerId: number
+    ownerId: number,
+    isPrivate: boolean = false
   ): Promise<RoomResponseDto[]> {
     // 트랜잭션 시작
     const result = await this.em.transactional(async (em) => {
@@ -49,7 +51,7 @@ export class RoomsService {
       const room = new Room();
       room.name = name || '';
       room.isDirect = isDirect;
-      room.isPrivate = false;
+      room.isPrivate = isPrivate;
       room.isActive = true;
       room.ownerId = ownerId;
       
@@ -80,7 +82,7 @@ export class RoomsService {
    */
   async getRoomById(roomId: number): Promise<RoomResponseDto | null> {
     const room = await this.roomRepository.findOne(
-      { id: roomId }, 
+      { id: roomId, isActive: true }, 
       { populate: ['roomUsers.user'] }
     );
 
@@ -153,13 +155,15 @@ export class RoomsService {
    */
   async canUserJoinRoom(userId: number, roomId: number): Promise<boolean> {
     const room = await this.roomRepository.findOne({ id: roomId }, { fields: ['ownerId', 'isPrivate', 'isDirect', 'isActive'] });
-    const roomUser = await this.roomUserRepository.count({ room: { id: roomId }, user: { id: userId } });
-
-    if(!room) {
+    if (!room) {
       return false;
     }
 
-    if (!roomUser) {
+    // Check if user is already in the room
+    const isUserInRoom = await this.isUserInRoom(userId, roomId);
+    
+    // If user is not in the room, they can only join public, non-direct rooms
+    if (!isUserInRoom) {
       return !room.isPrivate && !room.isDirect && room.isActive;
     }
 
@@ -247,5 +251,69 @@ export class RoomsService {
     }
     
     return counts;
+  }
+
+  /**
+   * 채팅방 정보 업데이트
+   */
+  async updateRoom(roomId: number, updateRoomDto: UpdateRoomRequestDto): Promise<RoomResponseDto | null> {
+    const room = await this.roomRepository.findOne({ id: roomId });
+    
+    if (!room) {
+      throw new NotFoundException(`Room with ID ${roomId} not found`);
+    }
+    
+    // Update room properties
+    if (updateRoomDto.name !== undefined) {
+      room.name = updateRoomDto.name;
+    }
+    
+    if (updateRoomDto.description !== undefined) {
+      room.description = updateRoomDto.description;
+    }
+    
+    if (updateRoomDto.imageUrl !== undefined) {
+      room.imageUrl = updateRoomDto.imageUrl;
+    }
+    
+    if (updateRoomDto.isPrivate !== undefined) {
+      room.isPrivate = updateRoomDto.isPrivate;
+    }
+    
+    if (updateRoomDto.isActive !== undefined) {
+      room.isActive = updateRoomDto.isActive;
+    }
+    
+    await this.em.flush();
+    
+    // Get updated room with proper DTO transformation
+    const updatedRoom = await this.roomRepository.findOne(
+      { id: roomId }, 
+      { populate: ['roomUsers.user'] }
+    );
+    
+    if (!updatedRoom) {
+      return null;
+    }
+    
+    const roomDtos = await this.formatRoomResponse([updatedRoom], updatedRoom.ownerId);
+    return roomDtos[0];
+  }
+
+  /**
+   * 채팅방 삭제
+   */
+  async deleteRoom(roomId: number): Promise<boolean> {
+    const room = await this.roomRepository.findOne({ id: roomId });
+    
+    if (!room) {
+      throw new NotFoundException(`Room with ID ${roomId} not found`);
+    }
+    
+    // Soft delete - mark as inactive
+    room.isActive = false;
+    await this.em.flush();
+    
+    return true;
   }
 } 

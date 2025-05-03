@@ -33,8 +33,8 @@ export class RoomResponseDto implements RoomResponse {
     dto.updatedAt = room.updatedAt.toISOString();
     
     // Add additional properties
-    dto.isDirect = room.isDirect;
-    dto.isActive = room.isActive;
+    dto.isDirect = !!room.isDirect;
+    dto.isActive = room.isActive !== undefined ? room.isActive : true;
 
     return dto;
   }
