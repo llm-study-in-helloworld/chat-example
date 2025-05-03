@@ -1,7 +1,7 @@
 import { IsNotEmpty, IsNumber, IsString } from 'class-validator';
 
 /**
- * DTO for adding a reaction to a message
+ * DTO for message reactions
  */
 export class ReactionDto {
   @IsNumber()

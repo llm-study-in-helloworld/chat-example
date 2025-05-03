@@ -10,11 +10,15 @@ import {
   Query,
   ParseIntPipe,
   NotFoundException,
+  BadRequestException,
 } from '@nestjs/common';
 import { MessagesService } from './messages.service';
 import { JwtAuthGuard, CurrentUser } from '../auth';
 import { User } from '../entities';
 import { MessageResponseDto } from '../entities/dto/message.dto';
+import { CreateMessageDto } from './dto/create-message.dto';
+import { UpdateMessageDto } from './dto/update-message.dto';
+import { ReactionDto } from './dto/reaction.dto';
 
 @Controller('messages')
 export class MessagesController {
@@ -56,7 +60,7 @@ export class MessagesController {
   @Post()
   async create(
     @CurrentUser() user: User,
-    @Body() createMessageDto: { content: string; roomId: number; parentId?: number },
+    @Body() createMessageDto: CreateMessageDto,
   ): Promise<MessageResponseDto> {
     return this.messagesService.createMessage({
       ...createMessageDto,
@@ -69,14 +73,8 @@ export class MessagesController {
   async createReply(
     @CurrentUser() user: User,
     @Param('id', ParseIntPipe) parentId: number,
-    @Body() createReplyDto: { content: string; roomId: number },
+    @Body() createReplyDto: CreateMessageDto,
   ): Promise<MessageResponseDto> {
-    // Check if parent message exists
-    const parentMessage = await this.messagesService.getMessage(parentId);
-    if (!parentMessage) {
-      throw new NotFoundException('Parent message not found');
-    }
-    
     // Create the reply message
     return this.messagesService.createMessage({
       content: createReplyDto.content,
@@ -91,7 +89,7 @@ export class MessagesController {
   async update(
     @CurrentUser() user: User,
     @Param('id', ParseIntPipe) id: number,
-    @Body() updateMessageDto: { content: string },
+    @Body() updateMessageDto: UpdateMessageDto,
   ): Promise<MessageResponseDto> {
     return this.messagesService.updateMessage(id, user.id, updateMessageDto);
   }
@@ -107,7 +105,7 @@ export class MessagesController {
   @Post('reaction')
   async toggleReaction(
     @CurrentUser() user: User,
-    @Body() reactionDto: { messageId: number; emoji: string },
+    @Body() reactionDto: ReactionDto,
   ) {
     const reaction = await this.messagesService.toggleReaction(
       reactionDto.messageId,

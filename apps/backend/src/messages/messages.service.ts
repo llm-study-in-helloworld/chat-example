@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException, ForbiddenException } from '@nestjs/common';
+import { Injectable, NotFoundException, ForbiddenException, BadRequestException } from '@nestjs/common';
 import { EntityManager, QueryOrder, FilterQuery } from '@mikro-orm/core';
 import { InjectRepository } from '@mikro-orm/nestjs';
 import { EntityRepository } from '@mikro-orm/postgresql';
@@ -82,6 +82,19 @@ export class MessagesService {
    * 새 메시지 생성
    */
   async createMessage(data: CreateMessageDto): Promise<MessageResponseDto> {
+    // Check if this is a reply to a reply
+    if (data.parentId) {
+      const parentMessage = await this.messageRepository.findOne({ id: data.parentId });
+      if (!parentMessage) {
+        throw new NotFoundException('Parent message not found');
+      }
+      
+      // Check if parent message is already a reply
+      if (parentMessage.parent) {
+        throw new BadRequestException('Cannot reply to a reply message. Please reply to the original message instead.');
+      }
+    }
+    
     const message = await this.em.transactional(async (em) => {
       const sender = await em.findOneOrFail(User, { id: data.senderId });
       
