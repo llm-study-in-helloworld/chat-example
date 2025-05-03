@@ -1,4 +1,3 @@
-import { UserResponseDto } from '@app/dto';
 import {
   Body,
   Controller,
@@ -9,6 +8,7 @@ import {
   UseGuards,
 } from '@nestjs/common';
 import { CurrentUser, JwtAuthGuard } from '../auth';
+import { UserResponseDto } from '../dto';
 import { User } from '../entities';
 import { UpdateUserDto } from './dto';
 import { ChangePasswordDto } from './dto/change-password.dto';
