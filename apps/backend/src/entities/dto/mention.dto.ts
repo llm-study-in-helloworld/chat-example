@@ -1,6 +1,5 @@
 import { Mention } from '../Mention.entity';
 import { UserResponseDto } from './user.dto';
-import { MessageResponseDto } from './message.dto';
 
 /**
  * Mention 엔티티의 기본 속성을 정의하는 인터페이스

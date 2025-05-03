@@ -1,18 +1,18 @@
-import { 
-  Body, 
-  Controller, 
-  Get, 
-  UseGuards,
-  Patch,
+import {
+  Body,
+  Controller,
+  Get,
   HttpCode,
   HttpStatus,
+  Patch,
+  UseGuards,
 } from '@nestjs/common';
-import { UsersService } from './users.service';
-import { UpdateUserDto } from './dto';
-import { ChangePasswordDto } from './dto/change-password.dto';
-import { JwtAuthGuard, CurrentUser } from '../auth';
+import { CurrentUser, JwtAuthGuard } from '../auth';
 import { User } from '../entities';
 import { UserResponseDto } from '../entities/dto/user.dto';
+import { UpdateUserDto } from './dto';
+import { ChangePasswordDto } from './dto/change-password.dto';
+import { UsersService } from './users.service';
 
 @Controller('users')
 export class UsersController {

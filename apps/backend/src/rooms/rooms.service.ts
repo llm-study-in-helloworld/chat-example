@@ -1,8 +1,8 @@
-import { Injectable } from '@nestjs/common';
-import { EntityManager, QueryOrder, Reference } from '@mikro-orm/core';
+import { EntityManager, QueryOrder } from '@mikro-orm/core';
 import { InjectRepository } from '@mikro-orm/nestjs';
 import { EntityRepository } from '@mikro-orm/postgresql';
-import { Room, RoomUser, User, RoomResponseDto } from '../entities';
+import { Injectable } from '@nestjs/common';
+import { Room, RoomResponseDto, RoomUser, User } from '../entities';
 
 /**
  * 채팅방 관련 비즈니스 로직을 처리하는 서비스

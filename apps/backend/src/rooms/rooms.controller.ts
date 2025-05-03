@@ -1,19 +1,19 @@
 import {
-  Controller,
-  Get,
-  Post,
   Body,
-  Param,
+  Controller,
   Delete,
-  UseGuards,
-  ParseIntPipe,
+  ForbiddenException,
+  Get,
   NotFoundException,
-  ForbiddenException
+  Param,
+  ParseIntPipe,
+  Post,
+  UseGuards
 } from '@nestjs/common';
-import { RoomsService } from './rooms.service';
-import { CreateRoomDto, AddUserDto } from './dto';
-import { JwtAuthGuard, CurrentUser } from '../auth';
+import { CurrentUser, JwtAuthGuard } from '../auth';
 import { User } from '../entities';
+import { AddUserDto, CreateRoomDto } from './dto';
+import { RoomsService } from './rooms.service';
 
 @Controller('rooms')
 export class RoomsController {

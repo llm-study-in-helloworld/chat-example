@@ -1,12 +1,12 @@
-import { Module } from '@nestjs/common';
 import { MikroOrmModule } from '@mikro-orm/nestjs';
+import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
-import { UsersModule } from '../src/users/users.module';
 import { AuthModule } from '../src/auth/auth.module';
-import { RoomsModule } from '../src/rooms/rooms.module';
-import { MessagesModule } from '../src/messages/messages.module';
+import { Mention, Message, MessageReaction, RefreshToken, Room, RoomUser, User } from '../src/entities';
 import { ChatGateway } from '../src/gateway/chat.gateway';
-import { User, Room, RoomUser, Message, MessageReaction, Mention, RefreshToken } from '../src/entities';
+import { MessagesModule } from '../src/messages/messages.module';
+import { RoomsModule } from '../src/rooms/rooms.module';
+import { UsersModule } from '../src/users/users.module';
 import testConfig from './mikro-orm.config.test';
 
 @Module({

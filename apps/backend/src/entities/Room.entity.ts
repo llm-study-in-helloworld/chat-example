@@ -1,13 +1,13 @@
-import { 
-  Entity,
-  Property, 
-  OneToMany, 
+import {
   Collection,
+  Entity,
+  OneToMany,
+  Property,
   Reference
 } from '@mikro-orm/core';
 import { CommonEntity } from './CommonEntity';
-import { RoomUser } from './RoomUser.entity';
 import { Message } from './Message.entity';
+import { RoomUser } from './RoomUser.entity';
 
 /**
  * 채팅방 정보를 저장하는 엔티티

@@ -1,16 +1,16 @@
+import { MikroOrmModule } from '@mikro-orm/nestjs';
 import { Module } from '@nestjs/common';
+import { ConfigModule, ConfigService } from '@nestjs/config';
 import { JwtModule } from '@nestjs/jwt';
 import { PassportModule } from '@nestjs/passport';
-import { AuthService } from './auth.service';
-import { JwtStrategy } from './strategies/jwt.strategy';
-import { AuthController } from './auth.controller';
+import { RefreshToken, User } from '../entities';
 import { UsersModule } from '../users/users.module';
-import { ConfigModule, ConfigService } from '@nestjs/config';
-import { MikroOrmModule } from '@mikro-orm/nestjs';
-import { User, RefreshToken } from '../entities';
-import { TokenBlacklistService } from './token-blacklist.service';
+import { AuthController } from './auth.controller';
+import { AuthService } from './auth.service';
 import { RefreshTokenService } from './refresh-token.service';
+import { JwtStrategy } from './strategies/jwt.strategy';
 import { RefreshTokenStrategy } from './strategies/refresh-token.strategy';
+import { TokenBlacklistService } from './token-blacklist.service';
 
 @Module({
   imports: [

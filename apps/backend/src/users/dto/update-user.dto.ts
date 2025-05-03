@@ -1,4 +1,4 @@
-import { IsNotEmpty, IsOptional, IsString, MinLength } from 'class-validator';
+import { IsNotEmpty, IsOptional, IsString } from 'class-validator';
 import { User } from '../../entities/User.entity';
 
 /**

@@ -1,17 +1,17 @@
-import { 
-  Entity,
-  ManyToOne, 
-  Property, 
-  OneToMany, 
+import {
   Collection,
+  Entity,
   Index,
+  ManyToOne,
+  OneToMany,
+  Property,
   Reference
 } from '@mikro-orm/core';
 import { CommonEntity } from './CommonEntity';
+import { Mention } from './Mention.entity';
+import { MessageReaction } from './MessageReaction.entity';
 import { Room } from './Room.entity';
 import { User } from './User.entity';
-import { MessageReaction } from './MessageReaction.entity';
-import { Mention } from './Mention.entity';
 
 /**
  * 채팅 메시지 정보를 저장하는 엔티티

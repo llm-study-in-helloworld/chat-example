@@ -1,12 +1,10 @@
-import { Test, TestingModule } from '@nestjs/testing';
-import { INestApplication, ValidationPipe } from '@nestjs/common';
-import request from 'supertest';
-import cookieParser from 'cookie-parser';
 import { EntityManager, MikroORM } from '@mikro-orm/core';
+import { INestApplication, ValidationPipe } from '@nestjs/common';
+import { Test, TestingModule } from '@nestjs/testing';
+import cookieParser from 'cookie-parser';
+import request from 'supertest';
 import { User } from '../../src/entities';
-import bcrypt from 'bcrypt';
 import { AppTestModule } from '../app-test.module';
-import testConfig from '../mikro-orm.config.test';
 import { TestUser, TestUserResponse } from '../types/test-user.type';
 
 describe('UsersController (e2e)', () => {

@@ -1,11 +1,11 @@
 import { Injectable, UnauthorizedException } from '@nestjs/common';
-import { PassportStrategy } from '@nestjs/passport';
-import { ExtractJwt, Strategy } from 'passport-jwt';
 import { ConfigService } from '@nestjs/config';
-import { UsersService } from '../../users/users.service';
+import { PassportStrategy } from '@nestjs/passport';
 import { Request } from 'express';
-import { TokenBlacklistService } from '../token-blacklist.service';
+import { Strategy } from 'passport-jwt';
+import { UsersService } from '../../users/users.service';
 import { extractJwtFromCookieOrAuthHeader } from '../helpers/extractor';
+import { TokenBlacklistService } from '../token-blacklist.service';
 
 interface JwtPayload {
   sub: number; // 사용자 ID

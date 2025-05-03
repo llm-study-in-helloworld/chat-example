@@ -1,15 +1,15 @@
-import { Test, TestingModule } from '@nestjs/testing';
-import { UsersService } from '../../src/users/users.service';
-import { MikroOrmModule } from '@mikro-orm/nestjs';
 import { EntityManager, MikroORM } from '@mikro-orm/core';
+import { MikroOrmModule } from '@mikro-orm/nestjs';
 import { EntityRepository } from '@mikro-orm/postgresql';
+import { ConflictException, UnauthorizedException } from '@nestjs/common';
+import { Test, TestingModule } from '@nestjs/testing';
+import bcrypt from 'bcrypt';
 import { User } from '../../src/entities';
 import { UserResponseDto } from '../../src/entities/dto/user.dto';
-import { ConflictException, NotFoundException, UnauthorizedException } from '@nestjs/common';
-import bcrypt from 'bcrypt';
+import { ChangePasswordDto } from '../../src/users/dto/change-password.dto';
 import { CreateUserDto } from '../../src/users/dto/create-user.dto';
 import { UpdateUserDto } from '../../src/users/dto/update-user.dto';
-import { ChangePasswordDto } from '../../src/users/dto/change-password.dto';
+import { UsersService } from '../../src/users/users.service';
 import testConfig from '../mikro-orm.config.test';
 
 describe('UsersService', () => {

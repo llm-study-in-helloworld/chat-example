@@ -1,15 +1,15 @@
-import { Controller, Post, Body, UnauthorizedException, Res, UseGuards, HttpCode, HttpStatus, Req, Delete, Get, createParamDecorator, ExecutionContext } from '@nestjs/common';
-import { AuthService } from './auth.service';
-import { Response, Request } from 'express';
-import { JwtAuthGuard } from './guards/jwt-auth.guard';
-import { RefreshTokenAuthGuard } from './guards/refresh-token-auth.guard';
+import { Body, Controller, Delete, HttpCode, HttpStatus, Post, Req, Res, UnauthorizedException, UseGuards } from '@nestjs/common';
+import { Request, Response } from 'express';
 import { User } from '../entities';
+import { UserResponseDto } from '../entities/dto/user.dto';
 import { CreateUserDto } from '../users/dto/create-user.dto';
 import { DeleteUserDto } from '../users/dto/delete-user.dto';
 import { UsersService } from '../users/users.service';
-import { UserResponseDto } from '../entities/dto/user.dto';
+import { AuthService } from './auth.service';
 import { RefreshToken } from './decorators/refresh-token.decorator';
 import { CurrentUser } from './decorators/user.decorator';
+import { JwtAuthGuard } from './guards/jwt-auth.guard';
+import { RefreshTokenAuthGuard } from './guards/refresh-token-auth.guard';
 
 @Controller('auth')
 export class AuthController {

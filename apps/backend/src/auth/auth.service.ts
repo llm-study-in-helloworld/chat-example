@@ -1,12 +1,11 @@
 import { Injectable, UnauthorizedException } from '@nestjs/common';
+import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
-import * as bcrypt from 'bcrypt';
+import { Request } from 'express';
 import { User } from '../entities';
 import { UsersService } from '../users/users.service';
-import { TokenBlacklistService } from './token-blacklist.service';
 import { RefreshTokenService } from './refresh-token.service';
-import { Request } from 'express';
-import { ConfigService } from '@nestjs/config';
+import { TokenBlacklistService } from './token-blacklist.service';
 
 @Injectable()
 export class AuthService {

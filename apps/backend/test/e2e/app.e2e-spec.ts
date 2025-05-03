@@ -1,11 +1,9 @@
-import { Test, TestingModule } from '@nestjs/testing';
+import { EntityManager, MikroORM } from '@mikro-orm/core';
 import { INestApplication, ValidationPipe } from '@nestjs/common';
-import request from 'supertest';
+import { Test, TestingModule } from '@nestjs/testing';
 import cookieParser from 'cookie-parser';
+import request from 'supertest';
 import { AppTestModule } from '../app-test.module';
-import { EntityManager } from '@mikro-orm/core';
-import { MikroORM } from '@mikro-orm/core';
-import testConfig from '../mikro-orm.config.test';
 
 describe('AppController (e2e)', () => {
   let app: INestApplication;

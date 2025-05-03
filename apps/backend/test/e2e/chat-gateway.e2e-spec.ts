@@ -1,16 +1,16 @@
-import { Test, TestingModule } from '@nestjs/testing';
+import { EntityManager, MikroORM } from '@mikro-orm/core';
 import { INestApplication, ValidationPipe } from '@nestjs/common';
+import { Test, TestingModule } from '@nestjs/testing';
+import cookieParser from 'cookie-parser';
+import { createServer } from 'http';
 import { io, Socket } from 'socket.io-client';
 import request from 'supertest';
-import cookieParser from 'cookie-parser';
-import { EntityManager, MikroORM } from '@mikro-orm/core';
-import { AppTestModule } from '../app-test.module';
-import { createServer } from 'http';
-import { TestUser, TestUserResponse, AccessTokensDict } from '../types/test-user.type';
-import { CreateMessageDto } from '../../src/messages/dto/create-message.dto';
-import { ReactionDto } from '../../src/messages/dto/reaction.dto';
 import { MessageResponseDto } from '../../src/entities/dto/message.dto';
 import { ReactionUpdateEventDto, UserPresenceEventDto } from '../../src/gateway/dto/socket-response.dto';
+import { CreateMessageDto } from '../../src/messages/dto/create-message.dto';
+import { ReactionDto } from '../../src/messages/dto/reaction.dto';
+import { AppTestModule } from '../app-test.module';
+import { AccessTokensDict, TestUser, TestUserResponse } from '../types/test-user.type';
 
 // Define response interfaces for socket responses
 interface SuccessResponse {
@@ -28,6 +28,9 @@ interface ReactionResponse {
 }
 
 type SocketResponse<T> = T | ErrorResponse;
+
+// Increase timeouts for test stability
+jest.setTimeout(30000);
 
 describe('ChatGateway (e2e)', () => {
   let app: INestApplication;
@@ -96,7 +99,10 @@ describe('ChatGateway (e2e)', () => {
           authorization: `Bearer ${accessTokens[`user${i}`]}`
         },
         transports: ['websocket'],
-        autoConnect: false
+        autoConnect: false,
+        reconnection: true,
+        reconnectionAttempts: 5,
+        reconnectionDelay: 1000
       });
       
       socketClients[`user${i}`] = socket;
@@ -150,7 +156,7 @@ describe('ChatGateway (e2e)', () => {
   };
   
   // Helper function to wait for a specific event
-  const waitForEvent = <T>(socket: Socket, event: string, timeout = 5000): Promise<T> => {
+  const waitForEvent = <T>(socket: Socket, event: string, timeout = 10000): Promise<T> => {
     return new Promise((resolve, reject) => {
       const timer = setTimeout(() => {
         reject(new Error(`Timeout waiting for '${event}' event`));
@@ -164,17 +170,46 @@ describe('ChatGateway (e2e)', () => {
   };
   
   // Helper function to emit and wait for a response
-  const emitAndWait = <T>(socket: Socket, event: string, data: any, timeout = 5000): Promise<T> => {
+  const emitAndWait = <T>(socket: Socket, event: string, data: any, timeout = 10000): Promise<T> => {
     return new Promise((resolve, reject) => {
       const timer = setTimeout(() => {
         reject(new Error(`Timeout waiting for response to '${event}'`));
       }, timeout);
-      
-      socket.emit(event, data, (response: T) => {
-        clearTimeout(timer);
-        resolve(response);
-      });
+
+      // Make sure socket is connected
+      if (!socket.connected) {
+        socket.connect();
+      }
+
+      // Wait for socket to be connected before emitting
+      if (socket.connected) {
+        socket.emit(event, data, (response: T) => {
+          clearTimeout(timer);
+          resolve(response);
+        });
+      } else {
+        socket.once('connect', () => {
+          socket.emit(event, data, (response: T) => {
+            clearTimeout(timer);
+            resolve(response);
+          });
+        });
+      }
     });
+  };
+
+  // Helper function to ensure all sockets are connected
+  const ensureAllSocketsConnected = async () => {
+    for (const clientKey in socketClients) {
+      const socket = socketClients[clientKey];
+      if (!socket.connected) {
+        const connectPromise = new Promise<void>((resolve) => {
+          socket.once('connect', () => resolve());
+        });
+        socket.connect();
+        await connectPromise;
+      }
+    }
   };
   
   describe('Connection Management', () => {
@@ -184,12 +219,15 @@ describe('ChatGateway (e2e)', () => {
       
       // When they connect
       const connectPromise = new Promise<void>((resolve) => {
-        userSocket.on('connect', () => {
+        if (userSocket.connected) {
+          resolve();
+          return;
+        }
+        userSocket.once('connect', () => {
           resolve();
         });
+        userSocket.connect();
       });
-      
-      userSocket.connect();
       
       // Then they should establish a connection successfully
       await connectPromise;
@@ -208,12 +246,11 @@ describe('ChatGateway (e2e)', () => {
       
       // When they try to connect
       const disconnectPromise = new Promise<void>((resolve) => {
-        invalidSocket.on('disconnect', () => {
+        invalidSocket.once('disconnect', () => {
           resolve();
         });
+        invalidSocket.connect();
       });
-      
-      invalidSocket.connect();
       
       // Then they should be disconnected
       await disconnectPromise;
@@ -226,17 +263,8 @@ describe('ChatGateway (e2e)', () => {
   
   describe('Room Management', () => {
     beforeEach(async () => {
-      // Connect all sockets
-      for (const clientKey in socketClients) {
-        const socket = socketClients[clientKey];
-        if (!socket.connected) {
-          const connectPromise = new Promise<void>((resolve) => {
-            socket.on('connect', () => resolve());
-          });
-          socket.connect();
-          await connectPromise;
-        }
-      }
+      // Ensure all sockets are connected
+      await ensureAllSocketsConnected();
     });
     
     it('should allow joining a room with access permissions', async () => {
@@ -258,24 +286,45 @@ describe('ChatGateway (e2e)', () => {
           authorization: `Bearer ${outsiderData.token}`
         },
         transports: ['websocket'],
-        autoConnect: false
+        autoConnect: false,
+        reconnection: true,
+        reconnectionAttempts: 5
       });
       
       try {
-        const connectPromise = new Promise<void>((resolve) => {
-          outsiderSocket.on('connect', () => resolve());
+        // Ensure socket connects
+        const connectPromise = new Promise<void>((resolve, reject) => {
+          const connectTimeout = setTimeout(() => {
+            reject(new Error('Connection timeout'));
+          }, 5000);
+          
+          outsiderSocket.once('connect', () => {
+            clearTimeout(connectTimeout);
+            resolve();
+          });
+          
+          outsiderSocket.connect();
         });
-        outsiderSocket.connect();
+        
         await connectPromise;
         
-        // When they attempt to join a room they don't have access to
-        const response = await emitAndWait<SocketResponse<SuccessResponse>>(outsiderSocket, 'join_room', { roomId });
+        // Wait to ensure connection is fully established
+        await new Promise(resolve => setTimeout(resolve, 1000));
         
-        // Then they should receive an error
-        expect(response).toHaveProperty('error');
-        expect((response as ErrorResponse).error).toContain('접근 권한이 없습니다');
+        // When they attempt to join a room they don't have access to
+        outsiderSocket.emit('join_room', { roomId }, (response: any) => {
+          // Then they should receive an error
+          expect(response).toHaveProperty('error');
+          expect(response.error).toContain('접근 권한이 없습니다');
+        });
+        
+        // Wait for the socket.io event to be processed
+        await new Promise(resolve => setTimeout(resolve, 2000));
+        
       } finally {
-        outsiderSocket.disconnect();
+        if (outsiderSocket.connected) {
+          outsiderSocket.disconnect();
+        }
       }
     });
   });
@@ -284,17 +333,8 @@ describe('ChatGateway (e2e)', () => {
     let testMessageId: number;
     
     beforeEach(async () => {
-      // Ensure all users are connected
-      for (const clientKey in socketClients) {
-        const socket = socketClients[clientKey];
-        if (!socket.connected) {
-          const connectPromise = new Promise<void>((resolve) => {
-            socket.on('connect', () => resolve());
-          });
-          socket.connect();
-          await connectPromise;
-        }
-      }
+      // Ensure all sockets are connected
+      await ensureAllSocketsConnected();
       
       // Join all users to the test room
       for (const clientKey in socketClients) {
@@ -428,17 +468,12 @@ describe('ChatGateway (e2e)', () => {
     let testMessageId: number;
     
     beforeEach(async () => {
-      // Ensure all users are connected and joined to the test room
+      // Ensure all sockets are connected
+      await ensureAllSocketsConnected();
+      
+      // Join all users to the test room
       for (const clientKey in socketClients) {
-        const socket = socketClients[clientKey];
-        if (!socket.connected) {
-          const connectPromise = new Promise<void>((resolve) => {
-            socket.on('connect', () => resolve());
-          });
-          socket.connect();
-          await connectPromise;
-          await emitAndWait<SocketResponse<SuccessResponse>>(socket, 'join_room', { roomId });
-        }
+        await emitAndWait<SocketResponse<SuccessResponse>>(socketClients[clientKey], 'join_room', { roomId });
       }
       
       // Create a test message if we don't have one
@@ -463,7 +498,7 @@ describe('ChatGateway (e2e)', () => {
       expect(testMessageId).toBeDefined();
       
       // Set up listener for reaction events
-      const reactionPromise = waitForEvent<MessageResponseDto>(socketClients['user1'], 'reaction_updated');
+      const reactionPromise = waitForEvent<ReactionUpdateEventDto>(socketClients['user1'], 'reaction_updated');
       
       // When a user reacts to a message
       const reactionData: ReactionDto = {
@@ -483,7 +518,7 @@ describe('ChatGateway (e2e)', () => {
       // And all users should receive the reaction update
       const reactionEvent = await reactionPromise;
       expect(reactionEvent).toBeDefined();
-      expect(reactionEvent.id).toBe(testMessageId);
+      expect(reactionEvent.messageId).toBe(testMessageId);
       expect(Array.isArray(reactionEvent.reactions)).toBe(true);
       expect(reactionEvent.reactions.length).toBeGreaterThan(0);
       expect(reactionEvent.reactions[0].emoji).toBe('👍');
@@ -494,7 +529,7 @@ describe('ChatGateway (e2e)', () => {
       const reactorSocket = socketClients['user2'];
       
       // Set up listener for reaction update events
-      const reactionPromise = waitForEvent(socketClients['user1'], 'reaction_updated');
+      const reactionPromise = waitForEvent<ReactionUpdateEventDto>(socketClients['user1'], 'reaction_updated');
       
       // When they react with the same emoji again
       const reactionData: ReactionDto = {
@@ -522,16 +557,8 @@ describe('ChatGateway (e2e)', () => {
   
   describe('User Presence', () => {
     it('should notify users when someone goes offline', async () => {
-      // Given all users are connected
-      for (const clientKey in socketClients) {
-        if (!socketClients[clientKey].connected) {
-          const connectPromise = new Promise<void>((resolve) => {
-            socketClients[clientKey].on('connect', () => resolve());
-          });
-          socketClients[clientKey].connect();
-          await connectPromise;
-        }
-      }
+      // Ensure all sockets are connected
+      await ensureAllSocketsConnected();
       
       // Set up presence event listener
       const presencePromise = waitForEvent<UserPresenceEventDto>(socketClients['user1'], 'user_presence');

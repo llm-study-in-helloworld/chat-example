@@ -1,24 +1,23 @@
 import {
-  Controller,
-  Get,
-  Post,
   Body,
-  Param,
+  Controller,
   Delete,
-  Put,
-  UseGuards,
-  Query,
-  ParseIntPipe,
+  Get,
   NotFoundException,
-  BadRequestException,
+  Param,
+  ParseIntPipe,
+  Post,
+  Put,
+  Query,
+  UseGuards
 } from '@nestjs/common';
-import { MessagesService } from './messages.service';
-import { JwtAuthGuard, CurrentUser } from '../auth';
+import { CurrentUser, JwtAuthGuard } from '../auth';
 import { User } from '../entities';
 import { MessageResponseDto } from '../entities/dto/message.dto';
 import { CreateMessageDto } from './dto/create-message.dto';
-import { UpdateMessageDto } from './dto/update-message.dto';
 import { ReactionDto } from './dto/reaction.dto';
+import { UpdateMessageDto } from './dto/update-message.dto';
+import { MessagesService } from './messages.service';
 
 @Controller('messages')
 export class MessagesController {

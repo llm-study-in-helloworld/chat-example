@@ -1,12 +1,12 @@
-import { 
-  Entity, 
-  ManyToOne, 
-  Property,
-  Index 
+import {
+  Entity,
+  Index,
+  ManyToOne,
+  Property
 } from '@mikro-orm/core';
+import { CommonEntity } from './CommonEntity';
 import { Room } from './Room.entity';
 import { User } from './User.entity';
-import { CommonEntity } from './CommonEntity';
 
 /**
  * 채팅방과 사용자 간의 다대다 관계를 저장하는 엔티티

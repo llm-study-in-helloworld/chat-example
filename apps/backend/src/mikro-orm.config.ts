@@ -1,11 +1,11 @@
 import { Options } from '@mikro-orm/core';
 import { PostgreSqlDriver } from '@mikro-orm/postgresql';
-import { User } from './entities/User.entity';
-import { Room } from './entities/Room.entity';
-import { RoomUser } from './entities/RoomUser.entity';
+import { Mention } from './entities/Mention.entity';
 import { Message } from './entities/Message.entity';
 import { MessageReaction } from './entities/MessageReaction.entity';
-import { Mention } from './entities/Mention.entity';
+import { Room } from './entities/Room.entity';
+import { RoomUser } from './entities/RoomUser.entity';
+import { User } from './entities/User.entity';
 
 const config: Options<PostgreSqlDriver> = {
   driver: PostgreSqlDriver,

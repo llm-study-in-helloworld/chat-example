@@ -1,6 +1,6 @@
-import { Module } from '@nestjs/common';
 import { MikroOrmModule } from '@mikro-orm/nestjs';
-import { Message, MessageReaction, Mention, Room, User } from '../entities';
+import { Module } from '@nestjs/common';
+import { Mention, Message, MessageReaction, Room, User } from '../entities';
 import { MessagesController } from './messages.controller';
 import { MessagesService } from './messages.service';
 

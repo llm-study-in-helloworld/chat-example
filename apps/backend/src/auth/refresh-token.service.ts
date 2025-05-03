@@ -1,8 +1,8 @@
-import { Injectable, UnauthorizedException } from '@nestjs/common';
-import { InjectRepository } from '@mikro-orm/nestjs';
 import { EntityManager, EntityRepository } from '@mikro-orm/core';
-import { RefreshToken, User } from '../entities';
+import { InjectRepository } from '@mikro-orm/nestjs';
+import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { Request } from 'express';
+import { RefreshToken, User } from '../entities';
 
 @Injectable()
 export class RefreshTokenService {

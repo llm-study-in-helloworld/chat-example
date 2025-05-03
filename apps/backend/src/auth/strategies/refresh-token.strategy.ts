@@ -1,10 +1,10 @@
 import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { PassportStrategy } from '@nestjs/passport';
-import { Strategy } from 'passport-custom';
 import { Request } from 'express';
-import { RefreshTokenService } from '../refresh-token.service';
+import { Strategy } from 'passport-custom';
 import { User } from '../../entities';
 import { extractRefreshTokenFromCookieOrHeader } from '../helpers/extractor';
+import { RefreshTokenService } from '../refresh-token.service';
 
 @Injectable()
 export class RefreshTokenStrategy extends PassportStrategy(
@@ -48,6 +48,7 @@ export class RefreshTokenStrategy extends PassportStrategy(
     
     // @ts-ignore - Add the token to the request for use in the controller
     req.refreshToken = refreshToken;
+    req.user = user;
     return user;
   }
 } 

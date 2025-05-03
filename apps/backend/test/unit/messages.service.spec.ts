@@ -1,18 +1,17 @@
-import { Test, TestingModule } from '@nestjs/testing';
-import { MessagesService } from '../../src/messages/messages.service';
+import { EntityManager, MikroORM } from '@mikro-orm/core';
 import { MikroOrmModule } from '@mikro-orm/nestjs';
-import { EntityManager, MikroORM, QueryOrder } from '@mikro-orm/core';
 import { EntityRepository } from '@mikro-orm/postgresql';
-import bcrypt from 'bcrypt';
-import { 
-  Message, 
-  User, 
-  Room, 
-  Mention, 
-  MessageReaction 
-} from '../../src/entities';
-import { MessageResponseDto } from '../../src/entities/dto/message.dto';
 import { ForbiddenException, NotFoundException } from '@nestjs/common';
+import { Test, TestingModule } from '@nestjs/testing';
+import bcrypt from 'bcrypt';
+import {
+  Mention,
+  Message,
+  MessageReaction,
+  Room,
+  User
+} from '../../src/entities';
+import { MessagesService } from '../../src/messages/messages.service';
 import testConfig from '../mikro-orm.config.test';
 
 describe('MessagesService', () => {

@@ -1,7 +1,7 @@
-import { Entity, PrimaryKey, Property, ManyToOne, Index, BaseEntity } from '@mikro-orm/core';
+import { Entity, Index, ManyToOne, Property } from '@mikro-orm/core';
 import { v4 as uuidv4 } from 'uuid';
-import { User } from './User.entity';
 import { CommonEntity } from './CommonEntity';
+import { User } from './User.entity';
 
 @Entity()
 export class RefreshToken extends CommonEntity {

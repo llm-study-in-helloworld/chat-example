@@ -1,15 +1,15 @@
-import { 
-  Entity, 
-  Property, 
-  OneToMany, 
+import {
   Collection,
+  Entity,
   Index,
+  OneToMany,
+  Property,
   Reference
 } from '@mikro-orm/core';
+import * as bcrypt from 'bcrypt';
 import { CommonEntity } from './CommonEntity';
 import { Message } from './Message.entity';
 import { RoomUser } from './RoomUser.entity';
-import * as bcrypt from 'bcrypt';
 
 /**
  * 채팅 애플리케이션의 사용자 엔티티

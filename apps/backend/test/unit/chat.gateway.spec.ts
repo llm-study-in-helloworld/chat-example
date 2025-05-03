@@ -1,14 +1,13 @@
 import { Test, TestingModule } from '@nestjs/testing';
-import { Socket, Server } from 'socket.io';
+import { Server, Socket } from 'socket.io';
 import { AuthService } from '../../src/auth';
-import { User, MessageResponseDto, Room, MessageReaction, UserResponseDto } from '../../src/entities';
+import { MessageReaction, MessageResponseDto, Room, User, UserResponseDto } from '../../src/entities';
+import { MessageReactionResponseDto } from '../../src/entities/dto/message-reaction.dto';
 import { ChatGateway } from '../../src/gateway/chat.gateway';
 import { CreateMessageDto } from '../../src/messages/dto/create-message.dto';
-import { UpdateMessageDto } from '../../src/messages/dto/update-message.dto';
 import { ReactionDto } from '../../src/messages/dto/reaction.dto';
 import { MessagesService } from '../../src/messages/messages.service';
 import { RoomsService } from '../../src/rooms/rooms.service';
-import { MessageReactionResponseDto } from '../../src/entities/dto/message-reaction.dto';
 
 describe('ChatGateway', () => {
   let gateway: ChatGateway;

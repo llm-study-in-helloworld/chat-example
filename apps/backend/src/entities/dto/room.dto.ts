@@ -1,6 +1,6 @@
 import { Room } from '../Room.entity';
-import { UserResponseDto } from './user.dto';
 import { MessageResponseDto } from './message.dto';
+import { UserResponseDto } from './user.dto';
 
 /**
  * Room 엔티티의 기본 속성을 정의하는 인터페이스

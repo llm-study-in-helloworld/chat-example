@@ -1,7 +1,7 @@
-import { 
+import {
   Entity,
-  ManyToOne,
-  Index 
+  Index,
+  ManyToOne
 } from '@mikro-orm/core';
 import { CommonEntity } from './CommonEntity';
 import { Message } from './Message.entity';

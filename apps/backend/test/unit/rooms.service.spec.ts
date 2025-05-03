@@ -1,11 +1,10 @@
-import { Test, TestingModule } from '@nestjs/testing';
-import { RoomsService } from '../../src/rooms/rooms.service';
-import { MikroOrmModule } from '@mikro-orm/nestjs';
 import { EntityManager, MikroORM } from '@mikro-orm/core';
+import { MikroOrmModule } from '@mikro-orm/nestjs';
 import { EntityRepository } from '@mikro-orm/postgresql';
+import { Test, TestingModule } from '@nestjs/testing';
 import bcrypt from 'bcrypt';
 import { Room, RoomUser, User } from '../../src/entities';
-import { RoomResponseDto } from '../../src/entities/dto/room.dto';
+import { RoomsService } from '../../src/rooms/rooms.service';
 import testConfig from '../mikro-orm.config.test';
 
 describe('RoomsService', () => {
