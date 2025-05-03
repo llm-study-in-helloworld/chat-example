@@ -1,3 +1,4 @@
+import { RoomRole } from '@chat-example/types';
 import { EntityManager, MikroORM } from '@mikro-orm/core';
 import { MikroOrmModule } from '@mikro-orm/nestjs';
 import { EntityRepository } from '@mikro-orm/postgresql';
@@ -66,7 +67,10 @@ describe('RoomsService', () => {
     // Create a test room
     testRoom = new Room();
     testRoom.name = 'Test Room';
-    testRoom.isGroup = true;
+    testRoom.isDirect = false;
+    testRoom.isPrivate = false;
+    testRoom.isActive = true;
+    testRoom.ownerId = testUser1.id;
     await em.persistAndFlush(testRoom);
 
     // Create room-user relationships
@@ -75,12 +79,14 @@ describe('RoomsService', () => {
     testRoomUser1.user = testUser1;
     testRoomUser1.joinedAt = new Date();
     testRoomUser1.lastSeenAt = new Date();
+    testRoomUser1.role = RoomRole.OWNER;
 
     testRoomUser2 = new RoomUser();
     testRoomUser2.room = testRoom;
     testRoomUser2.user = testUser2;
     testRoomUser2.joinedAt = new Date();
     testRoomUser2.lastSeenAt = new Date();
+    testRoomUser2.role = RoomRole.MEMBER;
 
     await em.persistAndFlush([testRoomUser1, testRoomUser2]);
 
@@ -132,19 +138,22 @@ describe('RoomsService', () => {
     it('should create a new room with users', async () => {
       // Act
       const roomName = 'New Test Room';
-      const isGroup = true;
+      const isDirect = false;
       const userIds = [testUser1.id, testUser2.id];
       
-      const newRoom = await service.createRoom(roomName, isGroup, userIds);
+      const result = await service.createRoom(roomName, isDirect, userIds, testUser1.id);
 
       // Assert
-      expect(newRoom).toBeDefined();
-      expect(newRoom.id).toBeDefined();
-      expect(newRoom.name).toBe(roomName);
-      expect(newRoom.isGroup).toBe(isGroup);
+      expect(result).toBeDefined();
+      expect(Array.isArray(result)).toBe(true);
+      expect(result.length).toBe(1);
+      expect(result[0].id).toBeDefined();
+      expect(result[0].name).toBe(roomName);
+      expect(result[0].isDirect).toBe(isDirect);
 
       // Verify room users were created
-      const roomUsers = await roomUserRepository.find({ room: { id: newRoom.id } }, { populate: ['user'] });
+      const roomId = result[0].id;
+      const roomUsers = await roomUserRepository.find({ room: { id: roomId } }, { populate: ['user'] });
       expect(roomUsers.length).toBe(2);
       
       const roomUserIds = roomUsers.map(ru => ru.user.id);
@@ -154,20 +163,29 @@ describe('RoomsService', () => {
 
     it('should create a direct message room without name', async () => {
       // Act
-      const isGroup = false;
+      const isDirect = true;
       const userIds = [testUser1.id, testUser2.id];
       
-      const newRoom = await service.createRoom(undefined, isGroup, userIds);
+      const result = await service.createRoom(undefined, isDirect, userIds, testUser1.id);
 
       // Assert
-      expect(newRoom).toBeDefined();
-      expect(newRoom.id).toBeDefined();
-      expect(newRoom.name).toBeUndefined();
-      expect(newRoom.isGroup).toBe(false);
+      expect(result).toBeDefined();
+      expect(Array.isArray(result)).toBe(true);
+      expect(result.length).toBe(1);
+      expect(result[0].id).toBeDefined();
+      expect(result[0].name).toBe('');
+      expect(result[0].isDirect).toBe(true);
 
       // Verify room users were created
-      const roomUsers = await roomUserRepository.find({ room: { id: newRoom.id } });
+      const roomId = result[0].id;
+      const roomUsers = await roomUserRepository.find({ room: { id: roomId } });
       expect(roomUsers.length).toBe(2);
+    });
+
+    it('should throw error if no users provided', async () => {
+      // Act & Assert
+      await expect(service.createRoom('Empty Room', false, [], testUser1.id))
+        .rejects.toThrow('At least one user is required to create a room');
     });
   });
 
@@ -201,7 +219,7 @@ describe('RoomsService', () => {
       expect(Array.isArray(users)).toBe(true);
       expect(users.length).toBe(2);
       
-      const userIds = users.map(u => u.id);
+      const userIds = users.map(u => u.userId);
       expect(userIds).toContain(testUser1.id);
       expect(userIds).toContain(testUser2.id);
     });
@@ -278,7 +296,7 @@ describe('RoomsService', () => {
   });
 
   describe('canUserJoinRoom', () => {
-    it('should return true if user can join room', async () => {
+    it('should return true if user is already in the room', async () => {
       // Act
       const result = await service.canUserJoinRoom(testUser1.id, testRoom.id);
 
@@ -286,17 +304,60 @@ describe('RoomsService', () => {
       expect(result).toBe(true);
     });
     
-    it('should return false if user cannot join room', async () => {
+    it('should return false if room does not exist', async () => {
+      // Act
+      const result = await service.canUserJoinRoom(testUser1.id, 999);
+
+      // Assert
+      expect(result).toBe(false);
+    });
+    
+    it('should return false if user is not in a private room', async () => {
       // Arrange
       const newUser = new User();
       newUser.email = 'cantjoin@example.com';
       newUser.nickname = 'CantJoin';
       newUser.passwordHash = await bcrypt.hash('password', 10);
       await em.persistAndFlush(newUser);
+      
+      const privateRoom = new Room();
+      privateRoom.name = 'Private Room';
+      privateRoom.isDirect = false;
+      privateRoom.isPrivate = true;
+      privateRoom.isActive = true;
+      privateRoom.ownerId = testUser1.id;
+      await em.persistAndFlush(privateRoom);
+      
       em.clear();
 
       // Act
-      const result = await service.canUserJoinRoom(newUser.id, testRoom.id);
+      const result = await service.canUserJoinRoom(newUser.id, privateRoom.id);
+
+      // Assert
+      expect(result).toBe(false);
+    });
+  });
+
+  describe('isUserInRoom', () => {
+    it('should return true if user is in the room', async () => {
+      // Act
+      const result = await service.isUserInRoom(testUser1.id, testRoom.id);
+
+      // Assert
+      expect(result).toBe(true);
+    });
+    
+    it('should return false if user is not in the room', async () => {
+      // Arrange
+      const newUser = new User();
+      newUser.email = 'notinroom@example.com';
+      newUser.nickname = 'NotInRoom';
+      newUser.passwordHash = await bcrypt.hash('password', 10);
+      await em.persistAndFlush(newUser);
+      em.clear();
+
+      // Act
+      const result = await service.isUserInRoom(newUser.id, testRoom.id);
 
       // Assert
       expect(result).toBe(false);
@@ -337,33 +398,6 @@ describe('RoomsService', () => {
       await service.updateLastSeen(newUser.id, testRoom.id);
       
       // Assert - Nothing to assert, just checking it doesn't throw
-    });
-  });
-
-  describe('formatRoomResponse', () => {
-    it('should format rooms as DTOs', async () => {
-      // Act
-      const roomDtos = await service.formatRoomResponse([testRoom]);
-
-      // Assert
-      expect(roomDtos).toBeDefined();
-      expect(Array.isArray(roomDtos)).toBe(true);
-      expect(roomDtos.length).toBe(1);
-      
-      const roomDto = roomDtos[0];
-      expect(roomDto.id).toBe(testRoom.id);
-      expect(roomDto.name).toBe(testRoom.name);
-      expect(roomDto.isGroup).toBe(testRoom.isGroup);
-      expect(roomDto.createdAt).toBeDefined();
-      expect(roomDto.updatedAt).toBeDefined();
-      
-      // Check users are included
-      expect(Array.isArray(roomDto.users)).toBe(true);
-      expect(roomDto.users.length).toBe(2);
-      
-      const userIds = roomDto.users.map(u => u.id);
-      expect(userIds).toContain(testUser1.id);
-      expect(userIds).toContain(testUser2.id);
     });
   });
 }); 
