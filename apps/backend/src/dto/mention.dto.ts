@@ -1,4 +1,4 @@
-import { Mention } from '../Mention.entity';
+import { Mention } from '../entities';
 import { UserResponseDto } from './user.dto';
 
 /**

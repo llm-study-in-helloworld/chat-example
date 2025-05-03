@@ -1,4 +1,4 @@
-import { MessageReaction } from '../MessageReaction.entity';
+import { MessageReaction } from '../entities';
 import { UserResponseDto } from './user.dto';
 
 /**

@@ -1,7 +1,7 @@
 /**
  * User 엔티티의 기본 속성을 정의하는 인터페이스
  */
-import { User } from '../User.entity';
+import { User } from '../entities';
 
 export interface UserDto {
   id: number;

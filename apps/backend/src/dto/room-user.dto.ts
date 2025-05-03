@@ -1,4 +1,4 @@
-import { RoomUser } from '../RoomUser.entity';
+import { RoomUser } from '../entities';
 import { RoomResponseDto } from './room.dto';
 import { UserResponseDto } from './user.dto';
 
