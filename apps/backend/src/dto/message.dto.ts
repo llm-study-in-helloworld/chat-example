@@ -29,27 +29,37 @@ export class MessageResponseDto implements MessageResponse {
    */
   static fromEntity(message: MessageEntity): MessageResponseDto {
     const dto = new MessageResponseDto();
+    
+      // Basic properties
     dto.id = message.id;
     dto.content = message.displayContent;
+    
+    // Date handling
     dto.createdAt = message.createdAt.toISOString();
     dto.updatedAt = message.updatedAt.toISOString();
-    dto.deletedAt = message.deletedAt ? message.deletedAt.toISOString() : null;
+    
+    dto.deletedAt = message.deletedAt 
+      ? message.deletedAt.toISOString()
+      : null;
+    
+    // Relationship properties
     dto.isDeleted = !!message.deletedAt;
     dto.parentId = message.parent ?? null;
-    dto.roomId = message.room ?? null;
+    dto.roomId = message.room;
+    
+    // Sender handling
     dto.senderId = message.sender.id;
-
-    // Add sender information
     dto.sender = {
       id: message.sender.id,
       nickname: message.sender.nickname,
       imageUrl: message.sender.imageUrl
     };
     
+    // Collections
     dto.reactions = message.reactions.getItems().map(reaction => 
       MessageReactionResponseDto.fromEntity(reaction)
     );
-    
+  
     dto.mentions = message.mentions.getItems().map(mention => 
       MentionResponseDto.fromEntity(mention)
     );

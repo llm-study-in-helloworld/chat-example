@@ -34,13 +34,19 @@ describe('ChatGateway', () => {
   const testRoom1: Room = {
     id: 1,
     name: 'Test Room 1',
-    isGroup: true,
+    isDirect: false,
+    isPrivate: false,
+    isActive: true,
+    ownerId: 1
   } as Room;
 
   const testRoom2: Room = {
     id: 2,
     name: 'Test Room 2',
-    isGroup: false,
+    isDirect: true,
+    isPrivate: true,
+    isActive: true,
+    ownerId: 1
   } as Room;
 
   // Mock response DTOs
@@ -50,7 +56,6 @@ describe('ChatGateway', () => {
     userId: 1,
     messageId: 1,
     createdAt: '',
-    updatedAt: '',
     user: {
       id: 1,
       nickname: 'TestUser1',
@@ -82,7 +87,7 @@ describe('ChatGateway', () => {
     id: 1,
     emoji: '👍',
     user: testUser1,
-    message: 1,
+    messageId: 1,
   } as Partial<MessageReaction>;
 
   // Mock Socket

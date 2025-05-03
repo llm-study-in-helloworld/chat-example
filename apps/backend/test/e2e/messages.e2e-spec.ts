@@ -50,13 +50,15 @@ describe('MessagesController (e2e)', () => {
       accessTokens[`user${i}`] = userData.token;
     }
     
-    // Create a test room for messaging
+    // Create a test room for the current test
     const roomResponse = await request(app.getHttpServer())
       .post('/api/rooms')
       .set('Authorization', `Bearer ${accessTokens['user1']}`)
       .send({
-        name: 'Test Messages Room',
-        isGroup: true,
+        name: `Messages Test Room ${Date.now()}`,
+        isDirect: false,
+        isPrivate: false,
+        isActive: true,
         userIds: [testUsers[1].id, testUsers[2].id]
       })
       .expect(201);

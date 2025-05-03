@@ -102,7 +102,7 @@ export class RoomsService {
       { populate: ['user'] }
     );
     
-    return roomUsers.map(ru => RoomUserResponseDto.fromEntity(ru));
+    return roomUsers.map(roomUser => RoomUserResponseDto.fromEntity(roomUser));
   }
 
   /**
@@ -200,39 +200,26 @@ export class RoomsService {
       return [];
     }
 
-    // Clear any circular references before converting
-    const safeRooms = rooms.map(room => {
-      // Create a clean copy with only the basic properties
-      const safeCopy: Partial<Room> = {
-        id: room.id,
-        name: room.name,
-        description: room.description,
-        imageUrl: room.imageUrl,
-        isPrivate: room.isPrivate,
-        isDirect: room.isDirect,
-        isActive: room.isActive,
-        ownerId: room.ownerId,
-        createdAt: room.createdAt,
-        updatedAt: room.updatedAt
-      };
-      
-      return safeCopy;
-    });
-
-    // First convert entities to DTOs
-    const roomDtos = safeRooms.map(room => RoomResponseDto.fromEntity(room as Room));
-    
-    // Get all room IDs
+    // Get all room IDs 
     const roomIds = rooms.map(room => room.id);
     
     // Get unread counts for all rooms
     const counts = await this.calculateUnreadCounts(roomIds, userId);
     
-    // Add unread counts to DTOs
-    return roomDtos.map(dto => {
-      dto.unreadCount = counts[dto.id] || 0;
-      return dto;
-    });
+    // Process rooms one at a time to avoid circular references
+    const roomDtos: RoomResponseDto[] = [];
+    
+    for (const room of rooms) {
+      // Create a DTO using the fromEntity method
+      const dto = RoomResponseDto.fromEntity(room);
+      
+      // Add unread count
+      dto.unreadCount = counts[room.id] || 0;
+      
+      roomDtos.push(dto);
+    }
+    
+    return roomDtos;
   }
   
   /**
@@ -369,9 +356,6 @@ export class RoomsService {
       isDirect: false,
       isActive: true
     };
-    
-    // For total count, use find and count
-    const countOptions = { ...baseConditions };
     
     // Apply search filter if provided (in a database-agnostic way)
     if (search) {

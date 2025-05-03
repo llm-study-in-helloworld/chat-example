@@ -5,11 +5,11 @@ import { ForbiddenException, NotFoundException } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 import bcrypt from 'bcrypt';
 import {
-  Mention,
-  Message,
-  MessageReaction,
-  Room,
-  User
+    Mention,
+    Message,
+    MessageReaction,
+    Room,
+    User
 } from '../../src/entities';
 import { MessagesService } from '../../src/messages/messages.service';
 import testConfig from '../mikro-orm.config.test';
@@ -68,13 +68,19 @@ describe('MessagesService', () => {
     testUser2.imageUrl = 'http://example.com/avatar2.jpg';
     testUser2.passwordHash = await bcrypt.hash('password2', 10);
 
-    // Create test room
+    // Persist users first to get valid IDs
+    await em.persistAndFlush([testUser1, testUser2]);
+
+    // Create test room with valid owner ID
     testRoom = new Room();
     testRoom.name = 'Test Room';
-    testRoom.isGroup = true;
+    testRoom.isPrivate = false;
+    testRoom.isDirect = false;
+    testRoom.isActive = true;
+    testRoom.ownerId = testUser1.id;
 
-    // Persist entities
-    await em.persistAndFlush([testUser1, testUser2, testRoom]);
+    // Persist room
+    await em.persistAndFlush(testRoom);
 
     // Create a test message
     testMessage = new Message();

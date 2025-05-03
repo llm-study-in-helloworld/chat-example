@@ -12,21 +12,25 @@ export class RoomUserResponseDto implements RoomUserResponse {
 
   /**
    * RoomUser 엔티티를 ResponseDto로 변환
+   * Safely extracts properties to avoid circular references
    */
   static fromEntity(roomUser: RoomUser): RoomUserResponseDto {
     const dto = new RoomUserResponseDto();
+    
+    // Extract primitive values safely
     dto.roomId = roomUser.roomId;
-    dto.userId = roomUser.user.id;
+    dto.userId = roomUser.userId; // Use getter instead of direct reference
     dto.role = roomUser.role;
+    
+    // Handle date carefully
     dto.joinedAt = roomUser.joinedAt.toISOString();
     
+    // Extract only needed user properties to avoid circular references
     dto.user = {
       id: roomUser.user.id,
       nickname: roomUser.user.nickname,
       imageUrl: roomUser.user.imageUrl
     };
-    
-    dto.roomId = roomUser.roomId;
     
     return dto;
   }

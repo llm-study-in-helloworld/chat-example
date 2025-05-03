@@ -20,17 +20,21 @@ export class RoomResponseDto implements RoomResponse {
 
   /**
    * Room 엔티티를 ResponseDto로 변환
+   * Safely extracts properties to avoid circular references
    */
   static fromEntity(room: RoomEntity): RoomResponseDto {
     const dto = new RoomResponseDto();
+    
+    // Extract primitive properties safely
     dto.id = room.id;
     dto.name = room.name || '';
     dto.description = room.description || '';
     dto.imageUrl = room.imageUrl || '';
     dto.isPrivate = room.isPrivate || false;
     dto.ownerId = room.ownerId;
-    dto.createdAt = room.createdAt.toISOString();
+
     dto.updatedAt = room.updatedAt.toISOString();
+    dto.createdAt = room.createdAt.toISOString();
     
     // Add additional properties
     dto.isDirect = !!room.isDirect;

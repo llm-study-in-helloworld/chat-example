@@ -221,7 +221,7 @@ export class MessagesService {
       // 기존 리액션 확인
       const existingReaction = await em.findOne(MessageReaction, {
         messageId: messageId,
-        userId: userId,
+        user: user,
         emoji: emoji
       });
       
@@ -487,7 +487,7 @@ export class MessagesService {
     // Check if reaction already exists
     const existingReaction = await this.messageReactionRepository.findOne({
       messageId: messageId,
-      userId: userId,
+      user: user,
       emoji: emoji
     });
     
@@ -508,14 +508,18 @@ export class MessagesService {
    * 메시지 리액션 제거
    */
   async removeReaction(messageId: number, userId: number, emoji: string): Promise<void> {
-    const reaction = await this.messageReactionRepository.findOne({
-      messageId: messageId,
-      userId: userId,
-      emoji: emoji
-    });
+    const user = await this.userRepository.findOne({ id: userId });
     
-    if (reaction) {
-      await this.em.removeAndFlush(reaction);
+    if (user) {
+      const reaction = await this.messageReactionRepository.findOne({
+        messageId: messageId,
+        user: user,
+        emoji: emoji
+      });
+      
+      if (reaction) {
+        await this.em.removeAndFlush(reaction);
+      }
     }
   }
 
