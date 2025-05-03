@@ -1,3 +1,4 @@
+import { BaseMessage } from '@chat-example/types';
 import {
   Collection,
   Entity,
@@ -20,7 +21,7 @@ import { User } from './User.entity';
 @Index({ properties: ['room', 'createdAt'] })
 @Index({ properties: ['parent'] })
 @Index({ properties: ['sender'] })
-export class Message extends CommonEntity {
+export class Message extends CommonEntity implements BaseMessage {
   @ManyToOne({
     entity: () => Room,
     persist: true,
@@ -29,6 +30,10 @@ export class Message extends CommonEntity {
   })
   room!: number;
 
+  get roomId(): number {
+    return this.room;
+  }
+
   @ManyToOne({
     entity: () => User,
     persist: true,
@@ -36,6 +41,10 @@ export class Message extends CommonEntity {
     fieldName: 'sender_id',
   })
   sender!: User;
+
+  get senderId(): number {
+    return this.sender.id;
+  }
 
   @ManyToOne({
     entity: () => Message,
@@ -46,6 +55,10 @@ export class Message extends CommonEntity {
   })
   parent?: number | null;
 
+  get parentId(): number | null | undefined {
+    return this.parent;
+  }
+
   @Property()
   content!: string;
 
@@ -55,7 +68,7 @@ export class Message extends CommonEntity {
   @OneToMany({
     entity: () => MessageReaction,
     mappedBy: 'message',
-    eager: false,
+    eager: true,
     persist: false,
   })
   reactions = new Collection<MessageReaction>(this);
@@ -63,7 +76,7 @@ export class Message extends CommonEntity {
   @OneToMany({
     entity: () => Mention,
     mappedBy: 'message',
-    eager: false,
+    eager: true,
     persist: false,
   })
   mentions = new Collection<Mention>(this);

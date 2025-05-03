@@ -5,7 +5,6 @@
     "baseUrl": "./",
     "paths": {
       "@app/*": ["src/*"],
-      "@types": ["../../packages/types/src"]
     },
     "experimentalDecorators": true,
     "emitDecoratorMetadata": true,

@@ -1,3 +1,4 @@
+import { BaseReaction } from '@chat-example/types';
 import {
   Entity,
   Index,
@@ -14,7 +15,7 @@ import { User } from './User.entity';
 @Entity()
 @Index({ properties: ['message', 'emoji'] })
 @Index({ properties: ['message', 'user'] })
-export class MessageReaction extends CommonEntity {
+export class MessageReaction extends CommonEntity implements BaseReaction {
   @ManyToOne({
     entity: () => Message,
     persist: true,
@@ -23,12 +24,20 @@ export class MessageReaction extends CommonEntity {
   })
   message!: number;
 
+  get messageId(): number {
+    return this.message;
+  }
+
   @ManyToOne({
     entity: () => User,
     persist: true,
     fieldName: 'user_id'
   })
   user!: User;
+
+  get userId(): number {
+    return this.user.id;
+  }
 
   @Property()
   emoji!: string;

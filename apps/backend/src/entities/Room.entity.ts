@@ -1,6 +1,8 @@
+import { BaseRoom } from '@chat-example/types';
 import {
   Collection,
   Entity,
+  ManyToOne,
   OneToMany,
   Property,
   Reference
@@ -8,18 +10,49 @@ import {
 import { CommonEntity } from './CommonEntity';
 import { Message } from './Message.entity';
 import { RoomUser } from './RoomUser.entity';
+import { User } from './User.entity';
 
 /**
  * 채팅방 정보를 저장하는 엔티티
  * 일대일 대화 또는 그룹 채팅방을 나타냄
  */
 @Entity()
-export class Room extends CommonEntity {
+export class Room extends CommonEntity implements Omit<BaseRoom, 'name' | 'description' | 'imageUrl'> {
   @Property({ nullable: true })
-  name?: string;
+  name!: string;
+
+  @Property({ nullable: true })
+  description?: string;
+
+  @Property({ nullable: true })
+  imageUrl?: string;
 
   @Property()
   isGroup!: boolean;
+
+  @Property()
+  isPrivate!: boolean;
+
+  @Property()
+  isDirect!: boolean;
+
+  @Property()
+  isActive!: boolean;
+
+  @ManyToOne({
+    entity: () => User,
+    fieldName: 'owner_id',
+    eager: true,
+    persist: true,
+  })
+  owner!: User;
+
+  /**
+   * Implementation of ownerId from BaseRoom
+   */
+  get ownerId(): number {
+    return this.owner.id;
+  }
 
   @OneToMany({
     entity: () => RoomUser,
@@ -42,6 +75,13 @@ export class Room extends CommonEntity {
    */
   get users(): Reference<RoomUser>[] {
     return this.roomUsers.getItems().map(roomUser => Reference.create(roomUser));
+  }
+
+  /**
+   * Return the number of participants in the room
+   */
+  get participantCount(): number {
+    return this.roomUsers.count();
   }
 
   /**

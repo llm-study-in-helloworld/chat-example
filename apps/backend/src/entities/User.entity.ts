@@ -1,10 +1,11 @@
+import { BaseUser } from '@chat-example/types';
 import {
-  Collection,
-  Entity,
-  Index,
-  OneToMany,
-  Property,
-  Reference
+    Collection,
+    Entity,
+    Index,
+    OneToMany,
+    Property,
+    Reference
 } from '@mikro-orm/core';
 import * as bcrypt from 'bcrypt';
 import { CommonEntity } from './CommonEntity';
@@ -17,7 +18,7 @@ import { RoomUser } from './RoomUser.entity';
  */
 @Entity()
 @Index({ properties: ['email'] })
-export class User extends CommonEntity {
+export class User extends CommonEntity implements BaseUser {
   @Property({ unique: true })
   email!: string;
 
@@ -58,6 +59,17 @@ export class User extends CommonEntity {
    */
   get sentMessages(): Reference<Message>[] {
     return this.messages.getItems().map(message => Reference.create(message));
+  }
+
+  /**
+   * Returns user as MessageUser for use in responses
+   */
+  get asMessageUser(): { id: number; nickname: string; imageUrl?: string } {
+    return {
+      id: this.id,
+      nickname: this.nickname,
+      imageUrl: this.imageUrl
+    };
   }
 
   /**

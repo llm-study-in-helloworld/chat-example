@@ -53,6 +53,7 @@
     "uuid": "^11.1.0"
   },
   "devDependencies": {
+    "@chat-example/types": "workspace:*",
     "@mikro-orm/cli": "^6.4.13",
     "@mikro-orm/migrations": "^6.4.13",
     "@mikro-orm/reflection": "^6.4.13",

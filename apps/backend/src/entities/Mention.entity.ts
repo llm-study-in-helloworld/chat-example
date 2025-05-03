@@ -1,3 +1,4 @@
+import { BaseMention } from '@chat-example/types';
 import {
   Entity,
   Index,
@@ -12,7 +13,7 @@ import { User } from './User.entity';
  */
 @Entity()
 @Index({ properties: ['mentionedUser'] })
-export class Mention extends CommonEntity {
+export class Mention extends CommonEntity implements BaseMention {
   @ManyToOne({
     entity: () => Message,
     persist: true,
@@ -21,12 +22,20 @@ export class Mention extends CommonEntity {
   })
   message!: number;
 
+  get messageId(): number {
+    return this.message;
+  }
+
   @ManyToOne({
     entity: () => User,
     persist: true,
     fieldName: 'mentioned_user_id'
   })
   mentionedUser!: User;
+
+  get userId(): number {
+    return this.mentionedUser.id;
+  }
 
   /**
    * 특정 사용자가 멘션된 대상인지 확인
