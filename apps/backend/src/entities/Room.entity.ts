@@ -45,7 +45,7 @@ export class Room extends CommonEntity implements BaseRoom {
 
   @OneToMany({
     entity: () => RoomUser,
-    mappedBy: 'roomId',
+    mappedBy: 'room',
     eager: false,
     persist: false,
   })
@@ -53,7 +53,7 @@ export class Room extends CommonEntity implements BaseRoom {
 
   @OneToMany({
     entity: () => Message,
-    mappedBy: 'roomId',
+    mappedBy: 'room',
     eager: false,
     persist: false,
   })

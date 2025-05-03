@@ -14,7 +14,7 @@ import { User } from './User.entity';
  */
 @Entity()
 @Index({ properties: ['messageId', 'emoji'] })
-@Index({ properties: ['messageId', 'userId'] })
+@Index({ properties: ['messageId', 'user'] })
 export class MessageReaction extends CommonEntity implements BaseReaction {
   @ManyToOne({
     entity: () => Message,
