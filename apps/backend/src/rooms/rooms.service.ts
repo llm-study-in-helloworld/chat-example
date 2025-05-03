@@ -2,8 +2,8 @@ import { EntityManager, QueryOrder } from '@mikro-orm/core';
 import { InjectRepository } from '@mikro-orm/nestjs';
 import { EntityRepository } from '@mikro-orm/postgresql';
 import { Injectable } from '@nestjs/common';
-import { Room, RoomUser, User } from '../entities';
 import { RoomResponseDto } from '../dto';
+import { Room, RoomUser, User } from '../entities';
 /**
  * 채팅방 관련 비즈니스 로직을 처리하는 서비스
  */
@@ -45,7 +45,7 @@ export class RoomsService {
     // 트랜잭션 시작
     return this.em.transactional(async (em) => {
       const room = new Room();
-      room.name = name;
+      room.name = name || '';
       room.isGroup = isGroup;
       
       await em.persistAndFlush(room);
@@ -166,24 +166,8 @@ export class RoomsService {
     const result: RoomResponseDto[] = [];
     
     for (const room of rooms) {
-      const users = await this.getRoomUsers(room.id);
-      
-      const formattedRoom: RoomResponseDto = {
-        id: room.id,
-        name: room.name,
-        isGroup: room.isGroup,
-        createdAt: room.createdAt.toISOString(),
-        updatedAt: room.updatedAt.toISOString(),
-        users: users.map(user => ({
-          id: user.id,
-          nickname: user.nickname,
-          imageUrl: user.imageUrl
-        })),
-      };
-
-      // 마지막 메시지 정보는 MessageService 구현 후 추가할 수 있음
-      
-      result.push(formattedRoom);
+      const dto = RoomResponseDto.fromEntity(room);
+      result.push(dto);
     }
     
     return result;

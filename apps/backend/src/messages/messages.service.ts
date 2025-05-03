@@ -1,8 +1,8 @@
-import { MessageReactionResponseDto, MessageResponseDto } from '@app/dto';
 import { EntityManager, FilterQuery, QueryOrder } from '@mikro-orm/core';
 import { InjectRepository } from '@mikro-orm/nestjs';
 import { EntityRepository } from '@mikro-orm/postgresql';
 import { BadRequestException, ForbiddenException, Injectable, NotFoundException } from '@nestjs/common';
+import { MessageReactionResponseDto, MessageResponseDto } from '../dto';
 import {
   Mention,
   Message,
