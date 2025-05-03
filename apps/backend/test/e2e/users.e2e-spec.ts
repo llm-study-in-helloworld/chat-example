@@ -7,6 +7,7 @@ import { User } from '../../src/entities';
 import bcrypt from 'bcrypt';
 import { AppTestModule } from '../app-test.module';
 import testConfig from '../mikro-orm.config.test';
+import { TestUser, TestUserResponse } from '../types/test-user.type';
 
 describe('UsersController (e2e)', () => {
   let app: INestApplication;
@@ -56,7 +57,7 @@ describe('UsersController (e2e)', () => {
   });
 
   // Helper function to create a test user with unique identifiers
-  const createTestUser = async (index: number) => {
+  const createTestUser = async (index: number): Promise<TestUserResponse> => {
     // Add a random string to ensure uniqueness
     const uniqueId = `${index}-${Date.now()}-${Math.random().toString(36).substring(2, 7)}`;
     const userData = {
@@ -70,18 +71,35 @@ describe('UsersController (e2e)', () => {
       .send(userData)
       .expect(201);
       
+    // Login to get the token
+    const loginResponse = await request(app.getHttpServer())
+      .post('/api/auth/login')
+      .send({
+        email: userData.email,
+        password: userData.password
+      })
+      .expect(201);
+    
+    const user: TestUser = {
+      id: response.body.id,
+      email: userData.email,
+      password: userData.password,
+      nickname: userData.nickname
+    };
+    
     return {
-      userData,
-      userId: response.body.id
+      user,
+      token: loginResponse.body.accessToken
     };
   };
   
   // ATDD style - Acceptance criteria grouped by features
   describe('Feature: User Registration', () => {
-    let testUser;
+    let testUser: TestUser;
     
     beforeAll(async () => {
-      testUser = (await createTestUser(1)).userData;
+      const result = await createTestUser(1);
+      testUser = result.user;
     });
     
     it('Scenario: User signs up with valid credentials', async () => {
@@ -111,7 +129,11 @@ describe('UsersController (e2e)', () => {
       // When they try to sign up
       const response = await request(app.getHttpServer())
         .post('/api/auth/signup')
-        .send(testUser)
+        .send({
+          email: testUser.email,
+          password: testUser.password,
+          nickname: testUser.nickname
+        })
         .expect(409); // Conflict
       
       // Then they should receive an error
@@ -137,23 +159,13 @@ describe('UsersController (e2e)', () => {
   });
   
   describe('Feature: User Profile Management', () => {
-    let testUser;
-    let authToken;
+    let testUser: TestUser;
+    let authToken: string;
     
     beforeEach(async () => {
       const result = await createTestUser(2);
-      testUser = result.userData;
-      
-      // Login to get token
-      const loginResponse = await request(app.getHttpServer())
-        .post('/api/auth/login')
-        .send({
-          email: testUser.email,
-          password: testUser.password
-        })
-        .expect(201);
-        
-      authToken = loginResponse.body.accessToken;
+      testUser = result.user;
+      authToken = result.token;
     });
     
     it('Scenario: User updates their profile', async () => {
@@ -222,23 +234,13 @@ describe('UsersController (e2e)', () => {
   });
   
   describe('Feature: User Logout', () => {
-    let testUser;
-    let authToken;
+    let testUser: TestUser;
+    let authToken: string;
     
     beforeAll(async () => {
       const result = await createTestUser(3);
-      testUser = result.userData;
-      
-      // Login to get token
-      const loginResponse = await request(app.getHttpServer())
-        .post('/api/auth/login')
-        .send({
-          email: testUser.email,
-          password: testUser.password
-        })
-        .expect(201);
-        
-      authToken = loginResponse.body.accessToken;
+      testUser = result.user;
+      authToken = result.token;
     });
     
     it('Scenario: User logs out successfully', async () => {
@@ -268,23 +270,13 @@ describe('UsersController (e2e)', () => {
   });
   
   describe('Feature: Account Deletion', () => {
-    let testUser;
-    let authToken;
+    let testUser: TestUser;
+    let authToken: string;
     
     beforeEach(async () => {
       const result = await createTestUser(4);
-      testUser = result.userData;
-      
-      // Login to get token
-      const loginResponse = await request(app.getHttpServer())
-        .post('/api/auth/login')
-        .send({
-          email: testUser.email,
-          password: testUser.password
-        })
-        .expect(201);
-        
-      authToken = loginResponse.body.accessToken;
+      testUser = result.user;
+      authToken = result.token;
     });
     
     it('Scenario: User deletes their account with valid password', async () => {
