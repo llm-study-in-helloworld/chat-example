@@ -67,7 +67,7 @@ describe('TokenBlacklistService', () => {
     jwtService = module.get<JwtService>(JwtService);
 
     // Mock setInterval to avoid actual timed execution
-    jest.spyOn(global, 'setInterval').mockImplementation((callback: any, ms: number) => {
+    jest.spyOn(global, 'setInterval').mockImplementation(() => {
       return { unref: jest.fn() } as any;
     });
   });
