@@ -1,3 +1,4 @@
+import { MessageResponseDto } from '@app/dto';
 import {
   Body,
   Controller,
@@ -13,7 +14,6 @@ import {
 } from '@nestjs/common';
 import { CurrentUser, JwtAuthGuard } from '../auth';
 import { User } from '../entities';
-import { MessageResponseDto } from '../entities/dto/message.dto';
 import { CreateMessageDto } from './dto/create-message.dto';
 import { ReactionDto } from './dto/reaction.dto';
 import { UpdateMessageDto } from './dto/update-message.dto';

@@ -5,7 +5,7 @@ import cookieParser from 'cookie-parser';
 import { createServer } from 'http';
 import { io, Socket } from 'socket.io-client';
 import request from 'supertest';
-import { MessageResponseDto } from '../../src/entities/dto/message.dto';
+import { MessageResponseDto } from '../../src/dto';
 import { ReactionResponseDto, ReactionUpdateEventDto, SocketErrorDto, SocketSuccessDto, UserPresenceEventDto } from '../../src/gateway/dto/socket-response.dto';
 import { CreateMessageDto } from '../../src/messages/dto/create-message.dto';
 import { ReactionDto } from '../../src/messages/dto/reaction.dto';

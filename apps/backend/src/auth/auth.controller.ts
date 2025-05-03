@@ -1,7 +1,7 @@
 import { Body, Controller, Delete, HttpCode, HttpStatus, Post, Req, Res, UnauthorizedException, UseGuards } from '@nestjs/common';
 import { Request, Response } from 'express';
+import { UserResponseDto } from '../dto';
 import { User } from '../entities';
-import { UserResponseDto } from '../entities/dto/user.dto';
 import { CreateUserDto } from '../users/dto/create-user.dto';
 import { DeleteUserDto } from '../users/dto/delete-user.dto';
 import { UsersService } from '../users/users.service';

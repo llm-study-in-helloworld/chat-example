@@ -1,8 +1,8 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { Server, Socket } from 'socket.io';
 import { AuthService } from '../../src/auth';
-import { MessageReaction, MessageResponseDto, Room, User, UserResponseDto } from '../../src/entities';
-import { MessageReactionResponseDto } from '../../src/entities/dto/message-reaction.dto';
+import { MessageReactionResponseDto, MessageResponseDto, UserResponseDto } from '../../src/dto';
+import { MessageReaction, Room, User } from '../../src/entities';
 import { ChatGateway } from '../../src/gateway/chat.gateway';
 import { CreateMessageDto } from '../../src/messages/dto/create-message.dto';
 import { ReactionDto } from '../../src/messages/dto/reaction.dto';

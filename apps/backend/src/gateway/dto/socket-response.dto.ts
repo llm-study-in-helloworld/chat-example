@@ -1,3 +1,4 @@
+import { MessageReactionResponseDto } from "@app/dto";
 
 /**
  * Base response DTO for socket events
@@ -22,28 +23,11 @@ export class SocketErrorDto extends SocketResponseBaseDto {
 }
 
 /**
- * DTO for message reaction entity matching MessageReactionResponseDto
- */
-export interface MessageReactionDto {
-  id: number;
-  emoji: string;
-  userId: number;
-  messageId: number;
-  createdAt: string;
-  updatedAt: string;
-  user: {
-    id: number;
-    nickname: string;
-    imageUrl?: string;
-  };
-}
-
-/**
  * DTO for reaction responses
  */
 export class ReactionResponseDto extends SocketSuccessDto {
   added: boolean = false;
-  reaction: MessageReactionDto | null = null;
+  reaction: MessageReactionResponseDto | null = null;
 }
 
 /**
@@ -51,7 +35,7 @@ export class ReactionResponseDto extends SocketSuccessDto {
  */
 export class ReactionUpdateEventDto {
   messageId: number = 0;
-  reactions: MessageReactionDto[] = [];
+  reactions: MessageReactionResponseDto[] = [];
 }
 
 /**
