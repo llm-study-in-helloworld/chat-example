@@ -72,7 +72,9 @@ describe('ChatGateway (e2e)', () => {
       .set('Authorization', `Bearer ${accessTokens['user1']}`)
       .send({
         name: 'WebSocket Test Room',
-        isGroup: true,
+        isDirect: false,
+        isPrivate: false,
+        isActive: true,
         userIds: [testUsers[0].id, testUsers[1].id, testUsers[2].id]
       });
     
@@ -294,11 +296,26 @@ describe('ChatGateway (e2e)', () => {
         
         await connectPromise;
         
+        // Create a private room that the outsider can't join
+        const privateRoomResponse = await request(app.getHttpServer())
+          .post('/api/rooms')
+          .set('Authorization', `Bearer ${accessTokens['user1']}`)
+          .send({
+            name: 'Private Room for Socket Test',
+            isDirect: false,
+            isPrivate: true,
+            isActive: true,
+            userIds: []
+          })
+          .expect(201);
+          
+        const privateRoomId = privateRoomResponse.body.id;
+        
         // Wait to ensure connection is fully established
         await new Promise(resolve => setTimeout(resolve, 1000));
         
         // When they attempt to join a room they don't have access to
-        outsiderSocket.emit('join_room', { roomId }, (response: any) => {
+        outsiderSocket.emit('join_room', { roomId: privateRoomId }, (response: any) => {
           // Then they should receive an error
           expect(response).toHaveProperty('error');
           expect(response.error).toContain('접근 권한이 없습니다');

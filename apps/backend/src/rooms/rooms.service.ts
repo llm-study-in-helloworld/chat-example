@@ -200,8 +200,27 @@ export class RoomsService {
       return [];
     }
 
+    // Clear any circular references before converting
+    const safeRooms = rooms.map(room => {
+      // Create a clean copy with only the basic properties
+      const safeCopy: Partial<Room> = {
+        id: room.id,
+        name: room.name,
+        description: room.description,
+        imageUrl: room.imageUrl,
+        isPrivate: room.isPrivate,
+        isDirect: room.isDirect,
+        isActive: room.isActive,
+        ownerId: room.ownerId,
+        createdAt: room.createdAt,
+        updatedAt: room.updatedAt
+      };
+      
+      return safeCopy;
+    });
+
     // First convert entities to DTOs
-    const roomDtos = rooms.map(room => RoomResponseDto.fromEntity(room));
+    const roomDtos = safeRooms.map(room => RoomResponseDto.fromEntity(room as Room));
     
     // Get all room IDs
     const roomIds = rooms.map(room => room.id);
