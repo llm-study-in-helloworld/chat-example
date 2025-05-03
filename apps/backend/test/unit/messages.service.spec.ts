@@ -3,7 +3,6 @@ import { MikroOrmModule } from '@mikro-orm/nestjs';
 import { EntityRepository } from '@mikro-orm/postgresql';
 import { ForbiddenException, NotFoundException } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
-import bcrypt from 'bcrypt';
 import {
     Mention,
     Message,
@@ -13,6 +12,9 @@ import {
 } from '../../src/entities';
 import { MessagesService } from '../../src/messages/messages.service';
 import testConfig from '../mikro-orm.config.test';
+import { createMessageFixture, createReplyMessageFixture, TestMessageData } from './fixtures/message.fixtures';
+import { createRoomFixture, TestRoomData } from './fixtures/room.fixtures';
+import { createUserFixture, TestUserData } from './fixtures/user.fixtures';
 
 describe('MessagesService', () => {
   let service: MessagesService;
@@ -25,9 +27,14 @@ describe('MessagesService', () => {
   // Test data
   let testUser1: User;
   let testUser2: User;
+  let testUser1Data: TestUserData;
+  let testUser2Data: TestUserData;
   let testRoom: Room;
+  let testRoomData: TestRoomData;
   let testMessage: Message;
+  let testMessageData: TestMessageData;
   let testReplyMessage: Message;
+  let testReplyMessageData: TestMessageData;
 
   beforeAll(async () => {
     const module: TestingModule = await Test.createTestingModule({
@@ -55,49 +62,52 @@ describe('MessagesService', () => {
     // Clear database before each test
     await orm.getSchemaGenerator().refreshDatabase();
 
-    // Create test users
-    testUser1 = new User();
-    testUser1.email = 'test1@example.com';
-    testUser1.nickname = 'TestUser1';
-    testUser1.imageUrl = 'http://example.com/avatar1.jpg';
-    testUser1.passwordHash = await bcrypt.hash('password1', 10);
+    // Create test users using fixtures
+    testUser1Data = await createUserFixture(em, {
+      email: 'test1@example.com',
+      nickname: 'TestUser1',
+      password: 'password1',
+      imageUrl: 'http://example.com/avatar1.jpg'
+    });
+    
+    testUser2Data = await createUserFixture(em, {
+      email: 'test2@example.com',
+      nickname: 'TestUser2',
+      password: 'password2',
+      imageUrl: 'http://example.com/avatar2.jpg'
+    });
+    
+    // Get the actual user entities for tests that need them
+    testUser1 = await userRepository.findOneOrFail({ id: testUser1Data.id });
+    testUser2 = await userRepository.findOneOrFail({ id: testUser2Data.id });
 
-    testUser2 = new User();
-    testUser2.email = 'test2@example.com';
-    testUser2.nickname = 'TestUser2';
-    testUser2.imageUrl = 'http://example.com/avatar2.jpg';
-    testUser2.passwordHash = await bcrypt.hash('password2', 10);
+    // Create a test room using fixture
+    testRoomData = await createRoomFixture(em, testUser1Data, [testUser2Data], {
+      name: 'Test Room',
+      isPrivate: false
+    });
+    
+    // Get the actual room entity for tests that need it
+    testRoom = await roomRepository.findOneOrFail({ id: testRoomData.id });
 
-    // Persist users first to get valid IDs
-    await em.persistAndFlush([testUser1, testUser2]);
+    // Create a test message using fixture
+    testMessageData = await createMessageFixture(em, testRoomData, testUser1Data, {
+      content: 'Test message content'
+    });
+    
+    // Create a reply message using fixture
+    testReplyMessageData = await createReplyMessageFixture(
+      em, 
+      testRoomData, 
+      testUser2Data, 
+      testMessageData, 
+      { content: 'Test reply content' }
+    );
+    
+    // Get the actual message entities for tests that need them
+    testMessage = await messageRepository.findOneOrFail({ id: testMessageData.id });
+    testReplyMessage = await messageRepository.findOneOrFail({ id: testReplyMessageData.id });
 
-    // Create test room with valid owner ID
-    testRoom = new Room();
-    testRoom.name = 'Test Room';
-    testRoom.isPrivate = false;
-    testRoom.isDirect = false;
-    testRoom.isActive = true;
-    testRoom.ownerId = testUser1.id;
-
-    // Persist room
-    await em.persistAndFlush(testRoom);
-
-    // Create a test message
-    testMessage = new Message();
-    testMessage.content = 'Test message content';
-    testMessage.room = testRoom.id;
-    testMessage.sender = testUser1;
-
-    await em.persistAndFlush(testMessage);
-
-    // Create a reply message
-    testReplyMessage = new Message();
-    testReplyMessage.content = 'Test reply content';
-    testReplyMessage.room = testRoom.id;
-    testReplyMessage.sender = testUser2;
-    testReplyMessage.parent = testMessage.id;
-
-    await em.persistAndFlush(testReplyMessage);
     // Clear EntityManager to ensure fresh state for each test
     em.clear();
   });

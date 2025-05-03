@@ -3,7 +3,6 @@ import { MikroOrmModule } from '@mikro-orm/nestjs';
 import { EntityRepository } from '@mikro-orm/postgresql';
 import { ConflictException, UnauthorizedException } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
-import bcrypt from 'bcrypt';
 import { UserResponseDto } from '../../src/dto';
 import { User } from '../../src/entities';
 import { ChangePasswordDto } from '../../src/users/dto/change-password.dto';
@@ -11,6 +10,7 @@ import { CreateUserDto } from '../../src/users/dto/create-user.dto';
 import { UpdateUserDto } from '../../src/users/dto/update-user.dto';
 import { UsersService } from '../../src/users/users.service';
 import testConfig from '../mikro-orm.config.test';
+import { createUserFixture, TestUserData } from './fixtures/user.fixtures';
 
 describe('UsersService', () => {
   let service: UsersService;
@@ -23,6 +23,7 @@ describe('UsersService', () => {
   
   // User instances for testing
   let testUser: User;
+  let testUserData: TestUserData;
   let createdUser: User;
 
   beforeAll(async () => {
@@ -49,14 +50,16 @@ describe('UsersService', () => {
     // Clear database before each test
     await orm.getSchemaGenerator().refreshDatabase();
 
-    // Create a test user
-    testUser = new User();
-    testUser.email = 'test@example.com';
-    testUser.nickname = 'TestUser';
-    testUser.passwordHash = await bcrypt.hash(testPassword, 10);
-    testUser.imageUrl = 'http://example.com/avatar.jpg';
-
-    await em.persistAndFlush(testUser);
+    // Create a test user using fixture
+    testUserData = await createUserFixture(em, {
+      email: 'test@example.com',
+      nickname: 'TestUser',
+      password: testPassword,
+      imageUrl: 'http://example.com/avatar.jpg'
+    });
+    
+    // Get the actual user entity for tests that need it
+    testUser = await userRepository.findOneOrFail({ id: testUserData.id });
 
     // Clear EntityManager to ensure fresh state for each test
     em.clear();
@@ -129,14 +132,14 @@ describe('UsersService', () => {
   describe('findById', () => {
     it('should find a user by id', async () => {
       // Arrange - Get the id first
-      const user = await userRepository.findOne({ email: 'test@example.com' });
+      const user = await userRepository.findOneOrFail({ email: 'test@example.com' });
       
       // Act
-      const result = await service.findById(user!.id);
+      const result = await service.findById(user.id);
 
       // Assert
       expect(result).toBeDefined();
-      expect(result!.id).toBe(user!.id);
+      expect(result!.id).toBe(user.id);
       expect(result!.email).toBe('test@example.com');
     });
 
@@ -152,14 +155,14 @@ describe('UsersService', () => {
   describe('updateUser', () => {
     it('should update user profile', async () => {
       // Arrange
-      const user = await userRepository.findOne({ email: 'test@example.com' });
+      const user = await userRepository.findOneOrFail({ email: 'test@example.com' });
       const updateUserDto = new UpdateUserDto();
       updateUserDto.nickname = 'UpdatedNickname';
       updateUserDto.imageUrl = 'http://example.com/updated-avatar.jpg';
       updateUserDto.currentPassword = testPassword;
 
       // Act
-      const result = await service.updateUser(user!, updateUserDto);
+      const result = await service.updateUser(user, updateUserDto);
 
       // Assert
       expect(result).toBeDefined();
@@ -167,71 +170,71 @@ describe('UsersService', () => {
       expect(result.imageUrl).toBe('http://example.com/updated-avatar.jpg');
 
       // Verify changes were saved to database
-      const updatedUser = await userRepository.findOne({ id: user!.id });
-      expect(updatedUser!.nickname).toBe('UpdatedNickname');
-      expect(updatedUser!.imageUrl).toBe('http://example.com/updated-avatar.jpg');
+      const updatedUser = await userRepository.findOneOrFail({ id: user.id });
+      expect(updatedUser.nickname).toBe('UpdatedNickname');
+      expect(updatedUser.imageUrl).toBe('http://example.com/updated-avatar.jpg');
     });
   });
 
   describe('changePassword', () => {
     it('should change password when current password is correct', async () => {
       // Arrange
-      const user = await userRepository.findOne({ email: 'test@example.com' });
+      const user = await userRepository.findOneOrFail({ email: 'test@example.com' });
       const passwordChangeDto = new ChangePasswordDto();
       passwordChangeDto.currentPassword = testPassword;
       passwordChangeDto.newPassword = 'NewPassword456';
 
       // Act
-      const result = await service.changePassword(user!, passwordChangeDto);
+      const result = await service.changePassword(user, passwordChangeDto);
 
       // Assert
       expect(result).toBe(true);
 
       // Verify password was changed - should be able to verify with new password
       em.clear(); // Clear identity map to ensure we get a fresh entity
-      const updatedUser = await userRepository.findOne({ id: user!.id });
-      console.log('updatedUser', await updatedUser!.verifyPassword(testPassword));
-      const verifyResult = await updatedUser!.verifyPassword('NewPassword456');
+      const updatedUser = await userRepository.findOneOrFail({ id: user.id });
+      console.log('updatedUser', await updatedUser.verifyPassword(testPassword));
+      const verifyResult = await updatedUser.verifyPassword('NewPassword456');
       expect(verifyResult).toBe(true);
     });
 
     it('should throw UnauthorizedException when current password is incorrect', async () => {
       // Arrange
-      const user = await userRepository.findOne({ email: 'test@example.com' });
+      const user = await userRepository.findOneOrFail({ email: 'test@example.com' });
       const passwordChangeDto = new ChangePasswordDto();
       passwordChangeDto.currentPassword = 'WrongPassword';
       passwordChangeDto.newPassword = 'NewPassword789';
 
       // Act & Assert
-      await expect(service.changePassword(user!, passwordChangeDto)).rejects.toThrow(UnauthorizedException);
+      await expect(service.changePassword(user, passwordChangeDto)).rejects.toThrow(UnauthorizedException);
     });
   });
 
   describe('deleteUser', () => {
     it('should delete user when password is correct', async () => {
       // Arrange
-      const user = await userRepository.findOne({ email: 'test@example.com' });
+      const user = await userRepository.findOneOrFail({ email: 'test@example.com' });
 
       // Act
-      const result = await service.deleteUser(user!, testPassword);
+      const result = await service.deleteUser(user, testPassword);
 
       // Assert
       expect(result).toBe(true);
 
       // Verify user was deleted
-      const deletedUser = await userRepository.findOne({ id: user!.id });
+      const deletedUser = await userRepository.findOne({ id: user.id });
       expect(deletedUser).toBeNull();
     });
 
     it('should throw UnauthorizedException when password is incorrect', async () => {
       // Arrange
-      const user = await userRepository.findOne({ email: 'test@example.com' });
+      const user = await userRepository.findOneOrFail({ email: 'test@example.com' });
 
       // Act & Assert
-      await expect(service.deleteUser(user!, 'WrongPassword')).rejects.toThrow(UnauthorizedException);
+      await expect(service.deleteUser(user, 'WrongPassword')).rejects.toThrow(UnauthorizedException);
 
       // Verify user was not deleted
-      const stillExistingUser = await userRepository.findOne({ id: user!.id });
+      const stillExistingUser = await userRepository.findOneOrFail({ id: user.id });
       expect(stillExistingUser).toBeDefined();
     });
   });

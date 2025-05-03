@@ -1,8 +1,8 @@
 import { Test, TestingModule } from '@nestjs/testing';
 import { Server, Socket } from 'socket.io';
 import { AuthService } from '../../src/auth';
-import { MessageReactionResponseDto, MessageResponseDto, UserResponseDto } from '../../src/dto';
-import { MessageReaction, Room, User } from '../../src/entities';
+import { MessageReactionResponseDto, MessageResponseDto, RoomResponseDto, UserResponseDto } from '../../src/dto';
+import { MessageReaction, User } from '../../src/entities';
 import { ChatGateway } from '../../src/gateway/chat.gateway';
 import { CreateMessageDto } from '../../src/messages/dto/create-message.dto';
 import { ReactionDto } from '../../src/messages/dto/reaction.dto';
@@ -31,23 +31,33 @@ describe('ChatGateway', () => {
     imageUrl: 'http://example.com/avatar2.jpg',
   } as User;
 
-  const testRoom1: Room = {
+  const testRoom1: RoomResponseDto = {
     id: 1,
     name: 'Test Room 1',
     isDirect: false,
     isPrivate: false,
     isActive: true,
-    ownerId: 1
-  } as Room;
+    ownerId: 1,
+    description: '',
+    imageUrl: '',
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+    unreadCount: 0
+  };
 
-  const testRoom2: Room = {
+  const testRoom2: RoomResponseDto = {
     id: 2,
     name: 'Test Room 2',
     isDirect: true,
     isPrivate: true,
     isActive: true,
-    ownerId: 1
-  } as Room;
+    ownerId: 1,
+    description: '',
+    imageUrl: '',
+    createdAt: new Date().toISOString(),
+    updatedAt: new Date().toISOString(),
+    unreadCount: 0
+  };
 
   // Mock response DTOs
   const testReactionResponseDto: MessageReactionResponseDto = {

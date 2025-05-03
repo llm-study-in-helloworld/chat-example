@@ -3,10 +3,10 @@ import { MikroOrmModule } from '@mikro-orm/nestjs';
 import { EntityRepository } from '@mikro-orm/postgresql';
 import { UnauthorizedException } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
-import bcrypt from 'bcrypt';
 import { RefreshTokenService } from '../../src/auth/refresh-token.service';
 import { RefreshToken, User } from '../../src/entities';
 import testConfig from '../mikro-orm.config.test';
+import { createUserFixture, TestUserData } from './fixtures/user.fixtures';
 
 describe('RefreshTokenService', () => {
   let service: RefreshTokenService;
@@ -17,6 +17,7 @@ describe('RefreshTokenService', () => {
 
   // Test data
   let testUser: User;
+  let testUserData: TestUserData;
   let testRefreshToken: RefreshToken;
 
   beforeAll(async () => {
@@ -44,13 +45,15 @@ describe('RefreshTokenService', () => {
     // Clear database before each test
     await orm.getSchemaGenerator().refreshDatabase();
 
-    // Create test user
-    testUser = new User();
-    testUser.email = 'refresh-test@example.com';
-    testUser.nickname = 'RefreshTestUser';
-    testUser.passwordHash = await bcrypt.hash('password123', 10);
+    // Create test user using fixture
+    testUserData = await createUserFixture(em, {
+      email: 'refresh-test@example.com',
+      nickname: 'RefreshTestUser',
+      password: 'password123'
+    });
     
-    await em.persistAndFlush(testUser);
+    // Get the actual user entity for tests that need it
+    testUser = await userRepository.findOneOrFail({ id: testUserData.id });
 
     // Clear EntityManager to ensure fresh state for each test
     em.clear();

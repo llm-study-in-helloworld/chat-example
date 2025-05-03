@@ -1,4 +1,3 @@
-import { RoomRole } from '@chat-example/types';
 import { EntityManager, MikroORM } from '@mikro-orm/core';
 import { MikroOrmModule } from '@mikro-orm/nestjs';
 import { EntityRepository } from '@mikro-orm/postgresql';
@@ -7,6 +6,8 @@ import bcrypt from 'bcrypt';
 import { Room, RoomUser, User } from '../../src/entities';
 import { RoomsService } from '../../src/rooms/rooms.service';
 import testConfig from '../mikro-orm.config.test';
+import { createRoomFixture, TestRoomData } from './fixtures/room.fixtures';
+import { createUserFixture, TestUserData } from './fixtures/user.fixtures';
 
 describe('RoomsService', () => {
   let service: RoomsService;
@@ -19,7 +20,10 @@ describe('RoomsService', () => {
   // Test data
   let testUser1: User;
   let testUser2: User;
+  let testUser1Data: TestUserData;
+  let testUser2Data: TestUserData;
   let testRoom: Room;
+  let testRoomData: TestRoomData;
   let testRoomUser1: RoomUser;
   let testRoomUser2: RoomUser;
 
@@ -49,46 +53,41 @@ describe('RoomsService', () => {
     // Clear database before each test
     await orm.getSchemaGenerator().refreshDatabase();
 
-    // Create test users
-    testUser1 = new User();
-    testUser1.email = 'test1@example.com';
-    testUser1.nickname = 'TestUser1';
-    testUser1.imageUrl = 'http://example.com/avatar1.jpg';
-    testUser1.passwordHash = await bcrypt.hash('password1', 10);
+    // Create test users using fixtures
+    testUser1Data = await createUserFixture(em, {
+      email: 'test1@example.com',
+      nickname: 'TestUser1',
+      password: 'password1',
+      imageUrl: 'http://example.com/avatar1.jpg'
+    });
+    
+    testUser2Data = await createUserFixture(em, {
+      email: 'test2@example.com',
+      nickname: 'TestUser2',
+      password: 'password2',
+      imageUrl: 'http://example.com/avatar2.jpg'
+    });
+    
+    // Get the actual user entities for tests that need them
+    testUser1 = await userRepository.findOneOrFail({ id: testUser1Data.id });
+    testUser2 = await userRepository.findOneOrFail({ id: testUser2Data.id });
 
-    testUser2 = new User();
-    testUser2.email = 'test2@example.com';
-    testUser2.nickname = 'TestUser2';
-    testUser2.imageUrl = 'http://example.com/avatar2.jpg';
-    testUser2.passwordHash = await bcrypt.hash('password2', 10);
-
-    await em.persistAndFlush([testUser1, testUser2]);
-
-    // Create a test room
-    testRoom = new Room();
-    testRoom.name = 'Test Room';
-    testRoom.isDirect = false;
-    testRoom.isPrivate = false;
-    testRoom.isActive = true;
-    testRoom.ownerId = testUser1.id;
-    await em.persistAndFlush(testRoom);
-
-    // Create room-user relationships
-    testRoomUser1 = new RoomUser();
-    testRoomUser1.room = testRoom;
-    testRoomUser1.user = testUser1;
-    testRoomUser1.joinedAt = new Date();
-    testRoomUser1.lastSeenAt = new Date();
-    testRoomUser1.role = RoomRole.OWNER;
-
-    testRoomUser2 = new RoomUser();
-    testRoomUser2.room = testRoom;
-    testRoomUser2.user = testUser2;
-    testRoomUser2.joinedAt = new Date();
-    testRoomUser2.lastSeenAt = new Date();
-    testRoomUser2.role = RoomRole.MEMBER;
-
-    await em.persistAndFlush([testRoomUser1, testRoomUser2]);
+    // Create a test room using fixture
+    testRoomData = await createRoomFixture(em, testUser1Data, [testUser2Data], {
+      name: 'Test Room',
+      isPrivate: false
+    });
+    
+    // Get the actual room entity and room user entities for tests that need them
+    testRoom = await roomRepository.findOneOrFail({ id: testRoomData.id });
+    testRoomUser1 = await roomUserRepository.findOneOrFail({ 
+      room: { id: testRoomData.id },
+      user: { id: testUser1Data.id }
+    });
+    testRoomUser2 = await roomUserRepository.findOneOrFail({ 
+      room: { id: testRoomData.id },
+      user: { id: testUser2Data.id }
+    });
 
     // Clear EntityManager to ensure fresh state for each test
     em.clear();

@@ -5,13 +5,13 @@ import { UnauthorizedException } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { JwtModule, JwtService } from '@nestjs/jwt';
 import { Test, TestingModule } from '@nestjs/testing';
-import bcrypt from 'bcrypt';
 import { AuthService } from '../../src/auth/auth.service';
 import { RefreshTokenService } from '../../src/auth/refresh-token.service';
 import { TokenBlacklistService } from '../../src/auth/token-blacklist.service';
 import { User } from '../../src/entities';
 import { UsersService } from '../../src/users/users.service';
 import testConfig from '../mikro-orm.config.test';
+import { createUserFixture, TestUserData } from './fixtures/user.fixtures';
 
 describe('AuthService', () => {
   let authService: AuthService;
@@ -26,6 +26,7 @@ describe('AuthService', () => {
   // Test data
   const testPassword = 'TestPassword123';
   let testUser: User;
+  let testUserData: TestUserData;
 
   beforeAll(async () => {
     const module: TestingModule = await Test.createTestingModule({
@@ -120,14 +121,16 @@ describe('AuthService', () => {
     // Clear database before each test
     await orm.getSchemaGenerator().refreshDatabase();
 
-    // Create a test user
-    testUser = new User();
-    testUser.email = 'test@example.com';
-    testUser.nickname = 'TestUser';
-    testUser.passwordHash = await bcrypt.hash(testPassword, 10);
-    testUser.imageUrl = 'http://example.com/avatar.jpg';
-
-    await em.persistAndFlush(testUser);
+    // Create a test user using fixture
+    testUserData = await createUserFixture(em, {
+      email: 'test@example.com',
+      nickname: 'TestUser',
+      password: testPassword,
+      imageUrl: 'http://example.com/avatar.jpg'
+    });
+    
+    // Get the actual user entity for tests that need it
+    testUser = await userRepository.findOneOrFail({ id: testUserData.id });
 
     // Reset mocks
     jest.clearAllMocks();
@@ -168,7 +171,7 @@ describe('AuthService', () => {
   describe('login', () => {
     it('should return access token, refresh token and user data', async () => {
       // Arrange
-      const user = await userRepository.findOne({ email: 'test@example.com' });
+      const user = await userRepository.findOneOrFail({ email: 'test@example.com' });
       
       // Act
       const result = await authService.login(user);
@@ -178,17 +181,17 @@ describe('AuthService', () => {
       expect(result.accessToken).toBeDefined();
       expect(result.refreshToken).toBe('refresh-token');
       expect(result.user).toBeDefined();
-      expect(result.user.id).toBe(user!.id);
+      expect(result.user.id).toBe(user.id);
       expect(result.user.email).toBe('test@example.com');
       expect(result.user.nickname).toBe('TestUser');
       expect(result.user.imageUrl).toBe('http://example.com/avatar.jpg');
       
       // Verify service interactions
       expect(refreshTokenService.createRefreshToken).toHaveBeenCalledWith(
-        expect.objectContaining({ id: user!.id }), 
+        expect.objectContaining({ id: user.id }), 
         undefined
       );
-      expect(refreshTokenService.revokeAllUserRefreshTokens).toHaveBeenCalledWith(user!.id);
+      expect(refreshTokenService.revokeAllUserRefreshTokens).toHaveBeenCalledWith(user.id);
     });
   });
 
@@ -224,30 +227,30 @@ describe('AuthService', () => {
   describe('logout', () => {
     it('should revoke all refresh tokens and blacklist user tokens', async () => {
       // Arrange
-      const user = await userRepository.findOne({ email: 'test@example.com' });
+      const user = await userRepository.findOneOrFail({ email: 'test@example.com' });
       
       jest.spyOn(refreshTokenService, 'revokeAllUserRefreshTokens').mockResolvedValue();
       jest.spyOn(tokenBlacklistService, 'blacklistUserTokens').mockResolvedValue();
       
       // Act
-      const result = await authService.logout(user!);
+      const result = await authService.logout(user);
 
       // Assert
       expect(result).toBe(true);
-      expect(refreshTokenService.revokeAllUserRefreshTokens).toHaveBeenCalledWith(user!.id);
-      expect(tokenBlacklistService.blacklistUserTokens).toHaveBeenCalledWith(user!.id);
+      expect(refreshTokenService.revokeAllUserRefreshTokens).toHaveBeenCalledWith(user.id);
+      expect(tokenBlacklistService.blacklistUserTokens).toHaveBeenCalledWith(user.id);
     });
 
     it('should return false when an error occurs', async () => {
       // Arrange
-      const user = await userRepository.findOne({ email: 'test@example.com' });
+      const user = await userRepository.findOneOrFail({ email: 'test@example.com' });
       
       jest.spyOn(refreshTokenService, 'revokeAllUserRefreshTokens').mockImplementation(() => {
         throw new Error('Test error');
       });
       
       // Act
-      const result = await authService.logout(user!);
+      const result = await authService.logout(user);
 
       // Assert
       expect(result).toBe(false);
