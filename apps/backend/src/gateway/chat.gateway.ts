@@ -1,19 +1,19 @@
-import { 
-  WebSocketGateway, 
-  WebSocketServer, 
-  SubscribeMessage, 
-  OnGatewayConnection, 
-  OnGatewayDisconnect 
+import { Injectable } from '@nestjs/common';
+import {
+  OnGatewayConnection,
+  OnGatewayDisconnect,
+  SubscribeMessage,
+  WebSocketGateway,
+  WebSocketServer
 } from '@nestjs/websockets';
 import { Server, Socket } from 'socket.io';
 import { AuthService } from '../auth/auth.service';
-import { Injectable } from '@nestjs/common';
+import { CreateMessageDto } from '../messages/dto/create-message.dto';
+import { ReactionDto } from '../messages/dto/reaction.dto';
+import { UpdateMessageDto } from '../messages/dto/update-message.dto';
 import { MessagesService } from '../messages/messages.service';
 import { RoomsService } from '../rooms/rooms.service';
-import { CreateMessageDto } from '../messages/dto/create-message.dto';
-import { UpdateMessageDto } from '../messages/dto/update-message.dto';
-import { ReactionDto } from '../messages/dto/reaction.dto';
-import { SocketErrorDto, SocketSuccessDto, ReactionResponseDto, ReactionUpdateEventDto, UserPresenceEventDto } from './dto/socket-response.dto';
+import { ReactionResponseDto, ReactionUpdateEventDto, SocketErrorDto, SocketSuccessDto, UserPresenceEventDto } from './dto/socket-response.dto';
 
 /**
  * 실시간 채팅을 위한 웹소켓 게이트웨이

@@ -1,4 +1,3 @@
-import { MessageReactionResponseDto } from "@app/entities/dto";
 
 /**
  * Base response DTO for socket events
