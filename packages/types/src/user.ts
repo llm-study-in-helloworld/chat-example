@@ -49,7 +49,11 @@ export interface UpdateUserRequest {
   nickname?: string;
   email?: string;
   currentPassword?: string;
-  newPassword?: string;
+}
+
+export interface ChangePasswordRequest {
+  currentPassword: string;
+  newPassword: string;
 }
 
 /**

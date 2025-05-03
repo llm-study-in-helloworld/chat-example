@@ -1,9 +1,12 @@
 {
   "name": "@chat-example/types",
   "version": "1.0.0",
-  "description": "Shared types for chat example",
+  "description": "Shared types for chat application",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
+  "exports": {
+    ".": "./dist/index.js"
+  },
   "scripts": {
     "build": "tsc",
     "dev": "tsc --watch"

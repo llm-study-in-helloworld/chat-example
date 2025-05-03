@@ -24,7 +24,6 @@ export interface Room extends BaseRoom {
  * Room response with additional information
  */
 export interface RoomResponse extends Room {
-  owner: MessageUser;
   participantCount: number;
   unreadCount?: number;
 }
