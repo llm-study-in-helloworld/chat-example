@@ -26,12 +26,16 @@ export class MessageResponseDto implements Pick<MessageDto, 'id' | 'content'> {
   createdAt: string = '';
   updatedAt: string = '';
   deletedAt: string | null = null;
-  parentId?: number | null;
+  roomId: number = 0;
+  parentId: number | null = null;
   isDeleted: boolean = false;
   sender: Pick<UserResponseDto, 'id' | 'nickname' | 'imageUrl'> = { id: 0, nickname: '', imageUrl: '' };
   reactions: MessageReactionResponseDto[] = [];
   mentions: MentionResponseDto[] = [];
   replyCount?: number;
+
+  private constructor() {
+  }
 
   /**
    * Message 엔티티를 ResponseDto로 변환
@@ -44,10 +48,10 @@ export class MessageResponseDto implements Pick<MessageDto, 'id' | 'content'> {
     dto.updatedAt = message.updatedAt.toISOString();
     dto.deletedAt = message.deletedAt ? message.deletedAt.toISOString() : null;
     dto.isDeleted = !!message.deletedAt;
-    dto.parentId = message.parent;
-    
+    dto.parentId = message.parent ?? null;
+    dto.roomId = message.room ?? null;
+
     // Add parent message information if available
-    
     dto.sender = {
       id: message.sender.id,
       nickname: message.sender.nickname,
