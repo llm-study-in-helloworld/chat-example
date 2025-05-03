@@ -1,59 +1,40 @@
-import { Room } from '../entities';
-import { MessageResponseDto } from './message.dto';
-import { UserResponseDto } from './user.dto';
-
-/**
- * Room 엔티티의 기본 속성을 정의하는 인터페이스
- */
-export interface RoomDto {
-  id: number;
-  name?: string;
-  isGroup: boolean;
-  createdAt: Date;
-  updatedAt: Date;
-}
+import { RoomResponse } from '@chat-example/types';
+import { Room as RoomEntity } from '../entities';
 
 /**
  * 응답 시 사용하는 Room 클래스
  */
-export class RoomResponseDto implements Pick<RoomDto, 'id' | 'name' | 'isGroup'> {
+export class RoomResponseDto implements RoomResponse {
   id: number = 0;
-  name?: string;
-  isGroup: boolean = false;
+  name: string = '';
+  description?: string = '';
+  imageUrl?: string = '';
+  isPrivate: boolean = false;
+  ownerId: number = 0;
   createdAt: string = '';
   updatedAt: string = '';
-  users: Pick<UserResponseDto, 'id' | 'nickname' | 'imageUrl'>[] = [];
-  lastMessage?: Pick<MessageResponseDto, 'id' | 'content' | 'createdAt'> & { senderId: number };
+  participantCount: number = 0;
+  unreadCount?: number;
 
   /**
    * Room 엔티티를 ResponseDto로 변환
    */
-  static fromEntity(room: Room): RoomResponseDto {
+  static fromEntity(room: RoomEntity): RoomResponseDto {
     const dto = new RoomResponseDto();
     dto.id = room.id;
-    dto.name = room.name;
-    dto.isGroup = room.isGroup;
+    dto.name = room.name || '';
+    // Custom fields not in entity but in the response type
+    dto.description = room.description || '';
+    dto.imageUrl = room.imageUrl || '';
+    dto.isPrivate = room.isPrivate || false;
+    
+    dto.ownerId = room.ownerId;
+    
     dto.createdAt = room.createdAt.toISOString();
     dto.updatedAt = room.updatedAt.toISOString();
     
-    dto.users = room.roomUsers.getItems().map(roomUser => ({
-      id: roomUser.user.id,
-      nickname: roomUser.user.nickname,
-      imageUrl: roomUser.user.imageUrl
-    }));
-    
-    if (room.messages?.getItems().length > 0) {
-      const lastMessage = room.messages.getItems().sort((a, b) => 
-        b.createdAt.getTime() - a.createdAt.getTime()
-      )[0];
-      
-      dto.lastMessage = {
-        id: lastMessage.id,
-        content: lastMessage.displayContent,
-        senderId: lastMessage.sender.id,
-        createdAt: lastMessage.createdAt.toISOString()
-      };
-    }
+    // Set participant count
+    dto.participantCount = room.participantCount;
     
     return dto;
   }

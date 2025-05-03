@@ -1,27 +1,15 @@
+import { MessageUser, RoomRole, RoomUserResponse } from '@chat-example/types';
 import { RoomUser } from '../entities';
-import { RoomResponseDto } from './room.dto';
-import { UserResponseDto } from './user.dto';
-
-/**
- * RoomUser 엔티티의 기본 속성을 정의하는 인터페이스
- */
-export interface RoomUserDto {
-  roomId: number;
-  userId: number;
-  joinedAt: Date;
-  lastSeenAt?: Date;
-}
-
 /**
  * 응답 시 사용하는 RoomUser 클래스
  */
-export class RoomUserResponseDto implements Pick<RoomUserDto, 'roomId' | 'userId'> {
-  roomId: number = 0;
+export class RoomUserResponseDto implements RoomUserResponse {
   userId: number = 0;
+  roomId: number = 0;
+  role: RoomRole = RoomRole.MEMBER;
   joinedAt: string = '';
-  lastSeenAt?: string;
-  user: Pick<UserResponseDto, 'id' | 'nickname' | 'imageUrl'> = { id: 0, nickname: '' };
-  room: Pick<RoomResponseDto, 'id' | 'name' | 'isGroup'> = { id: 0, isGroup: false };
+  user: MessageUser = { id: 0, nickname: '' };
+  room?: { id: number; name: string; isPrivate: boolean } = { id: 0, name: '', isPrivate: false };
 
   /**
    * RoomUser 엔티티를 ResponseDto로 변환
@@ -30,8 +18,8 @@ export class RoomUserResponseDto implements Pick<RoomUserDto, 'roomId' | 'userId
     const dto = new RoomUserResponseDto();
     dto.roomId = roomUser.room.id;
     dto.userId = roomUser.user.id;
+    dto.role = roomUser.role;
     dto.joinedAt = roomUser.joinedAt.toISOString();
-    dto.lastSeenAt = roomUser.lastSeenAt ? roomUser.lastSeenAt.toISOString() : undefined;
     
     dto.user = {
       id: roomUser.user.id,
@@ -42,7 +30,7 @@ export class RoomUserResponseDto implements Pick<RoomUserDto, 'roomId' | 'userId
     dto.room = {
       id: roomUser.room.id,
       name: roomUser.room.name,
-      isGroup: roomUser.room.isGroup
+      isPrivate: roomUser.room.isPrivate
     };
     
     return dto;
