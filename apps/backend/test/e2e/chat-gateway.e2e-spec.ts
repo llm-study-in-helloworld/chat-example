@@ -6,28 +6,14 @@ import { createServer } from 'http';
 import { io, Socket } from 'socket.io-client';
 import request from 'supertest';
 import { MessageResponseDto } from '../../src/entities/dto/message.dto';
-import { ReactionUpdateEventDto, UserPresenceEventDto } from '../../src/gateway/dto/socket-response.dto';
+import { ReactionResponseDto, ReactionUpdateEventDto, SocketErrorDto, SocketSuccessDto, UserPresenceEventDto } from '../../src/gateway/dto/socket-response.dto';
 import { CreateMessageDto } from '../../src/messages/dto/create-message.dto';
 import { ReactionDto } from '../../src/messages/dto/reaction.dto';
 import { AppTestModule } from '../app-test.module';
 import { AccessTokensDict, TestUser, TestUserResponse } from '../types/test-user.type';
 
-// Define response interfaces for socket responses
-interface SuccessResponse {
-  success: boolean;
-}
-
-interface ErrorResponse {
-  error: string;
-}
-
-interface ReactionResponse {
-  success: boolean;
-  added: boolean;
-  reaction: any | null;
-}
-
-type SocketResponse<T> = T | ErrorResponse;
+// Define type for socket responses
+type SocketResponse<T> = T | SocketErrorDto;
 
 // Increase timeouts for test stability
 jest.setTimeout(30000);
@@ -272,7 +258,7 @@ describe('ChatGateway (e2e)', () => {
       const userSocket = socketClients['user1'];
       
       // When they attempt to join
-      const response = await emitAndWait<SocketResponse<SuccessResponse>>(userSocket, 'join_room', { roomId });
+      const response = await emitAndWait<SocketResponse<SocketSuccessDto>>(userSocket, 'join_room', { roomId });
       
       // Then they should join successfully
       expect(response).toEqual({ success: true });
@@ -338,7 +324,7 @@ describe('ChatGateway (e2e)', () => {
       
       // Join all users to the test room
       for (const clientKey in socketClients) {
-        await emitAndWait<SocketResponse<SuccessResponse>>(socketClients[clientKey], 'join_room', { roomId });
+        await emitAndWait<SocketResponse<SocketSuccessDto>>(socketClients[clientKey], 'join_room', { roomId });
       }
     });
     
@@ -460,7 +446,7 @@ describe('ChatGateway (e2e)', () => {
       
       // Then they should receive an error
       expect(response).toHaveProperty('error');
-      expect((response as ErrorResponse).error).toContain('권한이 없습니다');
+      expect((response as SocketErrorDto).error).toContain('권한이 없습니다');
     });
   });
   
@@ -473,7 +459,7 @@ describe('ChatGateway (e2e)', () => {
       
       // Join all users to the test room
       for (const clientKey in socketClients) {
-        await emitAndWait<SocketResponse<SuccessResponse>>(socketClients[clientKey], 'join_room', { roomId });
+        await emitAndWait<SocketResponse<SocketSuccessDto>>(socketClients[clientKey], 'join_room', { roomId });
       }
       
       // Create a test message if we don't have one
@@ -506,14 +492,14 @@ describe('ChatGateway (e2e)', () => {
         emoji: '👍'
       };
       
-      const response = await emitAndWait<ReactionResponse>(socketClients['user2'], 'react_message', reactionData);
+      const response = await emitAndWait<ReactionResponseDto>(socketClients['user2'], 'react_message', reactionData);
       
       // Then the reaction should be saved
       expect(response).toBeDefined();
       expect(response.success).toBe(true);
       expect(response.added).toBe(true);
       expect(response.reaction).toBeDefined();
-      expect(response.reaction.emoji).toBe('👍');
+      expect(response.reaction?.emoji).toBe('👍');
       
       // And all users should receive the reaction update
       const reactionEvent = await reactionPromise;
@@ -537,7 +523,7 @@ describe('ChatGateway (e2e)', () => {
         emoji: '👍'
       };
       
-      const response = await emitAndWait<ReactionResponse>(reactorSocket, 'react_message', reactionData);
+      const response = await emitAndWait<ReactionResponseDto>(reactorSocket, 'react_message', reactionData);
       
       // Then the reaction should be removed
       expect(response).toBeDefined();
