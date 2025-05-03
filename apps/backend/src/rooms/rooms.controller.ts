@@ -12,7 +12,7 @@ import {
 } from '@nestjs/common';
 import { CurrentUser, JwtAuthGuard } from '../auth';
 import { User } from '../entities';
-import { AddUserDto, CreateRoomDto } from './dto';
+import { AddUserRequestDto, CreateRoomRequestDto } from './dto';
 import { RoomsService } from './rooms.service';
 
 @UseGuards(JwtAuthGuard)
@@ -40,9 +40,8 @@ export class RoomsController {
     return room;
   }
 
-  @UseGuards(JwtAuthGuard)
   @Post()
-  async create(@CurrentUser() user: User, @Body() createRoomDto: CreateRoomDto) {
+  async create(@CurrentUser() user: User, @Body() createRoomDto: CreateRoomRequestDto) {
     // Make sure the current user is included in the room
     const userIds = new Set(createRoomDto.userIds);
     userIds.add(user.id);
@@ -61,7 +60,7 @@ export class RoomsController {
   async addUser(
     @CurrentUser() user: User,
     @Param('id', ParseIntPipe) id: number,
-    @Body() addUserDto: AddUserDto,
+    @Body() addUserDto: AddUserRequestDto,
   ) {
     const canJoin = await this.roomsService.canUserJoinRoom(user.id, id);
     if (!canJoin) {

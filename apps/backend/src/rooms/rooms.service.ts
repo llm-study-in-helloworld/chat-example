@@ -29,7 +29,7 @@ export class RoomsService {
       {orderBy: { room: { updatedAt: QueryOrder.DESC } }, fields: ['room'], populate: ['room'] }
     );
 
-    return this.formatRoomResponse(roomUsers.map(ru => ru.room), userId);
+    return await this.formatRoomResponse(roomUsers.map(ru => ru.room), userId);
   }
   /**
    * 새로운 채팅방 생성
@@ -41,7 +41,7 @@ export class RoomsService {
     ownerId: number
   ): Promise<RoomResponseDto[]> {
     // 트랜잭션 시작
-    return this.em.transactional(async (em) => {
+    const result = await this.em.transactional(async (em) => {
       if (userIds.length === 0) {
         throw new Error('At least one user is required to create a room');
       }
@@ -67,9 +67,12 @@ export class RoomsService {
         
         await em.persist(roomUser);
       }
+      await em.flush();
       
-      return this.formatRoomResponse([room], ownerId);
+      return room;
     });
+
+    return await this.formatRoomResponse([result], ownerId);
   }
 
   /**
@@ -157,7 +160,7 @@ export class RoomsService {
     }
 
     if (!roomUser) {
-      return !room.isPrivate || !room.isDirect || !room.isActive;
+      return !room.isPrivate && !room.isDirect && room.isActive;
     }
 
     return true;
