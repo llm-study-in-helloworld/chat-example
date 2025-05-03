@@ -19,12 +19,11 @@ export class Mention extends CommonEntity {
     mapToPk: true,
     fieldName: 'message_id'
   })
-  message!: Message;
+  message!: number;
 
   @ManyToOne({
     entity: () => User,
     persist: true,
-    mapToPk: true,
     fieldName: 'mentioned_user_id'
   })
   mentionedUser!: User;

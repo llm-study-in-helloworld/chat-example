@@ -44,30 +44,45 @@ export class MessagesService {
   /**
    * 채팅방의 메시지 목록 조회
    */
-  async getRoomMessages(roomId: number, limit = 20, offset = 0): Promise<Message[]> {
-    return this.em.find(Message, { room: { id: roomId } }, {
+  async getRoomMessages(roomId: number, limit = 20, offset = 0): Promise<MessageResponseDto[]> {
+    const messages = await this.em.find(Message, { room: roomId, parent: null }, {
       orderBy: { createdAt: QueryOrder.DESC },
       limit,
       offset,
-      populate: ['sender', 'parent', 'reactions', 'reactions.user', 'mentions', 'mentions.mentionedUser']
+      populate: ['sender', 'reactions', 'reactions.user', 'mentions']
     });
+    
+    return this.formatMessagesResponse(messages);
   }
 
   /**
    * 단일 메시지 조회
    */
-  async getMessage(messageId: number): Promise<Message | null> {
-    return this.messageRepository.findOne({ id: messageId }, {
-      populate: ['sender', 'parent', 'reactions', 'reactions.user', 'mentions', 'mentions.mentionedUser']
+  async getMessage(messageId: number): Promise<MessageResponseDto | null> {
+    const message = await this.messageRepository.findOne({ id: messageId }, {
+      populate: ['sender', 'reactions', 'reactions.user', 'mentions', 'mentions.mentionedUser']
     });
+    
+    if (!message) {
+      return null;
+    }
+    
+    // 단일 메시지의 답글 수 처리를 최적화된 방식으로 조회
+    if (!message.parent) {
+      const replyCounts = await this.countRepliesForMessages([message.id]);
+      const dto = MessageResponseDto.fromEntity(message);
+      dto.replyCount = replyCounts[message.id] || 0;
+      return dto;
+    }
+    
+    return MessageResponseDto.fromEntity(message);
   }
 
   /**
    * 새 메시지 생성
    */
-  async createMessage(data: CreateMessageDto): Promise<Message> {
-    return this.em.transactional(async (em) => {
-      const room = await em.findOneOrFail(Room, { id: data.roomId });
+  async createMessage(data: CreateMessageDto): Promise<MessageResponseDto> {
+    const message = await this.em.transactional(async (em) => {
       const sender = await em.findOneOrFail(User, { id: data.senderId });
       
       let parent = undefined;
@@ -76,10 +91,10 @@ export class MessagesService {
       }
       
       const message = new Message();
-      message.room = room;
+      message.room = data.roomId;
       message.sender = sender;
       if (parent) {
-        message.parent = parent;
+        message.parent = parent.id;
       }
       message.content = data.content;
       
@@ -93,13 +108,31 @@ export class MessagesService {
       
       return message;
     });
+    
+    // Reload the message with all relations
+    const loadedMessage = await this.messageRepository.findOneOrFail({ id: message.id }, {
+      populate: ['sender', 'reactions', 'reactions.user', 'mentions', 'mentions.mentionedUser']
+    });
+    
+    // 단일 메시지의 답글 수를 조회할 필요가 없음 (새로 생성된 메시지는 답글이 없음)
+    const dto = MessageResponseDto.fromEntity(loadedMessage);
+    
+    // 만약 부모 메시지를 업데이트하는 경우 (답글을 추가한 경우), 부모 메시지의 답글 수를 업데이트할 필요가 있음
+    // 그러나 이 시점에서는 클라이언트가 새로운 메시지만 요청하므로 replyCount는 0으로 설정
+    if (!loadedMessage.parent) {
+      dto.replyCount = 0;
+    }
+    
+    return dto;
   }
 
   /**
    * 메시지 업데이트
    */
-  async updateMessage(messageId: number, userId: number, data: UpdateMessageDto): Promise<Message> {
-    const message = await this.getMessage(messageId);
+  async updateMessage(messageId: number, userId: number, data: UpdateMessageDto): Promise<MessageResponseDto> {
+    const message = await this.messageRepository.findOne({ id: messageId }, {
+      populate: ['sender','reactions', 'reactions.user', 'mentions', 'mentions.mentionedUser']
+    });
     if (!message) {
       throw new NotFoundException('메시지를 찾을 수 없습니다');
     }
@@ -119,21 +152,37 @@ export class MessagesService {
     await this.em.persistAndFlush(message);
     
     // 기존 멘션 제거 및 새 멘션 추가
-    await this.em.nativeDelete(Mention, { message: { id: messageId } });
+    await this.em.nativeDelete(Mention, { message: messageId });
     
     const mentions = this.extractMentions(data.content);
     if (mentions.length > 0) {
       await this.saveMentions(messageId, mentions);
     }
     
-    return message;
+    // Reload message to get updated relations
+    const updatedMessage = await this.messageRepository.findOneOrFail({ id: messageId }, {
+      populate: ['sender', 'reactions', 'reactions.user', 'mentions', 'mentions.mentionedUser']
+    });
+    
+    // 업데이트된 메시지에 대한 DTO 생성
+    const dto = MessageResponseDto.fromEntity(updatedMessage);
+    
+    // 부모 메시지인 경우에만 답글 수 조회 
+    if (!updatedMessage.parent) {
+      const replyCounts = await this.countRepliesForMessages([messageId]);
+      dto.replyCount = replyCounts[messageId] || 0;
+    }
+    
+    return dto;
   }
 
   /**
    * 메시지 삭제 (소프트 삭제)
    */
   async deleteMessage(messageId: number, userId: number): Promise<boolean> {
-    const message = await this.getMessage(messageId);
+    const message = await this.messageRepository.findOne({ id: messageId }, {
+      populate: ['sender']
+    });
     if (!message) {
       throw new NotFoundException('메시지를 찾을 수 없습니다');
     }
@@ -154,12 +203,11 @@ export class MessagesService {
    */
   async toggleReaction(messageId: number, userId: number, emoji: string): Promise<MessageReaction | null> {
     return this.em.transactional(async (em) => {
-      const message = await em.findOneOrFail(Message, { id: messageId });
       const user = await em.findOneOrFail(User, { id: userId });
       
       // 기존 리액션 확인
       const existingReaction = await em.findOne(MessageReaction, {
-        message: { id: messageId },
+        message: messageId,
         user: { id: userId },
         emoji
       });
@@ -170,7 +218,7 @@ export class MessagesService {
         return null;
       } else {
         const reaction = new MessageReaction();
-        reaction.message = message;
+        reaction.message = messageId;
         reaction.user = user;
         reaction.emoji = emoji;
         
@@ -184,7 +232,7 @@ export class MessagesService {
    * 메시지 내용에서 멘션 추출
    * @example "@username 안녕하세요" => ["username"]
    */
-  extractMentions(content: string): string[] {
+  private extractMentions(content: string): string[] {
     const mentionRegex = /@(\w+)/g;
     const matches = content.match(mentionRegex) || [];
     return matches.map(match => match.substring(1));
@@ -198,9 +246,8 @@ export class MessagesService {
     for (const username of usernames) {
       const user = await this.em.findOne(User, { nickname: username });
       if (user) {
-        const message = await this.em.findOneOrFail(Message, { id: messageId });
         const mention = new Mention();
-        mention.message = message;
+        mention.message = messageId;
         mention.mentionedUser = user;
         
         await this.em.persist(mention);
@@ -214,7 +261,9 @@ export class MessagesService {
    * 메시지 수정 권한 확인
    */
   async canEditMessage(userId: number, messageId: number): Promise<boolean> {
-    const message = await this.getMessage(messageId);
+    const message = await this.messageRepository.findOne({ id: messageId }, {
+      populate: ['sender']
+    });
     if (!message) return false;
     
     return message.sender.id === userId && !message.isDeleted;
@@ -224,53 +273,115 @@ export class MessagesService {
    * 메시지 삭제 권한 확인
    */
   async canDeleteMessage(userId: number, messageId: number): Promise<boolean> {
-    const message = await this.getMessage(messageId);
+    const message = await this.messageRepository.findOne({ id: messageId }, {
+      populate: ['sender']
+    });
     if (!message) return false;
     
     return message.sender.id === userId && !message.isDeleted;
   }
 
   /**
-   * 메시지를 DTO로 변환
+   * 여러 메시지의 답글 수를 한 번에 조회 (N+1 쿼리 문제 해결)
    */
-  formatMessageResponse(message: Message): MessageResponseDto {
-    return MessageResponseDto.fromEntity(message);
+  private async countRepliesForMessages(messageIds: number[]): Promise<Record<number, number>> {
+    if (messageIds.length === 0) {
+      return {};
+    }
+
+    const results = await this.em.getConnection().execute(`
+      SELECT parent_id, COUNT(*) as reply_count 
+      FROM message 
+      WHERE parent_id IN (${messageIds.join(',')}) 
+      AND deleted_at IS NULL 
+      GROUP BY parent_id
+    `);
+
+    // 결과를 parentId를 키로 하는 객체로 변환
+    const counts: Record<number, number> = {};
+    for (const result of results) {
+      counts[result.parent_id] = parseInt(result.reply_count);
+    }
+
+    // 결과가 없는 메시지는 0으로 설정
+    for (const id of messageIds) {
+      if (counts[id] === undefined) {
+        counts[id] = 0;
+      }
+    }
+
+    return counts;
+  }
+
+  /**
+   * 여러 메시지를 DTO로 변환하고 답글 수 정보 포함
+   */
+  private async formatMessagesResponse(messages: Message[]): Promise<MessageResponseDto[]> {
+    if (messages.length === 0) {
+      return [];
+    }
+
+    // 부모 메시지만 필터링 (답글은 제외)
+    const parentMessageIds = messages
+      .filter(message => !message.parent)
+      .map(message => message.id);
+
+    // 답글 수를 한 번에 조회
+    const replyCounts = await this.countRepliesForMessages(parentMessageIds);
+
+    // 각 메시지를 DTO로 변환하고 답글 수 추가
+    return messages.map(message => {
+      const dto = MessageResponseDto.fromEntity(message);
+      
+      // 부모 메시지인 경우에만 답글 수 추가
+      if (!message.parent) {
+        dto.replyCount = replyCounts[message.id] || 0;
+      }
+      
+      return dto;
+    });
   }
 
   /**
    * 메시지 목록 조회
    */
-  async findAll(filter: FilterQuery<Message> = {}): Promise<Message[]> {
-    return this.messageRepository.find(filter, { 
+  async findAll(filter: FilterQuery<Message> = {}): Promise<MessageResponseDto[]> {
+    const messages = await this.messageRepository.find(filter, { 
       populate: ['sender', 'reactions', 'reactions.user', 'mentions', 'mentions.mentionedUser'],
       orderBy: { createdAt: 'ASC' }
     });
+    
+    return this.formatMessagesResponse(messages);
   }
 
   /**
    * 룸에 있는 메시지 조회
    */
-  async findByRoom(roomId: number): Promise<Message[]> {
-    return this.messageRepository.find(
-      { room: { id: roomId }, deletedAt: null },
+  async findByRoom(roomId: number): Promise<MessageResponseDto[]> {
+    const messages = await this.messageRepository.find(
+      { room: roomId, deletedAt: null },
       { 
         populate: ['sender', 'reactions', 'reactions.user', 'mentions', 'mentions.mentionedUser'],
         orderBy: { createdAt: 'ASC' }
       }
     );
+    
+    return this.formatMessagesResponse(messages);
   }
 
   /**
    * 답글 메시지 조회
    */
-  async findReplies(parentId: number): Promise<Message[]> {
-    return this.messageRepository.find(
-      { parent: { id: parentId }, deletedAt: null },
+  async findReplies(parentId: number): Promise<MessageResponseDto[]> {
+    const replies = await this.messageRepository.find(
+      { parent: parentId, deletedAt: null },
       { 
         populate: ['sender', 'reactions', 'reactions.user', 'mentions', 'mentions.mentionedUser'],
         orderBy: { createdAt: 'ASC' } 
       }
     );
+    
+    return this.formatMessagesResponse(replies);
   }
 
   /**
@@ -281,34 +392,62 @@ export class MessagesService {
     roomId: number;
     senderId: number;
     parentId?: number;
-  }): Promise<Message> {
+  }): Promise<MessageResponseDto> {
     const { content, roomId, senderId, parentId } = data;
     
-    const room = await this.roomRepository.findOneOrFail({ id: roomId });
     const sender = await this.userRepository.findOneOrFail({ id: senderId });
     
     const message = new Message();
     message.content = content;
-    message.room = room;
+    message.room = roomId;
     message.sender = sender;
     
     if (parentId) {
       const parent = await this.messageRepository.findOneOrFail({ id: parentId });
-      message.parent = parent;
+      message.parent = parent.id;
     }
 
     await this.em.persistAndFlush(message);
-    return message;
+    
+    // Reload the message with all relations
+    const loadedMessage = await this.messageRepository.findOneOrFail({ id: message.id }, {
+      populate: ['sender', 'reactions', 'reactions.user', 'mentions', 'mentions.mentionedUser']
+    });
+    
+    // 새로 생성된 메시지에 대한 DTO 생성
+    const dto = MessageResponseDto.fromEntity(loadedMessage);
+    
+    // 새 메시지는 답글이 없음 (부모 메시지인 경우)
+    if (!loadedMessage.parent) {
+      dto.replyCount = 0;
+    }
+    
+    return dto;
   }
 
   /**
    * 메시지 업데이트
    */
-  async update(id: number, content: string): Promise<Message> {
+  async update(id: number, content: string): Promise<MessageResponseDto> {
     const message = await this.messageRepository.findOneOrFail({ id });
     message.content = content;
     await this.em.flush();
-    return message;
+    
+    // Reload the message with all relations
+    const updatedMessage = await this.messageRepository.findOneOrFail({ id }, {
+      populate: ['sender', 'reactions', 'reactions.user', 'mentions', 'mentions.mentionedUser']
+    });
+    
+    // 업데이트된 메시지에 대한 DTO 생성 
+    const dto = MessageResponseDto.fromEntity(updatedMessage);
+    
+    // 답글 수 처리
+    if (!updatedMessage.parent) {
+      const replyCounts = await this.countRepliesForMessages([id]);
+      dto.replyCount = replyCounts[id] || 0;
+    }
+    
+    return dto;
   }
 
   /**
@@ -330,12 +469,11 @@ export class MessagesService {
   }): Promise<MessageReaction> {
     const { messageId, userId, emoji } = data;
     
-    const message = await this.messageRepository.findOneOrFail({ id: messageId });
     const user = await this.userRepository.findOneOrFail({ id: userId });
     
     // Check if reaction already exists
     const existingReaction = await this.messageReactionRepository.findOne({
-      message: { id: messageId },
+      message: messageId,
       user: { id: userId },
       emoji
     });
@@ -345,7 +483,7 @@ export class MessagesService {
     }
     
     const reaction = new MessageReaction();
-    reaction.message = message;
+    reaction.message = messageId;
     reaction.user = user;
     reaction.emoji = emoji;
     
@@ -358,7 +496,7 @@ export class MessagesService {
    */
   async removeReaction(messageId: number, userId: number, emoji: string): Promise<void> {
     const reaction = await this.messageReactionRepository.findOne({
-      message: { id: messageId },
+      message: messageId,
       user: { id: userId },
       emoji
     });
@@ -377,14 +515,23 @@ export class MessagesService {
   }): Promise<Mention> {
     const { messageId, mentionedUserId } = data;
     
-    const message = await this.messageRepository.findOneOrFail({ id: messageId });
     const mentionedUser = await this.userRepository.findOneOrFail({ id: mentionedUserId });
     
     const mention = new Mention();
-    mention.message = message;
+    mention.message = messageId;
     mention.mentionedUser = mentionedUser;
     
     await this.em.persistAndFlush(mention);
     return mention;
+  }
+
+  /**
+   * 메시지의 답글 수 조회
+   */
+  async countReplies(messageId: number): Promise<number> {
+    return this.messageRepository.count({ 
+      parent: messageId,
+      deletedAt: null 
+    });
   }
 } 

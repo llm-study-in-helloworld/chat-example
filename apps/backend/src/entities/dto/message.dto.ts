@@ -20,15 +20,15 @@ export interface MessageDto {
 /**
  * 응답 시 사용하는 Message 클래스
  */
-export class MessageResponseDto implements Pick<MessageDto, 'id' | 'content' | 'parentId'> {
+export class MessageResponseDto implements Pick<MessageDto, 'id' | 'content'> {
   id: number = 0;
   content: string = '';
   createdAt: string = '';
   updatedAt: string = '';
-  deletedAt?: string;
-  parentId?: number;
+  deletedAt: string | null = null;
+  parentId?: number | null;
   isDeleted: boolean = false;
-  sender: Pick<UserResponseDto, 'id' | 'nickname' | 'imageUrl'> = { id: 0, nickname: '' };
+  sender: Pick<UserResponseDto, 'id' | 'nickname' | 'imageUrl'> = { id: 0, nickname: '', imageUrl: '' };
   reactions: MessageReactionResponseDto[] = [];
   mentions: MentionResponseDto[] = [];
   replyCount?: number;
@@ -42,9 +42,11 @@ export class MessageResponseDto implements Pick<MessageDto, 'id' | 'content' | '
     dto.content = message.displayContent;
     dto.createdAt = message.createdAt.toISOString();
     dto.updatedAt = message.updatedAt.toISOString();
-    dto.deletedAt = message.deletedAt ? message.deletedAt.toISOString() : undefined;
+    dto.deletedAt = message.deletedAt ? message.deletedAt.toISOString() : null;
     dto.isDeleted = !!message.deletedAt;
-    dto.parentId = message.parent?.id;
+    dto.parentId = message.parent;
+    
+    // Add parent message information if available
     
     dto.sender = {
       id: message.sender.id,

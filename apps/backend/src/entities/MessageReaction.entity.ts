@@ -21,12 +21,11 @@ export class MessageReaction extends CommonEntity {
     mapToPk: true,
     fieldName: 'message_id'
   })
-  message!: Message;
+  message!: number;
 
   @ManyToOne({
     entity: () => User,
     persist: true,
-    mapToPk: true,
     fieldName: 'user_id'
   })
   user!: User;

@@ -27,13 +27,13 @@ export class Message extends CommonEntity {
     mapToPk: true,
     fieldName: 'room_id'
   })
-  room!: Room;
+  room!: number;
 
   @ManyToOne({
     entity: () => User,
     persist: true,
-    mapToPk: true,
-    fieldName: 'sender_id'
+    eager: true,
+    fieldName: 'sender_id',
   })
   sender!: User;
 
@@ -44,7 +44,7 @@ export class Message extends CommonEntity {
     mapToPk: true,
     fieldName: 'parent_id'
   })
-  parent?: Message;
+  parent?: number | null;
 
   @Property()
   content!: string;
