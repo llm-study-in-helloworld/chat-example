@@ -13,7 +13,7 @@ const testConfig: Options = {
   driver: SqliteDriver,
   dbName: ':memory:',
   entities: [User, Room, RoomUser, Message, MessageReaction, Mention, RefreshToken],
-  debug: true,
+  // debug: true,
   logger: (message: string) => {
     if (message.includes('[query]')) {
       // 1. [query] 헤더 제거
