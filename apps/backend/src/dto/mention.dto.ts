@@ -17,7 +17,7 @@ export class MentionResponseDto implements MentionResponse {
   static fromEntity(mention: MentionEntity): MentionResponseDto {
     const dto = new MentionResponseDto();
     dto.id = mention.id;
-    dto.messageId = mention.message;
+    dto.messageId = mention.messageId;
     dto.userId = mention.mentionedUser.id;
     dto.createdAt = mention.createdAt.toISOString();
     dto.mentionedUser = {

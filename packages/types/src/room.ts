@@ -1,4 +1,3 @@
-import { MessageUser } from './user';
 
 /**
  * Base room interface for common properties
@@ -9,6 +8,8 @@ export interface BaseRoom {
   description?: string;
   imageUrl?: string;
   isPrivate: boolean;
+  isDirect?: boolean;
+  isActive?: boolean;
   ownerId: number;
 }
 
@@ -24,7 +25,6 @@ export interface Room extends BaseRoom {
  * Room response with additional information
  */
 export interface RoomResponse extends Room {
-  participantCount: number;
   unreadCount?: number;
 }
 
@@ -42,7 +42,6 @@ export interface RoomUser {
  * Room User response with user details
  */
 export interface RoomUserResponse extends RoomUser {
-  user: MessageUser;
 }
 
 /**
@@ -61,6 +60,8 @@ export interface CreateRoomRequest {
   name: string;
   description?: string;
   isPrivate: boolean;
+  isDirect: boolean;
+  isActive: boolean;
   participantIds?: number[];
 }
 
@@ -73,3 +74,15 @@ export interface UpdateRoomRequest {
   imageUrl?: string;
   isPrivate?: boolean;
 } 
+
+export interface JoinRoomRequest {
+  roomId: number;
+}
+
+export interface AddUserRequest {
+  userId: number;
+}
+
+export interface RemoveUserRequest {
+  userId: number;
+}

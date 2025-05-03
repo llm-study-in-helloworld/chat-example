@@ -1,8 +1,9 @@
+import { RoomRole } from '@chat-example/types';
 import { EntityManager, QueryOrder } from '@mikro-orm/core';
 import { InjectRepository } from '@mikro-orm/nestjs';
 import { EntityRepository } from '@mikro-orm/postgresql';
 import { Injectable } from '@nestjs/common';
-import { RoomResponseDto } from '../dto';
+import { RoomResponseDto, RoomUserResponseDto } from '../dto';
 import { Room, RoomUser, User } from '../entities';
 /**
  * 채팅방 관련 비즈니스 로직을 처리하는 서비스
@@ -22,31 +23,35 @@ export class RoomsService {
   /**
    * 특정 사용자가 참여 중인 모든 채팅방 목록 조회
    */
-  async getUserRooms(userId: number): Promise<Room[]> {
+  async getUserRooms(userId: number): Promise<RoomResponseDto[]> {
     const roomUsers = await this.roomUserRepository.find(
       { user: { id: userId } }, 
-      {
-        populate: ['room'],
-        orderBy: { room: { updatedAt: QueryOrder.DESC } }
-      }
+      {orderBy: { room: { updatedAt: QueryOrder.DESC } }, fields: ['room'], populate: ['room'] }
     );
 
-    return roomUsers.map(ru => ru.room);
+    return this.formatRoomResponse(roomUsers.map(ru => ru.room), userId);
   }
-
   /**
    * 새로운 채팅방 생성
    */
   async createRoom(
     name: string | undefined,
-    isGroup: boolean,
-    userIds: number[]
-  ): Promise<Room> {
+    isDirect: boolean,
+    userIds: number[],
+    ownerId: number
+  ): Promise<RoomResponseDto[]> {
     // 트랜잭션 시작
     return this.em.transactional(async (em) => {
+      if (userIds.length === 0) {
+        throw new Error('At least one user is required to create a room');
+      }
+
       const room = new Room();
       room.name = name || '';
-      room.isGroup = isGroup;
+      room.isDirect = isDirect;
+      room.isPrivate = false;
+      room.isActive = true;
+      room.ownerId = ownerId;
       
       await em.persistAndFlush(room);
       
@@ -58,34 +63,41 @@ export class RoomsService {
         roomUser.user = user;
         roomUser.joinedAt = new Date();
         roomUser.lastSeenAt = new Date();
+        roomUser.role = userId === ownerId ? RoomRole.OWNER : RoomRole.MEMBER;
         
         await em.persist(roomUser);
       }
       
-      return room;
+      return this.formatRoomResponse([room], ownerId);
     });
   }
 
   /**
    * 채팅방 정보 조회
    */
-  async getRoomById(roomId: number): Promise<Room | null> {
-    return this.roomRepository.findOne(
+  async getRoomById(roomId: number): Promise<RoomResponseDto | null> {
+    const room = await this.roomRepository.findOne(
       { id: roomId }, 
       { populate: ['roomUsers.user'] }
     );
-  }
 
+    if (!room) {
+      return null;
+    }
+
+    const roomDtos = await this.formatRoomResponse([room], room.ownerId);
+    return roomDtos[0];
+  }
   /**
    * 채팅방의 참여자 목록 조회
    */
-  async getRoomUsers(roomId: number): Promise<User[]> {
+  async getRoomUsers(roomId: number): Promise<RoomUserResponseDto[]> {
     const roomUsers = await this.roomUserRepository.find(
       { room: { id: roomId } }, 
       { populate: ['user'] }
     );
     
-    return roomUsers.map(ru => ru.user);
+    return roomUsers.map(ru => RoomUserResponseDto.fromEntity(ru));
   }
 
   /**
@@ -106,10 +118,11 @@ export class RoomsService {
     }
     
     const roomUser = new RoomUser();
-    roomUser.room = room;
+    roomUser.room= room;
     roomUser.user = user;
     roomUser.joinedAt = new Date();
     roomUser.lastSeenAt = new Date();
+    roomUser.role = RoomRole.MEMBER;
     
     await this.em.persistAndFlush(roomUser);
     return roomUser;
@@ -136,12 +149,24 @@ export class RoomsService {
    * 사용자가 채팅방에 접근할 권한이 있는지 확인
    */
   async canUserJoinRoom(userId: number, roomId: number): Promise<boolean> {
-    const roomUser = await this.roomUserRepository.findOne({
-      room: { id: roomId },
-      user: { id: userId }
-    });
-    
-    return !!roomUser;
+    const room = await this.roomRepository.findOne({ id: roomId }, { fields: ['ownerId', 'isPrivate', 'isDirect', 'isActive'] });
+    const roomUser = await this.roomUserRepository.count({ room: { id: roomId }, user: { id: userId } });
+
+    if(!room) {
+      return false;
+    }
+
+    if (!roomUser) {
+      return !room.isPrivate || !room.isDirect || !room.isActive;
+    }
+
+    return true;
+  }
+
+  async isUserInRoom(userId: number, roomId: number): Promise<boolean> {
+    const roomUser = await this.roomUserRepository.count({ room: { id: roomId }, user: { id: userId } });
+
+    return roomUser > 0;
   }
 
   /**
@@ -161,15 +186,63 @@ export class RoomsService {
 
   /**
    * 채팅방 목록을 DTO로 변환
+   * @private
    */
-  async formatRoomResponse(rooms: Room[]): Promise<RoomResponseDto[]> {
-    const result: RoomResponseDto[] = [];
+  private async formatRoomResponse(rooms: Room[], userId: number): Promise<RoomResponseDto[]> {
+    if (rooms.length === 0) {
+      return [];
+    }
+
+    // First convert entities to DTOs
+    const roomDtos = rooms.map(room => RoomResponseDto.fromEntity(room));
     
-    for (const room of rooms) {
-      const dto = RoomResponseDto.fromEntity(room);
-      result.push(dto);
+    // Get all room IDs
+    const roomIds = rooms.map(room => room.id);
+    
+    // Get unread counts for all rooms
+    const counts = await this.calculateUnreadCounts(roomIds, userId);
+    
+    // Add unread counts to DTOs
+    return roomDtos.map(dto => {
+      dto.unreadCount = counts[dto.id] || 0;
+      return dto;
+    });
+  }
+  
+  /**
+   * 사용자의 각 채팅방 별 읽지 않은 메시지 수 계산
+   * @private
+   */
+  private async calculateUnreadCounts(roomIds: number[], userId: number): Promise<Record<number, number>> {
+    if (roomIds.length === 0) {
+      return {};
     }
     
-    return result;
+    // Execute SQL to get unread counts - more efficient than multiple queries
+    const results = await this.em.getConnection().execute(`
+      SELECT m.room_id as room_id, COUNT(m.id) as count
+      FROM message m
+      LEFT JOIN room_user ru ON m.room_id = ru.room_id AND ru.user_id = ${userId}
+      WHERE m.room_id IN (${roomIds.join(',')})
+        AND m.created_at > COALESCE(ru.last_seen_at, '1970-01-01')
+        AND m.sender_id != ${userId}
+        AND m.deleted_at IS NULL
+      GROUP BY m.room_id
+    `);
+    
+    // Convert results to a record with roomId as key
+    const counts: Record<number, number> = {};
+    for (const result of results) {
+      counts[result.room_id] = parseInt(result.count);
+    }
+    
+    // Set default counts for rooms without results
+    for (const id of roomIds) {
+      if (counts[id] === undefined) {
+        counts[id] = 0;
+      }
+    }
+    
+    return counts;
   }
 } 

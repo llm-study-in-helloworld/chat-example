@@ -13,8 +13,8 @@ import { User } from './User.entity';
  * 메시지에 대한 이모티콘 반응 정보를 저장하는 엔티티
  */
 @Entity()
-@Index({ properties: ['message', 'emoji'] })
-@Index({ properties: ['message', 'user'] })
+@Index({ properties: ['messageId', 'emoji'] })
+@Index({ properties: ['messageId', 'userId'] })
 export class MessageReaction extends CommonEntity implements BaseReaction {
   @ManyToOne({
     entity: () => Message,
@@ -22,11 +22,7 @@ export class MessageReaction extends CommonEntity implements BaseReaction {
     mapToPk: true,
     fieldName: 'message_id'
   })
-  message!: number;
-
-  get messageId(): number {
-    return this.message;
-  }
+  messageId!: number;
 
   @ManyToOne({
     entity: () => User,

@@ -20,15 +20,12 @@ export class Mention extends CommonEntity implements BaseMention {
     mapToPk: true,
     fieldName: 'message_id'
   })
-  message!: number;
-
-  get messageId(): number {
-    return this.message;
-  }
+  messageId!: number;
 
   @ManyToOne({
     entity: () => User,
     persist: true,
+    eager: true,
     fieldName: 'mentioned_user_id'
   })
   mentionedUser!: User;

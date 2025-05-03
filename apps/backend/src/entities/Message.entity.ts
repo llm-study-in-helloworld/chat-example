@@ -67,7 +67,7 @@ export class Message extends CommonEntity implements BaseMessage {
 
   @OneToMany({
     entity: () => MessageReaction,
-    mappedBy: 'message',
+    mappedBy: 'messageId',
     eager: true,
     persist: false,
   })
@@ -75,7 +75,7 @@ export class Message extends CommonEntity implements BaseMessage {
 
   @OneToMany({
     entity: () => Mention,
-    mappedBy: 'message',
+    mappedBy: 'messageId',
     eager: true,
     persist: false,
   })

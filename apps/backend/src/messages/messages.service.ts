@@ -165,7 +165,7 @@ export class MessagesService {
     await this.em.persistAndFlush(message);
     
     // 기존 멘션 제거 및 새 멘션 추가
-    await this.em.nativeDelete(Mention, { message: messageId });
+    await this.em.nativeDelete(Mention, { messageId: messageId });
     
     const mentions = this.extractMentions(data.content);
     if (mentions.length > 0) {
@@ -220,9 +220,9 @@ export class MessagesService {
       
       // 기존 리액션 확인
       const existingReaction = await em.findOne(MessageReaction, {
-        message: messageId,
-        user: { id: userId },
-        emoji
+        messageId: messageId,
+        userId: userId,
+        emoji: emoji
       });
       
       // 있으면 제거, 없으면 추가
@@ -231,7 +231,7 @@ export class MessagesService {
         return null;
       } else {
         const reaction = new MessageReaction();
-        reaction.message = messageId;
+        reaction.messageId = messageId;
         reaction.user = user;
         reaction.emoji = emoji;
         
@@ -260,7 +260,7 @@ export class MessagesService {
       const user = await this.em.findOne(User, { nickname: username });
       if (user) {
         const mention = new Mention();
-        mention.message = messageId;
+        mention.messageId = messageId;
         mention.mentionedUser = user;
         
         await this.em.persist(mention);
@@ -486,9 +486,9 @@ export class MessagesService {
     
     // Check if reaction already exists
     const existingReaction = await this.messageReactionRepository.findOne({
-      message: messageId,
-      user: { id: userId },
-      emoji
+      messageId: messageId,
+      userId: userId,
+      emoji: emoji
     });
     
     if (existingReaction) {
@@ -496,7 +496,7 @@ export class MessagesService {
     }
     
     const reaction = new MessageReaction();
-    reaction.message = messageId;
+    reaction.messageId = messageId;
     reaction.user = user;
     reaction.emoji = emoji;
     
@@ -509,9 +509,9 @@ export class MessagesService {
    */
   async removeReaction(messageId: number, userId: number, emoji: string): Promise<void> {
     const reaction = await this.messageReactionRepository.findOne({
-      message: messageId,
-      user: { id: userId },
-      emoji
+      messageId: messageId,
+      userId: userId,
+      emoji: emoji
     });
     
     if (reaction) {
@@ -531,7 +531,7 @@ export class MessagesService {
     const mentionedUser = await this.userRepository.findOneOrFail({ id: mentionedUserId });
     
     const mention = new Mention();
-    mention.message = messageId;
+    mention.messageId = messageId;
     mention.mentionedUser = mentionedUser;
     
     await this.em.persistAndFlush(mention);

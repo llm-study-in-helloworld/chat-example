@@ -15,18 +15,16 @@ import { User } from '../entities';
 import { AddUserDto, CreateRoomDto } from './dto';
 import { RoomsService } from './rooms.service';
 
+@UseGuards(JwtAuthGuard)
 @Controller('rooms')
 export class RoomsController {
   constructor(private readonly roomsService: RoomsService) {}
 
-  @UseGuards(JwtAuthGuard)
   @Get()
   async findAll(@CurrentUser() user: User) {
-    const rooms = await this.roomsService.getUserRooms(user.id);
-    return this.roomsService.formatRoomResponse(rooms);
+    return await this.roomsService.getUserRooms(user.id);
   }
 
-  @UseGuards(JwtAuthGuard)
   @Get(':id')
   async findOne(@CurrentUser() user: User, @Param('id', ParseIntPipe) id: number) {
     const room = await this.roomsService.getRoomById(id);
@@ -39,8 +37,7 @@ export class RoomsController {
       throw new ForbiddenException('You do not have access to this room');
     }
 
-    const roomResponse = await this.roomsService.formatRoomResponse([room]);
-    return roomResponse[0];
+    return room;
   }
 
   @UseGuards(JwtAuthGuard)
@@ -50,43 +47,31 @@ export class RoomsController {
     const userIds = new Set(createRoomDto.userIds);
     userIds.add(user.id);
 
-    const room = await this.roomsService.createRoom(
+    const rooms = await this.roomsService.createRoom(
       createRoomDto.name,
-      createRoomDto.isGroup,
+      createRoomDto.isDirect,
       Array.from(userIds),
+      user.id
     );
-
-    const roomResponse = await this.roomsService.formatRoomResponse([room]);
-    return roomResponse[0];
+    
+    return rooms[0];
   }
 
-  @UseGuards(JwtAuthGuard)
   @Post(':id/users')
   async addUser(
     @CurrentUser() user: User,
     @Param('id', ParseIntPipe) id: number,
     @Body() addUserDto: AddUserDto,
   ) {
-    const room = await this.roomsService.getRoomById(id);
-    if (!room) {
-      throw new NotFoundException(`Room with ID ${id} not found`);
-    }
-
     const canJoin = await this.roomsService.canUserJoinRoom(user.id, id);
     if (!canJoin) {
       throw new ForbiddenException('You do not have access to this room');
-    }
-
-    // Only allow adding users to group rooms
-    if (!room.isGroup) {
-      throw new ForbiddenException('Cannot add users to a direct message room');
     }
 
     await this.roomsService.addUserToRoom(id, addUserDto.userId);
     return { success: true };
   }
 
-  @UseGuards(JwtAuthGuard)
   @Delete(':id/users/:userId')
   async removeUser(
     @CurrentUser() user: User,
@@ -98,8 +83,8 @@ export class RoomsController {
       throw new NotFoundException(`Room with ID ${id} not found`);
     }
 
-    const canJoin = await this.roomsService.canUserJoinRoom(user.id, id);
-    if (!canJoin) {
+    const isUserInRoom = await this.roomsService.isUserInRoom(user.id, id);
+    if (!isUserInRoom) {
       throw new ForbiddenException('You do not have access to this room');
     }
 
@@ -113,7 +98,6 @@ export class RoomsController {
     return { success };
   }
 
-  @UseGuards(JwtAuthGuard)
   @Post(':id/seen')
   async updateLastSeen(
     @CurrentUser() user: User,
@@ -124,8 +108,8 @@ export class RoomsController {
       throw new NotFoundException(`Room with ID ${id} not found`);
     }
 
-    const canJoin = await this.roomsService.canUserJoinRoom(user.id, id);
-    if (!canJoin) {
+    const isUserInRoom = await this.roomsService.isUserInRoom(user.id, id);
+    if (!isUserInRoom) {
       throw new ForbiddenException('You do not have access to this room');
     }
 

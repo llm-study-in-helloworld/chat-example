@@ -16,14 +16,8 @@ import { User } from './User.entity';
 @Entity()
 @Index({ properties: ['user', 'room'] })
 @Index({ properties: ['room', 'lastSeenAt'] })
-export class RoomUser extends CommonEntity implements Omit<IRoomUser, 'role' | 'joinedAt'> {
-  @Property()
-  isOwner!: boolean;
-
-  @Property()
-  isAdmin!: boolean;
-
-  @ManyToOne({
+export class RoomUser extends CommonEntity implements Omit<IRoomUser, 'joinedAt'> {
+   @ManyToOne({
     entity: () => Room,
     persist: true,
     fieldName: 'room_id'
@@ -45,24 +39,14 @@ export class RoomUser extends CommonEntity implements Omit<IRoomUser, 'role' | '
     return this.user.id;
   }
 
+  @Property({ type: 'enum', default: RoomRole.MEMBER })
+  role: RoomRole = RoomRole.MEMBER;
+
   /**
    * Get the role of the user in the room
    */
-  get role(): RoomRole {
-    if (this.isOwner) return RoomRole.OWNER;
-    if (this.isAdmin) return RoomRole.ADMIN;
-    return RoomRole.MEMBER;
-  }
-
   @Property()
   joinedAt: Date = new Date();
-
-  /**
-   * Get the joined date as ISO string
-   */
-  get joinedAtString(): string {
-    return this.joinedAt.toISOString();
-  }
 
   @Property({ nullable: true })
   lastSeenAt?: Date;

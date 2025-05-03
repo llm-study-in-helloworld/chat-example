@@ -7,14 +7,16 @@ import { Room as RoomEntity } from '../entities';
 export class RoomResponseDto implements RoomResponse {
   id: number = 0;
   name: string = '';
+  ownerId: number = 0;
   description?: string = '';
   imageUrl?: string = '';
   isPrivate: boolean = false;
-  ownerId: number = 0;
+  isDirect?: boolean;
+  isActive?: boolean;
   createdAt: string = '';
   updatedAt: string = '';
-  participantCount: number = 0;
   unreadCount?: number;
+  
 
   /**
    * Room 엔티티를 ResponseDto로 변환
@@ -23,19 +25,17 @@ export class RoomResponseDto implements RoomResponse {
     const dto = new RoomResponseDto();
     dto.id = room.id;
     dto.name = room.name || '';
-    // Custom fields not in entity but in the response type
     dto.description = room.description || '';
     dto.imageUrl = room.imageUrl || '';
     dto.isPrivate = room.isPrivate || false;
-    
     dto.ownerId = room.ownerId;
-    
     dto.createdAt = room.createdAt.toISOString();
     dto.updatedAt = room.updatedAt.toISOString();
     
-    // Set participant count
-    dto.participantCount = room.participantCount;
-    
+    // Add additional properties
+    dto.isDirect = room.isDirect;
+    dto.isActive = room.isActive;
+
     return dto;
   }
 } 

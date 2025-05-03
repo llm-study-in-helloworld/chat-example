@@ -20,7 +20,7 @@ export class MessageReactionResponseDto implements ReactionResponse {
     dto.id = reaction.id;
     dto.emoji = reaction.emoji;
     dto.userId = reaction.user.id;
-    dto.messageId = reaction.message;
+    dto.messageId = reaction.messageId;
     dto.createdAt = reaction.createdAt.toISOString();
     dto.user = {
       id: reaction.user.id,
