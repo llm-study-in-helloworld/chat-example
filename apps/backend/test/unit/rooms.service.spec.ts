@@ -400,4 +400,113 @@ describe('RoomsService', () => {
       // Assert - Nothing to assert, just checking it doesn't throw
     });
   });
+
+  describe('getPublicRooms', () => {
+    beforeEach(async () => {
+      // Create test public and private rooms
+      const publicRoom1 = new Room();
+      publicRoom1.name = 'Public Room 1';
+      publicRoom1.isDirect = false;
+      publicRoom1.isPrivate = false;
+      publicRoom1.isActive = true;
+      publicRoom1.ownerId = testUser1.id;
+      
+      const publicRoom2 = new Room();
+      publicRoom2.name = 'Public Room 2';
+      publicRoom2.isDirect = false;
+      publicRoom2.isPrivate = false;
+      publicRoom2.isActive = true;
+      publicRoom2.ownerId = testUser2.id;
+      
+      const privateRoom = new Room();
+      privateRoom.name = 'Private Room';
+      privateRoom.isDirect = false;
+      privateRoom.isPrivate = true;
+      privateRoom.isActive = true;
+      privateRoom.ownerId = testUser1.id;
+      
+      const directRoom = new Room();
+      directRoom.name = 'Direct Room';
+      directRoom.isDirect = true;
+      directRoom.isPrivate = true;
+      directRoom.isActive = true;
+      directRoom.ownerId = testUser1.id;
+      
+      const inactiveRoom = new Room();
+      inactiveRoom.name = 'Inactive Room';
+      inactiveRoom.isDirect = false;
+      inactiveRoom.isPrivate = false;
+      inactiveRoom.isActive = false;
+      inactiveRoom.ownerId = testUser1.id;
+      
+      await em.persistAndFlush([publicRoom1, publicRoom2, privateRoom, directRoom, inactiveRoom]);
+      em.clear();
+    });
+    
+    it('should return only public, active, non-direct rooms', async () => {
+      // Act
+      const result = await service.getPublicRooms({ page: 1, limit: 10 });
+      
+      // Assert
+      expect(result).toBeDefined();
+      expect(result.items).toBeDefined();
+      expect(Array.isArray(result.items)).toBe(true);
+      
+      // Should return the 2 public rooms + the test room created in beforeEach
+      expect(result.totalItems).toBe(3);
+      expect(result.items.length).toBe(3);
+      
+      // Check that all returned rooms are public and non-direct
+      for (const room of result.items) {
+        expect(room.isPrivate).toBe(false);
+        expect(room.isDirect).toBe(false);
+        expect(room.isActive).toBe(true);
+      }
+      
+      // Check that the rooms have the expected names
+      const roomNames = result.items.map(room => room.name);
+      expect(roomNames).toContain('Test Room');
+      expect(roomNames).toContain('Public Room 1');
+      expect(roomNames).toContain('Public Room 2');
+    });
+    
+    it('should filter rooms by search term', async () => {
+      // Act
+      const result = await service.getPublicRooms({ search: 'Public Room 1', page: 1, limit: 10 });
+      
+      // Assert
+      expect(result).toBeDefined();
+      expect(result.items).toBeDefined();
+      expect(result.items.length).toBe(1);
+      expect(result.items[0].name).toBe('Public Room 1');
+    });
+    
+    it('should paginate results', async () => {
+      // Act
+      const result = await service.getPublicRooms({ page: 1, limit: 2 });
+      
+      // Assert
+      expect(result).toBeDefined();
+      expect(result.items).toBeDefined();
+      expect(result.items.length).toBe(2);
+      expect(result.totalItems).toBe(3);
+      expect(result.page).toBe(1);
+      expect(result.limit).toBe(2);
+    });
+    
+    it('should include unread counts when userId is provided', async () => {
+      // Act
+      const result = await service.getPublicRooms({ page: 1, limit: 10 }, testUser1.id);
+      
+      // Assert
+      expect(result).toBeDefined();
+      expect(result.items).toBeDefined();
+      
+      // Each room should have an unreadCount property
+      for (const room of result.items) {
+        expect(room).toHaveProperty('unreadCount');
+        expect(typeof room.unreadCount).toBe('number');
+      }
+    });
+  });
 }); 

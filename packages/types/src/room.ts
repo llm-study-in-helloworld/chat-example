@@ -1,4 +1,3 @@
-
 /**
  * Base room interface for common properties
  */
@@ -85,4 +84,77 @@ export interface AddUserRequest {
 
 export interface RemoveUserRequest {
   userId: number;
+}
+
+/**
+ * Room type enum for filtering
+ */
+export enum RoomType {
+  DIRECT = 'direct',
+  GROUP = 'group',
+}
+
+/**
+ * Room query parameters for filtering and pagination
+ */
+export interface RoomQueryParams {
+  /**
+   * Filter by room type (direct or group)
+   */
+  type?: RoomType;
+  
+  /**
+   * Search rooms by name
+   */
+  search?: string;
+  
+  /**
+   * Page number for pagination (1-based)
+   */
+  page?: number;
+  
+  /**
+   * Number of items per page
+   */
+  limit?: number;
+}
+
+/**
+ * Paginated response for room queries
+ */
+export interface PaginatedRoomsResponse {
+  /**
+   * List of room items
+   */
+  items: RoomResponse[];
+  
+  /**
+   * Pagination metadata
+   */
+  meta: {
+    /**
+     * Total number of items across all pages
+     */
+    totalItems: number;
+    
+    /**
+     * Number of items in the current page
+     */
+    itemCount: number;
+    
+    /**
+     * Number of items per page
+     */
+    itemsPerPage: number;
+    
+    /**
+     * Total number of pages
+     */
+    totalPages: number;
+    
+    /**
+     * Current page number
+     */
+    currentPage: number;
+  };
 }

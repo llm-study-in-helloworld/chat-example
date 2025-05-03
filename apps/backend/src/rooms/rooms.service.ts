@@ -1,11 +1,11 @@
-import { RoomRole } from '@chat-example/types';
+import { RoomRole, RoomType } from '@chat-example/types';
 import { EntityManager, QueryOrder } from '@mikro-orm/core';
 import { InjectRepository } from '@mikro-orm/nestjs';
 import { EntityRepository } from '@mikro-orm/postgresql';
 import { Injectable, NotFoundException } from '@nestjs/common';
 import { RoomResponseDto, RoomUserResponseDto } from '../dto';
 import { Room, RoomUser, User } from '../entities';
-import { UpdateRoomRequestDto } from './dto';
+import { RoomQueryDto, UpdateRoomRequestDto } from './dto';
 /**
  * 채팅방 관련 비즈니스 로직을 처리하는 서비스
  */
@@ -263,40 +263,12 @@ export class RoomsService {
       throw new NotFoundException(`Room with ID ${roomId} not found`);
     }
     
-    // Update room properties
-    if (updateRoomDto.name !== undefined) {
-      room.name = updateRoomDto.name;
-    }
-    
-    if (updateRoomDto.description !== undefined) {
-      room.description = updateRoomDto.description;
-    }
-    
-    if (updateRoomDto.imageUrl !== undefined) {
-      room.imageUrl = updateRoomDto.imageUrl;
-    }
-    
-    if (updateRoomDto.isPrivate !== undefined) {
-      room.isPrivate = updateRoomDto.isPrivate;
-    }
-    
-    if (updateRoomDto.isActive !== undefined) {
-      room.isActive = updateRoomDto.isActive;
-    }
+    // Apply updates using the DTO's applyTo method
+    updateRoomDto.applyTo(room);
     
     await this.em.flush();
     
-    // Get updated room with proper DTO transformation
-    const updatedRoom = await this.roomRepository.findOne(
-      { id: roomId }, 
-      { populate: ['roomUsers.user'] }
-    );
-    
-    if (!updatedRoom) {
-      return null;
-    }
-    
-    const roomDtos = await this.formatRoomResponse([updatedRoom], updatedRoom.ownerId);
+    const roomDtos = await this.formatRoomResponse([room], room.ownerId);
     return roomDtos[0];
   }
 
@@ -315,5 +287,127 @@ export class RoomsService {
     await this.em.flush();
     
     return true;
+  }
+
+  /**
+   * 조건 및 페이지네이션에 따른 사용자의 채팅방 목록 조회
+   */
+  async getUserRoomsWithFilters(
+    userId: number, 
+    query: RoomQueryDto
+  ): Promise<{ items: RoomResponseDto[], totalItems: number, page: number, limit: number }> {
+    const { type, search, page = 1, limit = 10 } = query;
+    
+    // Get all rooms for the user
+    const allRooms = await this.getUserRooms(userId);
+    
+    // Apply filters
+    let filteredRooms = allRooms;
+    
+    // Filter by type
+    if (type === RoomType.DIRECT) {
+      filteredRooms = filteredRooms.filter(room => room.isDirect);
+    } else if (type === RoomType.GROUP) {
+      filteredRooms = filteredRooms.filter(room => !room.isDirect);
+    }
+    
+    // Filter by search term
+    if (search) {
+      const searchLower = search.toLowerCase();
+      filteredRooms = filteredRooms.filter(room => 
+        room.name.toLowerCase().includes(searchLower)
+      );
+    }
+    
+    // Get total count before pagination
+    const totalItems = filteredRooms.length;
+    
+    // Apply pagination
+    const startIndex = (page - 1) * limit;
+    const endIndex = Math.min(startIndex + limit, filteredRooms.length);
+    const paginatedRooms = filteredRooms.slice(startIndex, endIndex);
+    
+    return {
+      items: paginatedRooms,
+      totalItems,
+      page,
+      limit
+    };
+  }
+
+  /**
+   * 모든 공개 채팅방 검색
+   */
+  async getPublicRooms(
+    query: RoomQueryDto,
+    userId?: number
+  ): Promise<{ items: RoomResponseDto[], totalItems: number, page: number, limit: number }> {
+    const { search, page = 1, limit = 10 } = query;
+    
+    // Base conditions for public rooms
+    const baseConditions = { 
+      isPrivate: false, 
+      isDirect: false,
+      isActive: true
+    };
+    
+    // For total count, use find and count
+    const countOptions = { ...baseConditions };
+    
+    // Apply search filter if provided (in a database-agnostic way)
+    if (search) {
+      // Use find instead of QueryBuilder to avoid SQLite ilike issues
+      const publicRooms = await this.roomRepository.find({
+        ...baseConditions,
+        name: { $like: `%${search}%` }  // Use $like instead of $ilike for SQLite compatibility
+      }, {
+        orderBy: { createdAt: QueryOrder.DESC },
+        limit,
+        offset: (page - 1) * limit
+      });
+      
+      // Get total count with the same filters
+      const totalItems = await this.roomRepository.count({
+        ...baseConditions,
+        name: { $like: `%${search}%` }
+      });
+      
+      // Format rooms to DTOs
+      const roomDtos = userId 
+        ? await this.formatRoomResponse(publicRooms, userId)
+        : publicRooms.map(room => RoomResponseDto.fromEntity(room));
+      
+      return {
+        items: roomDtos,
+        totalItems,
+        page,
+        limit
+      };
+    }
+    
+    // If no search filter, get all public rooms with pagination
+    const publicRooms = await this.roomRepository.find(
+      baseConditions,
+      {
+        orderBy: { createdAt: QueryOrder.DESC },
+        limit,
+        offset: (page - 1) * limit
+      }
+    );
+    
+    // Get total count of public rooms
+    const totalItems = await this.roomRepository.count(baseConditions);
+    
+    // Format rooms to DTOs
+    const roomDtos = userId 
+      ? await this.formatRoomResponse(publicRooms, userId)
+      : publicRooms.map(room => RoomResponseDto.fromEntity(room));
+    
+    return {
+      items: roomDtos,
+      totalItems,
+      page,
+      limit
+    };
   }
 } 

@@ -3,7 +3,6 @@ import { INestApplication, ValidationPipe } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 import cookieParser from 'cookie-parser';
 import request from 'supertest';
-import { CreateRoomRequestDto } from '../../src/rooms/dto';
 import { AppTestModule } from '../app-test.module';
 import { AccessTokensDict, TestUser, TestUserResponse } from '../types/test-user.type';
 
@@ -92,7 +91,7 @@ describe('RoomsController (e2e)', () => {
     
     it('Scenario: User creates a group room', async () => {
       // Given a user wants to create a group room with other users
-      const createRoomData: CreateRoomRequestDto = {
+      const createRoomData = {
         name: 'Test Group Room',
         isDirect: false,
         isPrivate: false,
@@ -592,6 +591,84 @@ describe('RoomsController (e2e)', () => {
         .set('Authorization', `Bearer ${accessTokens['user1']}`)
         .send(invalidUserIdsData)
         .expect(400); // Bad Request
+    });
+
+    it('Scenario: User can search for public rooms', async () => {
+      // Given there are public rooms in the system
+      const publicRoomName = 'Unique Public Room ' + Date.now();
+      const publicRoomData = {
+        name: publicRoomName,
+        isDirect: false,
+        isPrivate: false,
+        isActive: true,
+        userIds: []
+      };
+      
+      await request(app.getHttpServer())
+        .post('/api/rooms')
+        .set('Authorization', `Bearer ${accessTokens['user1']}`)
+        .send(publicRoomData)
+        .expect(201);
+      
+      // Create a private room that shouldn't appear in public search
+      const privateRoomData = {
+        name: 'Private Room That Should Not Appear',
+        isDirect: false,
+        isPrivate: true,
+        isActive: true,
+        userIds: []
+      };
+      
+      await request(app.getHttpServer())
+        .post('/api/rooms')
+        .set('Authorization', `Bearer ${accessTokens['user1']}`)
+        .send(privateRoomData)
+        .expect(201);
+      
+      // When a user searches for public rooms
+      const response = await request(app.getHttpServer())
+        .get('/api/rooms/public')
+        .set('Authorization', `Bearer ${accessTokens['user1']}`)
+        .expect(200);
+      
+      // Then they should receive a paginated list of public rooms
+      expect(response.body).toHaveProperty('items');
+      expect(response.body).toHaveProperty('meta');
+      expect(Array.isArray(response.body.items)).toBe(true);
+      
+      // The newly created public room should be in the results
+      const foundRoom = response.body.items.find(room => room.name === publicRoomName);
+      expect(foundRoom).toBeDefined();
+      
+      // All rooms should be public and active
+      response.body.items.forEach(room => {
+        expect(room.isPrivate).toBe(false);
+        expect(room.isDirect).toBe(false);
+        expect(room.isActive).toBe(true);
+      });
+      
+      // The private room should not be in the results
+      const foundPrivateRoom = response.body.items.find(room => room.name === 'Private Room That Should Not Appear');
+      expect(foundPrivateRoom).toBeUndefined();
+      
+      // Search functionality should work
+      const searchResponse = await request(app.getHttpServer())
+        .get(`/api/rooms/public?search=${publicRoomName}`)
+        .set('Authorization', `Bearer ${accessTokens['user1']}`)
+        .expect(200);
+      
+      expect(searchResponse.body.items.length).toBeGreaterThanOrEqual(1);
+      expect(searchResponse.body.items[0].name).toBe(publicRoomName);
+      
+      // Pagination should work
+      const paginationResponse = await request(app.getHttpServer())
+        .get('/api/rooms/public?page=1&limit=2')
+        .set('Authorization', `Bearer ${accessTokens['user1']}`)
+        .expect(200);
+      
+      expect(paginationResponse.body.items.length).toBeLessThanOrEqual(2);
+      expect(paginationResponse.body.meta.currentPage).toBe(1);
+      expect(paginationResponse.body.meta.itemsPerPage).toBe(2);
     });
   });
 }); 

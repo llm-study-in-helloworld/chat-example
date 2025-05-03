@@ -24,11 +24,7 @@ async function bootstrap() {
     new ValidationPipe({
       whitelist: true,
       transform: true,
-      forbidNonWhitelisted: true,
-      exceptionFactory: (errors) => {
-        console.log('Validation errors:', JSON.stringify(errors, null, 2));
-        return errors;
-      },
+      forbidNonWhitelisted: true
     }),
   );
   
