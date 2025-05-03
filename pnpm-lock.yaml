@@ -8,12 +8,6 @@ importers:
 
   .:
     devDependencies:
-      '@types/cookie-parser':
-        specifier: ^1.4.8
-        version: 1.4.8(@types/express@5.0.1)
-      '@types/jest':
-        specifier: ^29.5.14
-        version: 29.5.14
       husky:
         specifier: ^8.0.0
         version: 8.0.3
