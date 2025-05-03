@@ -4,7 +4,7 @@
     "baseUrl": ".",
     "paths": {
       "@/*": ["./src/*"],
-      "@types": ["../../packages/types/src"]
+      "@chat-example/types": ["../../packages/types/src"]
     }
   },
   "include": ["src", "vite.config.ts"],
