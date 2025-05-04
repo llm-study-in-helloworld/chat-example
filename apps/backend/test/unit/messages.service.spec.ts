@@ -13,10 +13,10 @@ import {
 import { LoggerService } from '../../src/logger/logger.service';
 import { MessagesService } from '../../src/messages/messages.service';
 import testConfig from '../mikro-orm.config.test';
-import { createMockLoggerService } from './fixtures/logger.fixtures';
-import { createMessageFixture, createReplyMessageFixture, TestMessageData } from './fixtures/message.fixtures';
-import { createRoomFixture, TestRoomData } from './fixtures/room.fixtures';
-import { createUserFixture, TestUserData } from './fixtures/user.fixtures';
+import { createMockLoggerService } from '../fixtures/logger.fixtures';
+import { createMessageFixture, createReplyMessageFixture, TestMessageData } from '../fixtures/message.fixtures';
+import { createRoomFixture, TestRoomData } from '../fixtures/room.fixtures';
+import { createUserFixture, TestUserData } from '../fixtures/user.fixtures';
 
 describe('MessagesService', () => {
   let service: MessagesService;

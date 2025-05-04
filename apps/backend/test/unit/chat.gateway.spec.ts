@@ -9,7 +9,7 @@ import { CreateMessageDto } from '../../src/messages/dto/create-message.dto';
 import { ReactionDto } from '../../src/messages/dto/reaction.dto';
 import { MessagesService } from '../../src/messages/messages.service';
 import { RoomsService } from '../../src/rooms/rooms.service';
-import { createMockLoggerService } from './fixtures/logger.fixtures';
+import { createMockLoggerService } from '../fixtures/logger.fixtures';
 
 describe('ChatGateway', () => {
   let gateway: ChatGateway;

@@ -11,8 +11,8 @@ import { CreateUserDto } from '../../src/users/dto/create-user.dto';
 import { UpdateUserDto } from '../../src/users/dto/update-user.dto';
 import { UsersService } from '../../src/users/users.service';
 import testConfig from '../mikro-orm.config.test';
-import { createMockLoggerService } from './fixtures/logger.fixtures';
-import { createUserFixture, TestUserData } from './fixtures/user.fixtures';
+import { createMockLoggerService } from '../fixtures/logger.fixtures';
+import { createUserFixture, TestUserData } from '../fixtures/user.fixtures';
 
 describe('UsersService', () => {
   let service: UsersService;
