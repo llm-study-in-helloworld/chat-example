@@ -2,6 +2,7 @@ import { Module } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { WinstonModule, utilities as nestWinstonModuleUtilities } from 'nest-winston';
 import * as winston from 'winston';
+import { LogInterceptor } from './log.interceptor';
 import { LoggerService } from './logger.service';
 
 @Module({
@@ -60,7 +61,7 @@ import { LoggerService } from './logger.service';
       },
     }),
   ],
-  providers: [LoggerService],
-  exports: [WinstonModule, LoggerService],
+  providers: [LoggerService, LogInterceptor],
+  exports: [WinstonModule, LoggerService, LogInterceptor],
 })
 export class LoggerModule {} 
