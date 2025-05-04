@@ -69,3 +69,6 @@ lerna-debug.log*
 # Cache
 .eslintcache
 .cache 
+
+# Docker
+certs/
