@@ -3,7 +3,9 @@ import { INestApplication, ValidationPipe } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 import cookieParser from 'cookie-parser';
 import request from 'supertest';
+import { LoggerService } from '../../src/logger';
 import { AppTestModule } from '../app-test.module';
+import { mockLoggerService } from '../logger-mock';
 import { TestUserHelper } from './helpers';
 import { TestUser } from './helpers/test-user.type';
 
@@ -22,8 +24,8 @@ describe('AuthController (e2e)', () => {
     const moduleFixture: TestingModule = await Test.createTestingModule({
       imports: [AppTestModule],
     })
-    // .overrideProvider(LoggerService)
-    // .useValue(mockLoggerService)
+    .overrideProvider(LoggerService)
+    .useValue(mockLoggerService)
     .compile();
 
     app = moduleFixture.createNestApplication();
