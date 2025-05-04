@@ -39,7 +39,7 @@ export class RoomUser extends CommonEntity implements Omit<IRoomUser, 'joinedAt'
     return this.user.id;
   }
 
-  @Property({ type: 'enum', default: RoomRole.MEMBER })
+  @Property({ type: 'string', default: RoomRole.MEMBER })
   role: RoomRole = RoomRole.MEMBER;
 
   /**
