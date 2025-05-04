@@ -128,6 +128,45 @@ export class RoomsController {
     return { success: true };
   }
 
+  /**
+   * Allow the current user to join a public room
+   */
+  @Post(':id/join')
+  async joinRoom(
+    @CurrentUser() user: User,
+    @Param('id', ParseIntPipe) id: number,
+  ) {
+    // First, check if the room exists and is public
+    const room = await this.roomsService.getRoomById({roomId: id, userId: user.id});
+    
+    if (!room) {
+      throw new NotFoundException(`Room with ID ${id} not found`);
+    }
+    
+    // Check if it's a direct message room
+    if (room.isDirect) {
+      throw new BadRequestException('Cannot join direct message rooms');
+    }
+    
+    // Check if the room is private
+    if (room.isPrivate) {
+      throw new ForbiddenException('Cannot join private rooms directly');
+    }
+    
+    // Check if user is already in the room
+    const isUserInRoom = await this.roomsService.isUserInRoom({userId: user.id, roomId: id});
+    if (isUserInRoom) {
+      // User is already in the room, just return the room
+      return room;
+    }
+    
+    // Add the user to the room
+    await this.roomsService.addUserToRoom(id, user.id);
+    
+    // Return the updated room
+    return await this.roomsService.getRoomById({roomId: id, userId: user.id});
+  }
+
   @Delete(':id/users/:userId')
   async removeUser(
     @CurrentUser() user: User,
@@ -139,14 +178,15 @@ export class RoomsController {
       throw new NotFoundException(`Room with ID ${id} not found`);
     }
 
-    const isUserInRoom = await this.roomsService.isUserInRoom({userId, roomId: id});
+    // Check if user is in the room and has appropriate permissions
+    const isUserInRoom = await this.roomsService.isUserInRoom({userId: user.id, roomId: id});
     if (!isUserInRoom) {
       throw new ForbiddenException('You do not have access to this room');
     }
 
-    const isOwner = await this.roomsService.isOwner({roomId: id, userId: user.id});
-    if (!isOwner) {
-      throw new ForbiddenException('You cannot remove the owner from the room');
+    // Check if user is the room owner or is removing themselves
+    if (room.ownerId !== user.id && userId !== user.id) {
+      throw new ForbiddenException('You can only remove yourself or users from rooms you own');
     }
 
     const success = await this.roomsService.removeUserFromRoom(id, userId);
@@ -197,19 +237,15 @@ export class RoomsController {
     @Param('id', ParseIntPipe) id: number,
     @Body() updateRoomDto: UpdateRoomRequestDto,
   ) {
+    // Check if user is the room owner
     const room = await this.roomsService.getRoomById({roomId: id, userId: user.id});
     if (!room) {
       throw new NotFoundException(`Room with ID ${id} not found`);
     }
 
-    const isUserInRoom = await this.roomsService.isUserInRoom({userId: user.id, roomId: id});
-    if (!isUserInRoom) {
-      throw new ForbiddenException('You do not have access to this room');
-    }
-
-    // Only the owner can update the room
+    // Only room owner can update room details
     if (room.ownerId !== user.id) {
-      throw new ForbiddenException('Only the room owner can update room information');
+      throw new ForbiddenException('Only the room owner can update room details');
     }
 
     const updatedRoom = await this.roomsService.updateRoom(id, updateRoomDto);
