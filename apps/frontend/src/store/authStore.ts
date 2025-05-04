@@ -24,7 +24,9 @@ export const useAuthStore = create<AuthState>()(
       
       setAuthFromResponse: (response) => set((state) => {
         state.user = response.user as User;
-        state.token = response.token;
+        state.token = response.token.startsWith('Bearer ') 
+          ? response.token.substring(7) 
+          : response.token;
         state.isAuthenticated = true;
       }),
       

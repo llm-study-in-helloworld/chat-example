@@ -31,23 +31,64 @@ export const useSocket = () => {
   const setPresence = useChatStore(state => state.setPresence);
   
   useEffect(() => {
-    if (!token) return;
+    if (!token) {
+      console.log('No token available, skipping socket connection');
+      return;
+    }
     
-    // Initialize socket connection
-    const socket = io(import.meta.env.VITE_API_URL || window.location.origin, {
+    // Check for token validity - if it starts with Bearer, strip it
+    const cleanToken = token.startsWith('Bearer ') ? token.substring(7) : token;
+    const tokenPreview = cleanToken.substring(0, 10) + '...';
+    console.log(`Initializing socket connection with token: ${tokenPreview}`);
+    
+    // Get the API URL
+    const apiUrl = import.meta.env.VITE_API_URL || window.location.origin;
+    console.log(`Connecting to socket at: ${apiUrl}`);
+    
+    // Initialize socket connection with better auth handling
+    const socket = io(apiUrl, {
+      auth: {
+        token: cleanToken  // Send without 'Bearer ' prefix
+      },
       extraHeaders: {
-        Authorization: `Bearer ${token}`
-      }
+        Authorization: `Bearer ${cleanToken}`  // Keep standard header format
+      },
+      transports: ['websocket', 'polling'], // Try websocket first, fallback to polling
+      reconnection: true,
+      reconnectionAttempts: 10,
+      reconnectionDelay: 1000,
+      timeout: 20000  // Increase timeout to 20 seconds
     });
     
     socketRef.current = socket;
     
     socket.on('connect', () => {
-      console.log('Socket connected successfully');
+      console.log('Socket connected successfully', socket.id);
     });
     
-    socket.on('disconnect', () => {
-      console.log('Socket connection closed');
+    socket.on('connect_error', (error) => {
+      console.error('Socket connection error:', error.message, error);
+    });
+    
+    socket.on('error', (error) => {
+      console.error('Socket general error:', error);
+    });
+    
+    socket.on('reconnect_attempt', (attemptNumber) => {
+      console.log(`Socket reconnection attempt #${attemptNumber}`);
+    });
+    
+    socket.on('reconnect', (attemptNumber) => {
+      console.log(`Socket reconnected after ${attemptNumber} attempts`);
+    });
+    
+    socket.on('disconnect', (reason) => {
+      console.log(`Socket disconnected: ${reason}`);
+      
+      // If the server disconnected us, try to reconnect
+      if (reason === 'io server disconnect') {
+        socket.connect();
+      }
     });
     
     socket.on('new_message', (message: Message) => {
@@ -103,12 +144,23 @@ export const useSocket = () => {
         return;
       }
       
+      // Set timeout in case the server doesn't respond
+      const timeout = setTimeout(() => {
+        reject(new Error('Message send timeout - server did not respond'));
+      }, 5000);
+      
       socketRef.current.emit(
         'new_message', 
         { roomId, content, parentId },
         (response: MessageResponse) => {
+          clearTimeout(timeout);
+          
           if (response.error) {
+            console.error('Server returned error:', response.error);
             reject(new Error(response.error));
+          } else if (!response || !response.id) {
+            console.error('Invalid response from server:', response);
+            reject(new Error('Invalid response from server'));
           } else {
             resolve(response as Message);
           }

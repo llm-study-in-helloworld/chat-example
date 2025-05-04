@@ -16,7 +16,10 @@ apiClient.interceptors.request.use(
   (config) => {
     const token = useAuthStore.getState().token;
     if (token) {
-      config.headers.Authorization = `Bearer ${token}`;
+      // Always ensure token is prefixed with 'Bearer ' for HTTP requests
+      config.headers.Authorization = token.startsWith('Bearer ') 
+        ? token 
+        : `Bearer ${token}`;
     }
     return config;
   },

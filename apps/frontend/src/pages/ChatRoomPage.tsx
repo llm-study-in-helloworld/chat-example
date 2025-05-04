@@ -1,7 +1,8 @@
-import { CreateMessageRequest, MessageResponse } from '@chat-example/types';
+import { MessageResponse } from '@chat-example/types';
 import { useEffect, useRef, useState } from 'react';
 import { useParams } from 'react-router-dom';
 import { chatService } from '../api/chatService';
+import { useSocket } from '../hooks/useSocket';
 import { useAuthStore } from '../store/authStore';
 
 const ChatRoomPage = () => {
@@ -9,34 +10,84 @@ const ChatRoomPage = () => {
   const [messages, setMessages] = useState<MessageResponse[]>([]);
   const [newMessage, setNewMessage] = useState('');
   const [loading, setLoading] = useState(true);
+  const [socketError, setSocketError] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const { user } = useAuthStore();
+  const { socket, joinRoom, sendMessage } = useSocket();
 
   // Scroll to bottom of messages
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   };
 
-  // Fetch messages from API
+  // Join room via socket when component mounts
   useEffect(() => {
-    const fetchMessages = async () => {
-      if (!roomId) return;
+    if (roomId && socket) {
+      const roomIdNumber = parseInt(roomId);
+      setSocketError(null); // Reset any previous errors
+      
+      joinRoom(roomIdNumber)
+        .then(() => {
+          console.log(`Joined room ${roomIdNumber} via socket`);
+          setSocketError(null);
+        })
+        .catch(error => {
+          console.error(`Failed to join room: ${error.message}`);
+          setSocketError(`Socket error: ${error.message}`);
+          // Still load messages even if socket connection fails
+          fetchMessages();
+        });
+    }
+  }, [roomId, socket, joinRoom]);
 
-      setLoading(true);
-      try {
-        const roomIdNumber = parseInt(roomId);
-        const response = await chatService.getMessages(roomIdNumber);
-        console.log('API Response:', response);
-        // Set messages directly since the API now returns an array
-        setMessages(response || []);
-        console.log('Messages set to:', response || []);
-      } catch (error) {
-        console.error('Error fetching messages:', error);
-      } finally {
-        setLoading(false);
+  // Listen for new messages via socket
+  useEffect(() => {
+    const handleNewMessage = (message: MessageResponse) => {
+      if (message.roomId === parseInt(roomId || '0')) {
+        console.log('New message received via socket:', message);
+        setMessages(prev => {
+          // Check if message already exists (to avoid duplicates)
+          const exists = prev.some(m => m.id === message.id);
+          if (exists) {
+            return prev;
+          }
+          return [...prev, message];
+        });
       }
     };
 
+    if (socket) {
+      socket.on('new_message', handleNewMessage);
+    }
+
+    return () => {
+      if (socket) {
+        socket.off('new_message', handleNewMessage);
+      }
+    };
+  }, [roomId, socket]);
+
+  // Fetch messages from API
+  const fetchMessages = async () => {
+    if (!roomId) return;
+
+    setLoading(true);
+    try {
+      const roomIdNumber = parseInt(roomId);
+      const response = await chatService.getMessages(roomIdNumber);
+      console.log('API Response:', response);
+      // Set messages directly since the API now returns an array
+      setMessages(response || []);
+      console.log('Messages set to:', response || []);
+    } catch (error) {
+      console.error('Error fetching messages:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Fetch messages from API on initial load
+  useEffect(() => {
     fetchMessages();
   }, [roomId]);
 
@@ -50,45 +101,42 @@ const ChatRoomPage = () => {
     
     if (!newMessage.trim() || !roomId || !user) return;
     
-    const messageRequest: CreateMessageRequest = {
-      content: newMessage,
-      roomId: parseInt(roomId)
-    };
+    const content = newMessage.trim();
+    const roomIdNumber = parseInt(roomId);
     
-    // Optimistically add message to UI
-    const optimisticMessage: MessageResponse = {
-      id: Date.now(), // Temporary ID, will be replaced by server's ID
-      content: newMessage,
-      roomId: parseInt(roomId),
-      senderId: user.id,
-      parentId: null,
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-      deletedAt: null,
-      isDeleted: false,
-      sender: {
-        id: user.id,
-        nickname: user.nickname,
-        imageUrl: user.imageUrl
-      },
-      reactions: [],
-      mentions: [],
-      replyCount: 0
-    };
-    
-    setMessages(prev => [...prev, optimisticMessage]);
-    setNewMessage('');
+    setNewMessage(''); // Clear input immediately for better UX
     
     try {
-      // Send message to API
-      await chatService.createMessage(parseInt(roomId), newMessage);
+      let createdMessage: MessageResponse;
       
-      // Could refresh messages here to get the accurate server data
-      // but we'll skip for now to avoid the extra API call
+      // Try socket first, but fallback to REST API
+      if (socket && socket.connected) {
+        try {
+          console.log('Attempting to send message via socket');
+          createdMessage = await sendMessage(roomIdNumber, content);
+          console.log('Message sent via socket:', createdMessage);
+          setSocketError(null); // Clear any previous errors on success
+        } catch (socketError) {
+          console.error('Socket message send failed, falling back to API:', socketError);
+          setSocketError(`Socket error: ${socketError instanceof Error ? socketError.message : 'Unknown error'}`);
+          createdMessage = await chatService.createMessage(roomIdNumber, content);
+          console.log('Message created via API fallback:', createdMessage);
+          
+          // Add message to local state since we're not using socket
+          setMessages(prev => [...prev, createdMessage]);
+        }
+      } else {
+        // Socket not available, use REST API directly
+        console.log('No socket connection, using API directly');
+        createdMessage = await chatService.createMessage(roomIdNumber, content);
+        console.log('Message created via API:', createdMessage);
+        
+        // Add message to local state since we're not using socket
+        setMessages(prev => [...prev, createdMessage]);
+      }
     } catch (error) {
       console.error('Error sending message:', error);
-      // Remove optimistic message on error
-      setMessages(prev => prev.filter(msg => msg.id !== optimisticMessage.id));
+      alert('Failed to send message. Please try again.');
     }
   };
 
@@ -106,6 +154,17 @@ const ChatRoomPage = () => {
         <h1 className="text-xl font-semibold">
           {roomId ? `Chat Room #${roomId}` : 'General Chat'}
         </h1>
+        {socketError && (
+          <div className="mt-1 text-sm text-red-500">
+            {socketError} - Using REST API fallback
+          </div>
+        )}
+        {socket && socket.connected && (
+          <div className="mt-1 flex items-center text-sm text-green-500">
+            <div className="mr-1 h-2 w-2 rounded-full bg-green-500"></div>
+            Real-time connection active
+          </div>
+        )}
       </div>
       
       <div className="flex-1 overflow-y-auto p-4">
