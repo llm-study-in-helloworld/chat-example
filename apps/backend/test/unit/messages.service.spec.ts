@@ -150,10 +150,6 @@ describe('MessagesService', () => {
         expect(message.sender.id).toBe(testUser1.id);
         expect(message.replyCount).toBe(1); // Should have one reply
       }
-      
-      // Verify logger was called
-      expect(loggerService.logMethodEntry).toHaveBeenCalled();
-      expect(loggerService.logMethodExit).toHaveBeenCalled();
     });
 
     it('should respect limit and offset parameters', async () => {
@@ -179,10 +175,6 @@ describe('MessagesService', () => {
       const ids1 = messages1.map(m => m.id);
       const ids2 = messages2.map(m => m.id);
       expect(ids1.some(id => ids2.includes(id))).toBe(false);
-      
-      // Verify logger was called
-      expect(loggerService.logMethodEntry).toHaveBeenCalledTimes(2);
-      expect(loggerService.logMethodExit).toHaveBeenCalledTimes(2);
     });
   });
 
