@@ -8,22 +8,13 @@ export default defineConfig({
   resolve: {
     alias: {
       '@': path.resolve(__dirname, './src'),
-      '@types': path.resolve(__dirname, '../../packages/types/src'),
     },
   },
   server: {
     port: 5173,
-    host: true,
-    proxy: {
-      '/api': {
-        target: 'http://backend:3000',
-        changeOrigin: true,
-      },
-      '/socket.io': {
-        target: 'http://backend:3000',
-        changeOrigin: true,
-        ws: true,
-      },
-    },
+    host: '0.0.0.0', // Allow connections from any IP
+    strictPort: true, // Fail if port is already in use
+    hmr: true, // Enable HMR for better development experience
+    cors: true, // Enable CORS for WebSocket connections
   },
 }); 
