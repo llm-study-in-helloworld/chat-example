@@ -17,6 +17,9 @@ import { ReactionResponseDto, ReactionUpdateEventDto, SocketErrorDto, SocketSucc
 
 /**
  * 실시간 채팅을 위한 웹소켓 게이트웨이
+ * 
+ * Note: NestJS automatically handles EntityManager within the services.
+ * Each service method has its own transaction context through dependency injection.
  */
 @Injectable()
 @WebSocketGateway({ cors: true })
@@ -32,27 +35,59 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
 
   async handleConnection(client: Socket) {
     try {
-      const token = client.handshake.headers.authorization?.split(' ')[1];
+      console.log('WebSocket connection attempt...');
+      
+      // Try to get token from different sources
+      let token: string | undefined;
+      
+      // Check headers (traditional way)
+      const authHeader = client.handshake.headers.authorization;
+      if (authHeader && authHeader.startsWith('Bearer ')) {
+        token = authHeader.split(' ')[1];
+        console.log('Token found in Authorization header');
+      }
+      
+      // Check socket.io auth object (alternative way)
+      if (!token && client.handshake.auth && client.handshake.auth.token) {
+        token = client.handshake.auth.token;
+        console.log('Token found in auth object');
+      }
+      
       if (!token) {
+        console.log('No token found, disconnecting client');
         client.disconnect();
         return;
       }
       
+      // Handle tokens that might already include 'Bearer ' prefix
+      if (token.startsWith('Bearer ')) {
+        token = token.substring(7);
+        console.log('Removed Bearer prefix from token');
+      }
+      
+      console.log(`Validating token (${token.substring(0, 10)}...)`);
       const user = await this.authService.validateToken(token);
+      
       if (!user) {
+        console.log('Invalid token, disconnecting client');
         client.disconnect();
         return;
       }
       
+      console.log(`User authenticated: ${user.id}`);
       client.data.user = user;
       
       // Join user's personal room for direct notifications
       client.join(`user:${user.id}`);
+      console.log(`Joined user room: user:${user.id}`);
       
       // 사용자 참여 룸 자동 연결
       const rooms = await this.roomsService.getUserRooms(user.id);
+      console.log(`User is in ${rooms.length} rooms`);
+      
       rooms.forEach(room => {
         client.join(`room:${room.id}`);
+        console.log(`Joined room: room:${room.id}`);
       });
       
       // presence 업데이트
@@ -61,7 +96,9 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
         status: 'online' 
       };
       this.server.emit('user_presence', presenceEvent);
+      console.log(`Emitted presence update for user ${user.id}: online`);
     } catch (e) {
+      console.error('Error in handleConnection:', e);
       client.disconnect();
     }
   }

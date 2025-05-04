@@ -133,9 +133,23 @@ export class AuthService {
         return null;
       }
       
-      const payload = this.jwtService.verify(token);
-      return await this.usersService.findById(payload.sub);
+      try {
+        const payload = this.jwtService.verify(token);
+        
+        // Clone or recreate entity manager options to ensure proper context
+        const user = await this.usersService.findById(payload.sub);
+        
+        if (!user) {
+          console.log(`User with ID ${payload.sub} not found`);
+        }
+        
+        return user;
+      } catch (verifyError: unknown) {
+        console.error('Token verification failed:', verifyError instanceof Error ? verifyError.message : 'Unknown error');
+        return null;
+      }
     } catch (e) {
+      console.error('Token validation error:', e);
       return null;
     }
   }

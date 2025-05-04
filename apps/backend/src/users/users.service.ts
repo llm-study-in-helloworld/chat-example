@@ -53,7 +53,13 @@ export class UsersService {
    * ID로 사용자 찾기
    */
   async findById(id: number): Promise<User | null> {
-    return await this.userRepository.findOne({ id });
+    try {
+      // Use raw query option for better compatibility with global context
+      return await this.userRepository.findOne({ id }, { disableIdentityMap: true });
+    } catch (error) {
+      console.error(`Error finding user by ID ${id}:`, error);
+      return null;
+    }
   }
 
   /**

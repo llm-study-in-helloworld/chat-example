@@ -27,6 +27,9 @@ const config: Options<PostgreSqlDriver> = {
   },
   // TS: false로 설정하면 엔티티 불변성 체크를 하지 않아 ManyToOne에서 타입 오류 줄어듦
   strict: false,
+  
+  // Allow global context usage for WebSockets
+  allowGlobalContext: true,
 };
 
 export default config; 
