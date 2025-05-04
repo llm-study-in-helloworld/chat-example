@@ -4,16 +4,19 @@ import { AuthService } from '../../src/auth';
 import { MessageReactionResponseDto, MessageResponseDto, RoomResponseDto, UserResponseDto } from '../../src/dto';
 import { MessageReaction, User } from '../../src/entities';
 import { ChatGateway } from '../../src/gateway/chat.gateway';
+import { LoggerService } from '../../src/logger/logger.service';
 import { CreateMessageDto } from '../../src/messages/dto/create-message.dto';
 import { ReactionDto } from '../../src/messages/dto/reaction.dto';
 import { MessagesService } from '../../src/messages/messages.service';
 import { RoomsService } from '../../src/rooms/rooms.service';
+import { createMockLoggerService } from './fixtures/logger.fixtures';
 
 describe('ChatGateway', () => {
   let gateway: ChatGateway;
   let authService: AuthService;
   let messagesService: MessagesService;
   let roomsService: RoomsService;
+  let loggerService: LoggerService;
   let mockServer: Partial<Server>;
 
   // Test data
@@ -104,6 +107,9 @@ describe('ChatGateway', () => {
   let mockSocket: Partial<Socket>;
 
   beforeEach(async () => {
+    // Create mock logger service
+    const mockLoggerService = createMockLoggerService();
+    
     // Create mock socket with proper structure
     mockSocket = {
       handshake: {
@@ -157,6 +163,10 @@ describe('ChatGateway', () => {
             getRoomById: jest.fn(),
           },
         },
+        {
+          provide: LoggerService,
+          useValue: mockLoggerService,
+        },
       ],
     }).compile();
 
@@ -164,6 +174,7 @@ describe('ChatGateway', () => {
     authService = module.get<AuthService>(AuthService);
     messagesService = module.get<MessagesService>(MessagesService);
     roomsService = module.get<RoomsService>(RoomsService);
+    loggerService = module.get<LoggerService>(LoggerService);
     gateway.server = mockServer as Server;
 
     // Reset all mocks before each test
@@ -194,6 +205,9 @@ describe('ChatGateway', () => {
         userId: 1,
         status: 'online',
       });
+      
+      // Verify logger was called
+      expect(loggerService.debug).toHaveBeenCalled();
     });
 
     it('should disconnect if authorization header is missing', async () => {
@@ -212,6 +226,9 @@ describe('ChatGateway', () => {
       // Assert
       expect(socketWithoutAuth.disconnect).toHaveBeenCalled();
       expect(authService.validateToken).not.toHaveBeenCalled();
+      
+      // Verify logger was called
+      expect(loggerService.warn).toHaveBeenCalled();
     });
 
     it('should disconnect if token is invalid', async () => {
@@ -223,6 +240,9 @@ describe('ChatGateway', () => {
 
       // Assert
       expect(mockSocket.disconnect).toHaveBeenCalled();
+      
+      // Verify logger was called
+      expect(loggerService.warn).toHaveBeenCalled();
     });
 
     it('should disconnect if token validation throws an error', async () => {
@@ -234,6 +254,9 @@ describe('ChatGateway', () => {
 
       // Assert
       expect(mockSocket.disconnect).toHaveBeenCalled();
+      
+      // Verify logger was called
+      expect(loggerService.error).toHaveBeenCalled();
     });
   });
 

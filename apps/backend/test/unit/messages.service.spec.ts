@@ -10,8 +10,10 @@ import {
     Room,
     User
 } from '../../src/entities';
+import { LoggerService } from '../../src/logger/logger.service';
 import { MessagesService } from '../../src/messages/messages.service';
 import testConfig from '../mikro-orm.config.test';
+import { createMockLoggerService } from './fixtures/logger.fixtures';
 import { createMessageFixture, createReplyMessageFixture, TestMessageData } from './fixtures/message.fixtures';
 import { createRoomFixture, TestRoomData } from './fixtures/room.fixtures';
 import { createUserFixture, TestUserData } from './fixtures/user.fixtures';
@@ -23,6 +25,7 @@ describe('MessagesService', () => {
   let messageRepository: EntityRepository<Message>;
   let userRepository: EntityRepository<User>;
   let roomRepository: EntityRepository<Room>;
+  let loggerService: LoggerService;
 
   // Test data
   let testUser1: User;
@@ -37,6 +40,9 @@ describe('MessagesService', () => {
   let testReplyMessageData: TestMessageData;
 
   beforeAll(async () => {
+    // Create mock logger service
+    const mockLoggerService = createMockLoggerService();
+    
     const module: TestingModule = await Test.createTestingModule({
       imports: [
         MikroOrmModule.forRoot(testConfig),
@@ -44,7 +50,13 @@ describe('MessagesService', () => {
           entities: [User, Room, Message, MessageReaction, Mention]
         }),
       ],
-      providers: [MessagesService],
+      providers: [
+        MessagesService,
+        {
+          provide: LoggerService,
+          useValue: mockLoggerService,
+        },
+      ],
     }).compile();
 
     service = module.get<MessagesService>(MessagesService);
@@ -53,6 +65,7 @@ describe('MessagesService', () => {
     messageRepository = em.getRepository(Message);
     userRepository = em.getRepository(User);
     roomRepository = em.getRepository(Room);
+    loggerService = module.get<LoggerService>(LoggerService);
 
     // Create schema
     await orm.getSchemaGenerator().createSchema();
@@ -108,6 +121,9 @@ describe('MessagesService', () => {
     testMessage = await messageRepository.findOneOrFail({ id: testMessageData.id });
     testReplyMessage = await messageRepository.findOneOrFail({ id: testReplyMessageData.id });
 
+    // Reset mocks
+    jest.clearAllMocks();
+    
     // Clear EntityManager to ensure fresh state for each test
     em.clear();
   });
@@ -134,6 +150,10 @@ describe('MessagesService', () => {
         expect(message.sender.id).toBe(testUser1.id);
         expect(message.replyCount).toBe(1); // Should have one reply
       }
+      
+      // Verify logger was called
+      expect(loggerService.logMethodEntry).toHaveBeenCalled();
+      expect(loggerService.logMethodExit).toHaveBeenCalled();
     });
 
     it('should respect limit and offset parameters', async () => {
@@ -159,6 +179,10 @@ describe('MessagesService', () => {
       const ids1 = messages1.map(m => m.id);
       const ids2 = messages2.map(m => m.id);
       expect(ids1.some(id => ids2.includes(id))).toBe(false);
+      
+      // Verify logger was called
+      expect(loggerService.logMethodEntry).toHaveBeenCalledTimes(2);
+      expect(loggerService.logMethodExit).toHaveBeenCalledTimes(2);
     });
   });
 

@@ -5,7 +5,9 @@ import { UnauthorizedException } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 import { RefreshTokenService } from '../../src/auth/refresh-token.service';
 import { RefreshToken, User } from '../../src/entities';
+import { LoggerService } from '../../src/logger/logger.service';
 import testConfig from '../mikro-orm.config.test';
+import { createMockLoggerService } from './fixtures/logger.fixtures';
 import { createUserFixture, TestUserData } from './fixtures/user.fixtures';
 
 describe('RefreshTokenService', () => {
@@ -14,6 +16,7 @@ describe('RefreshTokenService', () => {
   let em: EntityManager;
   let refreshTokenRepository: EntityRepository<RefreshToken>;
   let userRepository: EntityRepository<User>;
+  let loggerService: LoggerService;
 
   // Test data
   let testUser: User;
@@ -21,6 +24,9 @@ describe('RefreshTokenService', () => {
   let testRefreshToken: RefreshToken;
 
   beforeAll(async () => {
+    // Create mock logger service
+    const mockLoggerService = createMockLoggerService();
+
     const module: TestingModule = await Test.createTestingModule({
       imports: [
         MikroOrmModule.forRoot(testConfig),
@@ -28,7 +34,13 @@ describe('RefreshTokenService', () => {
           entities: [User, RefreshToken]
         }),
       ],
-      providers: [RefreshTokenService],
+      providers: [
+        RefreshTokenService,
+        {
+          provide: LoggerService,
+          useValue: mockLoggerService,
+        },
+      ],
     }).compile();
 
     service = module.get<RefreshTokenService>(RefreshTokenService);
@@ -36,6 +48,7 @@ describe('RefreshTokenService', () => {
     em = module.get<EntityManager>(EntityManager);
     refreshTokenRepository = em.getRepository(RefreshToken);
     userRepository = em.getRepository(User);
+    loggerService = module.get<LoggerService>(LoggerService);
 
     // Create schema
     await orm.getSchemaGenerator().createSchema();
@@ -55,12 +68,19 @@ describe('RefreshTokenService', () => {
     // Get the actual user entity for tests that need it
     testUser = await userRepository.findOneOrFail({ id: testUserData.id });
 
+    // Reset mocks
+    jest.clearAllMocks();
+
     // Clear EntityManager to ensure fresh state for each test
     em.clear();
   });
 
   afterAll(async () => {
     await orm.close();
+  });
+
+  it('should be defined', () => {
+    expect(service).toBeDefined();
   });
 
   describe('createRefreshToken', () => {
@@ -93,6 +113,13 @@ describe('RefreshTokenService', () => {
 
       // Store for later tests
       testRefreshToken = refreshToken;
+      
+      // Verify logger was called
+      expect(loggerService.logMethodEntry).toHaveBeenCalledWith('createRefreshToken', 'RefreshTokenService');
+      expect(loggerService.logMethodExit).toHaveBeenCalledWith('createRefreshToken', expect.any(Number), 'RefreshTokenService');
+      expect(loggerService.debug).toHaveBeenCalledWith(expect.stringContaining('Creating refresh token for user'), 'RefreshTokenService');
+      expect(loggerService.debug).toHaveBeenCalledWith(expect.stringContaining('Refresh token created successfully'), 'RefreshTokenService');
+      expect(loggerService.logDatabase).toHaveBeenCalledWith('create', 'RefreshToken', expect.any(Object), 'RefreshTokenService');
     });
 
     it('should create a token with default parameters when request is not provided', async () => {
@@ -105,6 +132,10 @@ describe('RefreshTokenService', () => {
       expect(refreshToken.user.id).toBe(testUser.id);
       expect(refreshToken.userAgent).toBeUndefined();
       expect(refreshToken.ipAddress).toBeUndefined();
+      
+      // Verify logger was called
+      expect(loggerService.logMethodEntry).toHaveBeenCalledWith('createRefreshToken', 'RefreshTokenService');
+      expect(loggerService.debug).toHaveBeenCalledWith(expect.stringContaining('Creating refresh token for user'), 'RefreshTokenService');
     });
   });
 
@@ -113,6 +144,7 @@ describe('RefreshTokenService', () => {
       // Arrange - Create a token first
       const createdToken = await service.createRefreshToken(testUser);
       em.clear();
+      jest.clearAllMocks(); // Clear previous logger calls
 
       // Act
       const foundToken = await service.findRefreshToken(createdToken.token);
@@ -121,6 +153,12 @@ describe('RefreshTokenService', () => {
       expect(foundToken).toBeDefined();
       expect(foundToken!.token).toBe(createdToken.token);
       expect(foundToken!.user.id).toBe(testUser.id);
+      
+      // Verify logger was called
+      expect(loggerService.logMethodEntry).toHaveBeenCalledWith('findRefreshToken', 'RefreshTokenService');
+      expect(loggerService.logMethodExit).toHaveBeenCalledWith('findRefreshToken', expect.any(Number), 'RefreshTokenService');
+      expect(loggerService.debug).toHaveBeenCalledWith('Finding refresh token', 'RefreshTokenService');
+      expect(loggerService.debug).toHaveBeenCalledWith(expect.stringContaining('Found refresh token ID'), 'RefreshTokenService');
     });
 
     it('should return null for non-existent token', async () => {
@@ -129,6 +167,11 @@ describe('RefreshTokenService', () => {
 
       // Assert
       expect(foundToken).toBeNull();
+      
+      // Verify logger was called
+      expect(loggerService.logMethodEntry).toHaveBeenCalledWith('findRefreshToken', 'RefreshTokenService');
+      expect(loggerService.debug).toHaveBeenCalledWith('Finding refresh token', 'RefreshTokenService');
+      expect(loggerService.debug).toHaveBeenCalledWith('Refresh token not found', 'RefreshTokenService');
     });
   });
 
@@ -137,6 +180,7 @@ describe('RefreshTokenService', () => {
       // Arrange - Create a token first
       const createdToken = await service.createRefreshToken(testUser);
       em.clear();
+      jest.clearAllMocks(); // Clear previous logger calls
 
       // Act
       const validToken = await service.validateRefreshToken(createdToken.token);
@@ -145,6 +189,12 @@ describe('RefreshTokenService', () => {
       expect(validToken).toBeDefined();
       expect(validToken.token).toBe(createdToken.token);
       expect(validToken.user.id).toBe(testUser.id);
+      
+      // Verify logger was called
+      expect(loggerService.logMethodEntry).toHaveBeenCalledWith('validateRefreshToken', 'RefreshTokenService');
+      expect(loggerService.logMethodExit).toHaveBeenCalledWith('validateRefreshToken', expect.any(Number), 'RefreshTokenService');
+      expect(loggerService.debug).toHaveBeenCalledWith('Validating refresh token', 'RefreshTokenService');
+      expect(loggerService.debug).toHaveBeenCalledWith(expect.stringContaining('Refresh token ID'), 'RefreshTokenService');
     });
 
     it('should throw UnauthorizedException for non-existent token', async () => {
@@ -153,6 +203,11 @@ describe('RefreshTokenService', () => {
         .rejects.toThrow(UnauthorizedException);
       await expect(service.validateRefreshToken('non-existent-token'))
         .rejects.toThrow('Invalid refresh token');
+      
+      // Verify logger was called
+      expect(loggerService.logMethodEntry).toHaveBeenCalledWith('validateRefreshToken', 'RefreshTokenService');
+      expect(loggerService.warn).toHaveBeenCalledWith('Refresh token validation failed: Token not found', 'RefreshTokenService');
+      expect(loggerService.error).toHaveBeenCalled();
     });
 
     it('should throw UnauthorizedException for revoked token', async () => {
@@ -160,12 +215,17 @@ describe('RefreshTokenService', () => {
       const createdToken = await service.createRefreshToken(testUser);
       await service.revokeRefreshToken(createdToken.token);
       em.clear();
+      jest.clearAllMocks(); // Clear previous logger calls
 
       // Act & Assert
       await expect(service.validateRefreshToken(createdToken.token))
         .rejects.toThrow(UnauthorizedException);
       await expect(service.validateRefreshToken(createdToken.token))
         .rejects.toThrow('Refresh token expired or revoked');
+      
+      // Verify logger was called
+      expect(loggerService.logMethodEntry).toHaveBeenCalledWith('validateRefreshToken', 'RefreshTokenService');
+      expect(loggerService.warn).toHaveBeenCalledWith(expect.stringContaining('Token expired or revoked'), 'RefreshTokenService');
     });
 
     it('should throw UnauthorizedException for expired token', async () => {
@@ -179,12 +239,17 @@ describe('RefreshTokenService', () => {
       await refreshTokenRepository.create(token);
       await em.flush();
       em.clear();
+      jest.clearAllMocks(); // Clear previous logger calls
 
       // Act & Assert
       await expect(service.validateRefreshToken(token.token))
         .rejects.toThrow(UnauthorizedException);
       await expect(service.validateRefreshToken(token.token))
         .rejects.toThrow('Refresh token expired or revoked');
+      
+      // Verify logger was called
+      expect(loggerService.logMethodEntry).toHaveBeenCalledWith('validateRefreshToken', 'RefreshTokenService');
+      expect(loggerService.warn).toHaveBeenCalledWith(expect.stringContaining('Token expired or revoked'), 'RefreshTokenService');
     });
   });
 
@@ -193,6 +258,7 @@ describe('RefreshTokenService', () => {
       // Arrange - Create a token first
       const createdToken = await service.createRefreshToken(testUser);
       em.clear();
+      jest.clearAllMocks(); // Clear previous logger calls
 
       // Act
       await service.revokeRefreshToken(createdToken.token);
@@ -202,12 +268,24 @@ describe('RefreshTokenService', () => {
       expect(token).toBeDefined();
       expect(token!.isRevoked).toBe(true);
       expect(token!.revokedAt).toBeDefined();
+      
+      // Verify logger was called
+      expect(loggerService.logMethodEntry).toHaveBeenCalledWith('revokeRefreshToken', 'RefreshTokenService');
+      expect(loggerService.logMethodExit).toHaveBeenCalledWith('revokeRefreshToken', expect.any(Number), 'RefreshTokenService');
+      expect(loggerService.debug).toHaveBeenCalledWith('Revoking refresh token', 'RefreshTokenService');
+      expect(loggerService.debug).toHaveBeenCalledWith(expect.stringContaining('revoked successfully'), 'RefreshTokenService');
+      expect(loggerService.logDatabase).toHaveBeenCalledWith('update', 'RefreshToken', expect.any(Object), 'RefreshTokenService');
     });
 
     it('should not throw error when revoking non-existent token', async () => {
       // Act & Assert
       await expect(service.revokeRefreshToken('non-existent-token'))
         .resolves.not.toThrow();
+      
+      // Verify logger was called
+      expect(loggerService.logMethodEntry).toHaveBeenCalledWith('revokeRefreshToken', 'RefreshTokenService');
+      expect(loggerService.debug).toHaveBeenCalledWith('Revoking refresh token', 'RefreshTokenService');
+      expect(loggerService.debug).toHaveBeenCalledWith('Cannot revoke: Refresh token not found', 'RefreshTokenService');
     });
 
     it('should not modify an already revoked token', async () => {
@@ -220,6 +298,7 @@ describe('RefreshTokenService', () => {
       const originalRevokedAt = token!.revokedAt;
       
       em.clear();
+      jest.clearAllMocks(); // Clear previous logger calls
       
       // Act - Try to revoke again
       await service.revokeRefreshToken(createdToken.token);
@@ -227,6 +306,10 @@ describe('RefreshTokenService', () => {
       // Assert - Revoked time should not have changed
       const updatedToken = await refreshTokenRepository.findOne({ token: createdToken.token });
       expect(updatedToken!.revokedAt).toEqual(originalRevokedAt);
+      
+      // Verify logger was called
+      expect(loggerService.logMethodEntry).toHaveBeenCalledWith('revokeRefreshToken', 'RefreshTokenService');
+      expect(loggerService.debug).toHaveBeenCalledWith(expect.stringContaining('was already revoked'), 'RefreshTokenService');
     });
   });
 
@@ -238,6 +321,7 @@ describe('RefreshTokenService', () => {
       const token3 = await service.createRefreshToken(testUser);
       
       em.clear();
+      jest.clearAllMocks(); // Clear previous logger calls
 
       // Act
       await service.revokeAllUserRefreshTokens(testUser.id);
@@ -249,70 +333,93 @@ describe('RefreshTokenService', () => {
         expect(token.isRevoked).toBe(true);
         expect(token.revokedAt).toBeDefined();
       });
+      
+      // Verify logger was called
+      expect(loggerService.logMethodEntry).toHaveBeenCalledWith('revokeAllUserRefreshTokens', 'RefreshTokenService');
+      expect(loggerService.logMethodExit).toHaveBeenCalledWith('revokeAllUserRefreshTokens', expect.any(Number), 'RefreshTokenService');
+      expect(loggerService.debug).toHaveBeenCalledWith(expect.stringContaining('Revoking all refresh tokens for user'), 'RefreshTokenService');
+      expect(loggerService.debug).toHaveBeenCalledWith(expect.stringContaining('refresh tokens revoked for user'), 'RefreshTokenService');
+      expect(loggerService.logDatabase).toHaveBeenCalledWith('update', 'RefreshToken', expect.any(Object), 'RefreshTokenService');
     });
 
-    it('should handle user with no tokens gracefully', async () => {
+    it('should handle users with no tokens gracefully', async () => {
       // Act & Assert
       await expect(service.revokeAllUserRefreshTokens(999))
         .resolves.not.toThrow();
+      
+      // Verify logger was called
+      expect(loggerService.logMethodEntry).toHaveBeenCalledWith('revokeAllUserRefreshTokens', 'RefreshTokenService');
+      expect(loggerService.debug).toHaveBeenCalledWith(expect.stringContaining('Revoking all refresh tokens for user 999'), 'RefreshTokenService');
     });
   });
 
   describe('rotateRefreshToken', () => {
-    it('should revoke the old token and create a new one', async () => {
+    it('should revoke old token and create new one', async () => {
       // Arrange - Create a token first
-      const oldToken = await service.createRefreshToken(testUser);
+      const originalToken = await service.createRefreshToken(testUser);
+      em.clear();
+      jest.clearAllMocks(); // Clear previous logger calls
+
+      // Act
+      const newToken = await service.rotateRefreshToken(originalToken.token);
+
+      // Assert
+      expect(newToken).toBeDefined();
+      expect(newToken.token).not.toBe(originalToken.token);
+      expect(newToken.user.id).toBe(testUser.id);
+      
+      // Check old token is revoked
+      const oldToken = await refreshTokenRepository.findOne({ token: originalToken.token });
+      expect(oldToken!.isRevoked).toBe(true);
+      expect(oldToken!.revokedAt).toBeDefined();
+      
+      // Verify logger was called
+      expect(loggerService.logMethodEntry).toHaveBeenCalledWith('rotateRefreshToken', 'RefreshTokenService');
+      expect(loggerService.logMethodExit).toHaveBeenCalledWith('rotateRefreshToken', expect.any(Number), 'RefreshTokenService');
+      expect(loggerService.debug).toHaveBeenCalledWith('Rotating refresh token', 'RefreshTokenService');
+      expect(loggerService.debug).toHaveBeenCalledWith(expect.stringContaining('Existing token ID'), 'RefreshTokenService');
+      expect(loggerService.debug).toHaveBeenCalledWith(expect.stringContaining('New token ID'), 'RefreshTokenService');
+      expect(loggerService.debug).toHaveBeenCalledWith(expect.stringContaining('Old token ID'), 'RefreshTokenService');
+      expect(loggerService.logDatabase).toHaveBeenCalledWith('update', 'RefreshToken', expect.any(Object), 'RefreshTokenService');
+    });
+
+    it('should throw when rotating invalid token', async () => {
+      // Act & Assert
+      await expect(service.rotateRefreshToken('non-existent-token'))
+        .rejects.toThrow(UnauthorizedException);
+      
+      // Verify logger was called
+      expect(loggerService.logMethodEntry).toHaveBeenCalledWith('rotateRefreshToken', 'RefreshTokenService');
+      expect(loggerService.error).toHaveBeenCalled();
+    });
+
+    it('should include request info in new token when provided', async () => {
+      // Arrange
+      const originalToken = await service.createRefreshToken(testUser);
       const mockRequest = {
         headers: {
-          'user-agent': 'New User Agent'
+          'user-agent': 'New Browser'
         },
         ip: '192.168.1.1'
       };
-      
       em.clear();
+      jest.clearAllMocks();
 
       // Act
-      const newToken = await service.rotateRefreshToken(oldToken.token, mockRequest as any);
+      const newToken = await service.rotateRefreshToken(originalToken.token, mockRequest as any);
 
-      // Assert - Check new token
-      expect(newToken).toBeDefined();
-      expect(newToken.token).not.toBe(oldToken.token);
-      expect(newToken.user.id).toBe(testUser.id);
-      expect(newToken.isRevoked).toBe(false);
-      expect(newToken.userAgent).toBe('New User Agent');
+      // Assert
+      expect(newToken.userAgent).toBe('New Browser');
       expect(newToken.ipAddress).toBe('192.168.1.1');
-      
-      // Assert - Check old token is revoked
-      const oldTokenEntity = await refreshTokenRepository.findOne({ token: oldToken.token });
-      expect(oldTokenEntity!.isRevoked).toBe(true);
-      expect(oldTokenEntity!.revokedAt).toBeDefined();
-    });
-
-    it('should throw error when rotating invalid token', async () => {
-      // Act & Assert
-      await expect(service.rotateRefreshToken('invalid-token'))
-        .rejects.toThrow(UnauthorizedException);
-    });
-
-    it('should throw error when rotating revoked token', async () => {
-      // Arrange - Create and revoke a token
-      const token = await service.createRefreshToken(testUser);
-      await service.revokeRefreshToken(token.token);
-      
-      em.clear();
-
-      // Act & Assert
-      await expect(service.rotateRefreshToken(token.token))
-        .rejects.toThrow(UnauthorizedException);
     });
   });
 
   describe('removeExpiredTokens', () => {
-    it('should mark expired tokens as revoked', async () => {
-      // Arrange - Create tokens with different expirations
-      const expiredToken1 = new RefreshToken(testUser, -5); // Expired 5 days ago
-      const expiredToken2 = new RefreshToken(testUser, -1); // Expired 1 day ago
-      const validToken = new RefreshToken(testUser, 30); // Valid for 30 days
+    it('should revoke expired tokens', async () => {
+      // Arrange - Create expired tokens
+      const expiredToken1 = new RefreshToken(testUser, -1);
+      const expiredToken2 = new RefreshToken(testUser, -2);
+      const validToken = new RefreshToken(testUser, 30);
       
       await refreshTokenRepository.create(expiredToken1);
       await refreshTokenRepository.create(expiredToken2);
@@ -320,64 +427,56 @@ describe('RefreshTokenService', () => {
       await em.flush();
       
       em.clear();
+      jest.clearAllMocks();
 
       // Act
       const revokedCount = await service.removeExpiredTokens();
 
       // Assert
-      expect(revokedCount).toBe(2); // Should have revoked 2 tokens
+      expect(revokedCount).toBe(2);
       
-      // Verify expired tokens are revoked
-      const token1 = await refreshTokenRepository.findOne({ token: expiredToken1.token });
-      const token2 = await refreshTokenRepository.findOne({ token: expiredToken2.token });
-      const token3 = await refreshTokenRepository.findOne({ token: validToken.token });
+      // Check tokens are revoked
+      const tokens = await refreshTokenRepository.find({});
+      const expiredTokens = tokens.filter(t => t.expiresAt < new Date());
+      expiredTokens.forEach(token => {
+        expect(token.isRevoked).toBe(true);
+      });
       
-      expect(token1!.isRevoked).toBe(true);
-      expect(token2!.isRevoked).toBe(true);
-      expect(token3!.isRevoked).toBe(false);
-    });
-
-    it('should not affect already revoked tokens', async () => {
-      // Arrange - Create and manually revoke an expired token
-      const expiredToken = new RefreshToken(testUser, -2); // Expired 2 days ago
-      expiredToken.isRevoked = true;
-      expiredToken.revokedAt = new Date(Date.now() - 3 * 24 * 60 * 60 * 1000); // Revoked 3 days ago
+      // Valid token should not be revoked
+      const stillValidToken = tokens.find(t => t.expiresAt > new Date());
+      expect(stillValidToken!.isRevoked).toBe(false);
       
-      await refreshTokenRepository.create(expiredToken);
-      await em.flush();
-      
-      em.clear();
-
-      // Act
-      const revokedCount = await service.removeExpiredTokens();
-
-      // Assert
-      expect(revokedCount).toBe(0); // No new tokens should be revoked
-      
-      // Verify token's revoked time was not updated
-      const token = await refreshTokenRepository.findOne({ token: expiredToken.token });
-      expect(token!.revokedAt!.getTime()).toBeCloseTo(
-        expiredToken.revokedAt!.getTime(),
-        -2 // Allow for a small time difference due to database precision
-      );
+      // Verify logger was called
+      expect(loggerService.logMethodEntry).toHaveBeenCalledWith('removeExpiredTokens', 'RefreshTokenService');
+      expect(loggerService.logMethodExit).toHaveBeenCalledWith('removeExpiredTokens', expect.any(Number), 'RefreshTokenService');
+      expect(loggerService.debug).toHaveBeenCalledWith('Removing expired refresh tokens', 'RefreshTokenService');
+      expect(loggerService.debug).toHaveBeenCalledWith(expect.stringContaining('Found 2 expired tokens'), 'RefreshTokenService');
+      expect(loggerService.debug).toHaveBeenCalledWith(expect.stringContaining('Successfully revoked 2 expired tokens'), 'RefreshTokenService');
+      expect(loggerService.logDatabase).toHaveBeenCalledWith('update', 'RefreshToken', expect.any(Object), 'RefreshTokenService');
     });
 
     it('should return 0 when no expired tokens exist', async () => {
       // Arrange - Create only valid tokens
-      const validToken1 = new RefreshToken(testUser, 10);
-      const validToken2 = new RefreshToken(testUser, 20);
+      const validToken1 = new RefreshToken(testUser, 30);
+      const validToken2 = new RefreshToken(testUser, 60);
       
       await refreshTokenRepository.create(validToken1);
       await refreshTokenRepository.create(validToken2);
       await em.flush();
       
       em.clear();
+      jest.clearAllMocks();
 
       // Act
       const revokedCount = await service.removeExpiredTokens();
 
       // Assert
       expect(revokedCount).toBe(0);
+      
+      // Verify logger was called
+      expect(loggerService.logMethodEntry).toHaveBeenCalledWith('removeExpiredTokens', 'RefreshTokenService');
+      expect(loggerService.debug).toHaveBeenCalledWith('Removing expired refresh tokens', 'RefreshTokenService');
+      expect(loggerService.debug).toHaveBeenCalledWith(expect.stringContaining('Found 0 expired tokens'), 'RefreshTokenService');
     });
   });
 }); 

@@ -4,8 +4,10 @@ import { EntityRepository } from '@mikro-orm/postgresql';
 import { Test, TestingModule } from '@nestjs/testing';
 import bcrypt from 'bcrypt';
 import { Room, RoomUser, User } from '../../src/entities';
+import { LoggerService } from '../../src/logger/logger.service';
 import { RoomsService } from '../../src/rooms/rooms.service';
 import testConfig from '../mikro-orm.config.test';
+import { createMockLoggerService } from './fixtures/logger.fixtures';
 import { createRoomFixture, TestRoomData } from './fixtures/room.fixtures';
 import { createUserFixture, TestUserData } from './fixtures/user.fixtures';
 
@@ -16,6 +18,7 @@ describe('RoomsService', () => {
   let roomRepository: EntityRepository<Room>;
   let roomUserRepository: EntityRepository<RoomUser>;
   let userRepository: EntityRepository<User>;
+  let loggerService: LoggerService;
 
   // Test data
   let testUser1: User;
@@ -28,6 +31,9 @@ describe('RoomsService', () => {
   let testRoomUser2: RoomUser;
 
   beforeAll(async () => {
+    // Create mock logger service
+    const mockLoggerService = createMockLoggerService();
+    
     const module: TestingModule = await Test.createTestingModule({
       imports: [
         MikroOrmModule.forRoot(testConfig),
@@ -35,7 +41,13 @@ describe('RoomsService', () => {
           entities: [User, Room, RoomUser]
         }),
       ],
-      providers: [RoomsService],
+      providers: [
+        RoomsService,
+        {
+          provide: LoggerService,
+          useValue: mockLoggerService,
+        },
+      ],
     }).compile();
 
     service = module.get<RoomsService>(RoomsService);
@@ -44,6 +56,7 @@ describe('RoomsService', () => {
     roomRepository = em.getRepository(Room);
     roomUserRepository = em.getRepository(RoomUser);
     userRepository = em.getRepository(User);
+    loggerService = module.get<LoggerService>(LoggerService);
 
     // Create schema
     await orm.getSchemaGenerator().createSchema();
@@ -89,6 +102,9 @@ describe('RoomsService', () => {
       user: { id: testUser2Data.id }
     });
 
+    // Reset mocks
+    jest.clearAllMocks();
+    
     // Clear EntityManager to ensure fresh state for each test
     em.clear();
   });

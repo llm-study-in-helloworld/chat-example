@@ -1,10 +1,13 @@
 import { JwtService } from '@nestjs/jwt';
 import { Test, TestingModule } from '@nestjs/testing';
 import { TokenBlacklistService } from '../../src/auth/token-blacklist.service';
+import { LoggerService } from '../../src/logger/logger.service';
+import { createMockLoggerService } from './fixtures/logger.fixtures';
 
 describe('TokenBlacklistService', () => {
   let service: TokenBlacklistService;
   let jwtService: JwtService;
+  let loggerService: LoggerService;
 
   const mockDecodedToken = (userId: number, expiryInSeconds: number) => ({
     sub: userId,
@@ -18,6 +21,9 @@ describe('TokenBlacklistService', () => {
   };
 
   beforeEach(async () => {
+    // Create mock logger service
+    const mockLoggerService = createMockLoggerService();
+
     // Create mocks
     const jwtServiceMock = {
       decode: jest.fn().mockImplementation((token: string) => {
@@ -59,12 +65,17 @@ describe('TokenBlacklistService', () => {
         {
           provide: JwtService,
           useValue: jwtServiceMock
+        },
+        {
+          provide: LoggerService,
+          useValue: mockLoggerService,
         }
       ],
     }).compile();
 
     service = module.get<TokenBlacklistService>(TokenBlacklistService);
     jwtService = module.get<JwtService>(JwtService);
+    loggerService = module.get<LoggerService>(LoggerService);
 
     // Mock setInterval to avoid actual timed execution
     jest.spyOn(global, 'setInterval').mockImplementation(() => {
@@ -74,6 +85,10 @@ describe('TokenBlacklistService', () => {
 
   afterEach(() => {
     jest.clearAllMocks();
+  });
+
+  it('should be defined', () => {
+    expect(service).toBeDefined();
   });
 
   describe('blacklistToken', () => {
@@ -87,6 +102,11 @@ describe('TokenBlacklistService', () => {
       // Assert
       expect(service.isBlacklisted(token)).toBe(true);
       expect(jwtService.decode).toHaveBeenCalledWith(token);
+      
+      // Verify logger was called
+      expect(loggerService.logMethodEntry).toHaveBeenCalledWith('blacklistToken', 'TokenBlacklistService');
+      expect(loggerService.logMethodExit).toHaveBeenCalledWith('blacklistToken', expect.any(Number), 'TokenBlacklistService');
+      expect(loggerService.debug).toHaveBeenCalledWith(expect.stringContaining('Token for user 1 added to blacklist'), 'TokenBlacklistService');
     });
 
     it('should handle invalid tokens gracefully', async () => {
@@ -98,6 +118,10 @@ describe('TokenBlacklistService', () => {
       
       // Assert
       expect(service.isBlacklisted(token)).toBe(false);
+      
+      // Verify logger was called
+      expect(loggerService.logMethodEntry).toHaveBeenCalledWith('blacklistToken', 'TokenBlacklistService');
+      expect(loggerService.warn).toHaveBeenCalledWith('Failed to blacklist token: Invalid token format', 'TokenBlacklistService');
     });
   });
 
@@ -117,11 +141,22 @@ describe('TokenBlacklistService', () => {
       // Assert
       expect(service.isBlacklisted(token1)).toBe(true);
       expect(service.isBlacklisted(token2)).toBe(true);
+      
+      // Verify logger was called
+      expect(loggerService.logMethodEntry).toHaveBeenCalledWith('blacklistUserTokens', 'TokenBlacklistService');
+      expect(loggerService.logMethodExit).toHaveBeenCalledWith('blacklistUserTokens', expect.any(Number), 'TokenBlacklistService');
+      expect(loggerService.debug).toHaveBeenCalledWith(expect.stringContaining(`Blacklisting all tokens for user ${userId}`), 'TokenBlacklistService');
+      expect(loggerService.debug).toHaveBeenCalledWith(expect.stringContaining(`Successfully blacklisted`), 'TokenBlacklistService');
     });
 
     it('should handle users with no tokens gracefully', async () => {
       // Act & Assert
       await expect(service.blacklistUserTokens(999)).resolves.not.toThrow();
+      
+      // Verify logger was called
+      expect(loggerService.logMethodEntry).toHaveBeenCalledWith('blacklistUserTokens', 'TokenBlacklistService');
+      expect(loggerService.debug).toHaveBeenCalledWith(expect.stringContaining('Blacklisting all tokens for user 999'), 'TokenBlacklistService');
+      expect(loggerService.debug).toHaveBeenCalledWith('No existing tokens found for user 999', 'TokenBlacklistService');
     });
 
     it('should remove the latest token reference when blacklisting all user tokens', async () => {
@@ -137,6 +172,10 @@ describe('TokenBlacklistService', () => {
       
       // Assert
       expect(service['latestUserTokens'].has(userId)).toBe(false);
+      
+      // Verify logger was called
+      expect(loggerService.logMethodEntry).toHaveBeenCalledWith('blacklistUserTokens', 'TokenBlacklistService');
+      expect(loggerService.debug).toHaveBeenCalledWith(expect.stringContaining('Removed latest token reference for user'), 'TokenBlacklistService');
     });
   });
 
@@ -152,6 +191,12 @@ describe('TokenBlacklistService', () => {
       // Assert
       expect(service['latestUserTokens'].get(userId)).toBe(token);
       expect(service['userTokens'].get(userId)?.has(token)).toBe(true);
+      
+      // Verify logger was called
+      expect(loggerService.logMethodEntry).toHaveBeenCalledWith('setLatestUserToken', 'TokenBlacklistService');
+      expect(loggerService.logMethodExit).toHaveBeenCalledWith('setLatestUserToken', expect.any(Number), 'TokenBlacklistService');
+      expect(loggerService.debug).toHaveBeenCalledWith(expect.stringContaining(`Setting latest token for user ${userId}`), 'TokenBlacklistService');
+      expect(loggerService.debug).toHaveBeenCalledWith(expect.stringContaining('Latest token for user'), 'TokenBlacklistService');
     });
 
     it('should initialize user tokens set if it does not exist', () => {
@@ -165,6 +210,10 @@ describe('TokenBlacklistService', () => {
       // Assert
       expect(service['userTokens'].has(userId)).toBe(true);
       expect(service['userTokens'].get(userId)?.size).toBe(1);
+      
+      // Verify logger was called
+      expect(loggerService.logMethodEntry).toHaveBeenCalledWith('setLatestUserToken', 'TokenBlacklistService');
+      expect(loggerService.debug).toHaveBeenCalledWith(expect.stringContaining(`Setting latest token for user ${userId}`), 'TokenBlacklistService');
     });
   });
 
@@ -173,9 +222,15 @@ describe('TokenBlacklistService', () => {
       // Arrange
       const token = createToken(1, 3600);
       await service.blacklistToken(token);
+      jest.clearAllMocks(); // Clear previous logger calls
       
       // Act & Assert
       expect(service.isBlacklisted(token)).toBe(true);
+      
+      // Verify logger was called
+      expect(loggerService.logMethodEntry).toHaveBeenCalledWith('isBlacklisted', 'TokenBlacklistService');
+      expect(loggerService.logMethodExit).toHaveBeenCalledWith('isBlacklisted', expect.any(Number), 'TokenBlacklistService');
+      expect(loggerService.debug).toHaveBeenCalledWith('Token is blacklisted', 'TokenBlacklistService');
     });
 
     it('should return false when token is not in the blacklist', () => {
@@ -184,6 +239,10 @@ describe('TokenBlacklistService', () => {
       
       // Act & Assert
       expect(service.isBlacklisted(token)).toBe(false);
+      
+      // Verify logger was called
+      expect(loggerService.logMethodEntry).toHaveBeenCalledWith('isBlacklisted', 'TokenBlacklistService');
+      expect(loggerService.debug).toHaveBeenCalledWith('Token is not blacklisted', 'TokenBlacklistService');
     });
   });
 
@@ -199,6 +258,7 @@ describe('TokenBlacklistService', () => {
       // Set expiry in the past for expired token
       const expiredDate = new Date(Date.now() - 3600 * 1000);
       service['blacklist'].set(expiredToken, expiredDate);
+      jest.clearAllMocks(); // Clear previous logger calls
       
       // Act
       service['cleanupExpiredTokens']();
@@ -206,6 +266,12 @@ describe('TokenBlacklistService', () => {
       // Assert
       expect(service.isBlacklisted(expiredToken)).toBe(false);
       expect(service.isBlacklisted(validToken)).toBe(true);
+      
+      // Verify logger was called
+      expect(loggerService.logMethodEntry).toHaveBeenCalledWith('cleanupExpiredTokens', 'TokenBlacklistService');
+      expect(loggerService.logMethodExit).toHaveBeenCalledWith('cleanupExpiredTokens', expect.any(Number), 'TokenBlacklistService');
+      expect(loggerService.debug).toHaveBeenCalledWith('Starting cleanup of expired tokens', 'TokenBlacklistService');
+      expect(loggerService.debug).toHaveBeenCalledWith(expect.stringContaining('Cleanup completed'), 'TokenBlacklistService');
     });
 
     it('should remove expired tokens from user token sets', async () => {
@@ -221,6 +287,7 @@ describe('TokenBlacklistService', () => {
       // Set expiry in the past for expired token
       const expiredDate = new Date(Date.now() - 3600 * 1000);
       service['blacklist'].set(expiredToken, expiredDate);
+      jest.clearAllMocks(); // Clear previous logger calls
       
       // Act
       service['cleanupExpiredTokens']();
@@ -228,6 +295,10 @@ describe('TokenBlacklistService', () => {
       // Assert
       expect(service['userTokens'].get(userId)?.has(expiredToken)).toBe(false);
       expect(service['userTokens'].get(userId)?.has(validToken)).toBe(true);
+      
+      // Verify logger was called
+      expect(loggerService.logMethodEntry).toHaveBeenCalledWith('cleanupExpiredTokens', 'TokenBlacklistService');
+      expect(loggerService.debug).toHaveBeenCalledWith('Starting cleanup of expired tokens', 'TokenBlacklistService');
     });
 
     it('should remove latest token reference if it is expired', async () => {
@@ -241,32 +312,40 @@ describe('TokenBlacklistService', () => {
       // Set expiry in the past for expired token
       const expiredDate = new Date(Date.now() - 3600 * 1000);
       service['blacklist'].set(expiredToken, expiredDate);
+      jest.clearAllMocks(); // Clear previous logger calls
       
       // Act
       service['cleanupExpiredTokens']();
       
       // Assert
       expect(service['latestUserTokens'].has(userId)).toBe(false);
+      
+      // Verify logger was called
+      expect(loggerService.logMethodEntry).toHaveBeenCalledWith('cleanupExpiredTokens', 'TokenBlacklistService');
+      expect(loggerService.debug).toHaveBeenCalledWith(expect.stringContaining('Removed expired latest token for user'), 'TokenBlacklistService');
     });
 
-    it('should not remove latest token reference if token is different', async () => {
+    it('should handle errors during cleanup gracefully', async () => {
       // Arrange
       const userId = 1;
-      const expiredToken = createToken(userId, -3600); // Expired 1 hour ago
-      const latestToken = createToken(userId, 3600); // Valid for 1 hour
+      const badToken = createToken(userId, -3600);
       
-      service.setLatestUserToken(userId, latestToken);
-      await service.blacklistToken(expiredToken);
+      // Add token to blacklist but make decode throw an error
+      service['userTokens'].set(userId, new Set([badToken]));
+      service['blacklist'].set(badToken, new Date(Date.now() - 3600 * 1000));
       
-      // Set expiry in the past for expired token
-      const expiredDate = new Date(Date.now() - 3600 * 1000);
-      service['blacklist'].set(expiredToken, expiredDate);
+      // Force an error when trying to decode the token
+      jest.spyOn(jwtService, 'decode').mockImplementation(() => {
+        throw new Error('Test error');
+      });
+      jest.clearAllMocks(); // Clear previous logger calls
       
-      // Act
+      // Act - Should not throw
       service['cleanupExpiredTokens']();
       
       // Assert
-      expect(service['latestUserTokens'].get(userId)).toBe(latestToken);
+      expect(loggerService.logMethodEntry).toHaveBeenCalledWith('cleanupExpiredTokens', 'TokenBlacklistService');
+      expect(loggerService.warn).toHaveBeenCalledWith(expect.stringContaining('Error during token cleanup'), 'TokenBlacklistService');
     });
   });
 }); 

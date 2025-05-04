@@ -5,11 +5,13 @@ import { ConflictException, UnauthorizedException } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 import { UserResponseDto } from '../../src/dto';
 import { User } from '../../src/entities';
+import { LoggerService } from '../../src/logger/logger.service';
 import { ChangePasswordDto } from '../../src/users/dto/change-password.dto';
 import { CreateUserDto } from '../../src/users/dto/create-user.dto';
 import { UpdateUserDto } from '../../src/users/dto/update-user.dto';
 import { UsersService } from '../../src/users/users.service';
 import testConfig from '../mikro-orm.config.test';
+import { createMockLoggerService } from './fixtures/logger.fixtures';
 import { createUserFixture, TestUserData } from './fixtures/user.fixtures';
 
 describe('UsersService', () => {
@@ -17,6 +19,7 @@ describe('UsersService', () => {
   let orm: MikroORM;
   let em: EntityManager;
   let userRepository: EntityRepository<User>;
+  let loggerService: LoggerService;
 
   // Test data
   const testPassword = 'TestPassword123';
@@ -27,6 +30,9 @@ describe('UsersService', () => {
   let createdUser: User;
 
   beforeAll(async () => {
+    // Create mock logger service
+    const mockLoggerService = createMockLoggerService();
+    
     const module: TestingModule = await Test.createTestingModule({
       imports: [
         MikroOrmModule.forRoot(testConfig),
@@ -34,13 +40,20 @@ describe('UsersService', () => {
           entities: [User]
         }),
       ],
-      providers: [UsersService],
+      providers: [
+        UsersService,
+        {
+          provide: LoggerService,
+          useValue: mockLoggerService,
+        },
+      ],
     }).compile();
 
     service = module.get<UsersService>(UsersService);
     orm = module.get<MikroORM>(MikroORM);
     em = module.get<EntityManager>(EntityManager);
     userRepository = em.getRepository(User);
+    loggerService = module.get<LoggerService>(LoggerService);
 
     // Create schema
     await orm.getSchemaGenerator().createSchema();
@@ -61,6 +74,9 @@ describe('UsersService', () => {
     // Get the actual user entity for tests that need it
     testUser = await userRepository.findOneOrFail({ id: testUserData.id });
 
+    // Reset mocks
+    jest.clearAllMocks();
+    
     // Clear EntityManager to ensure fresh state for each test
     em.clear();
   });
@@ -93,6 +109,11 @@ describe('UsersService', () => {
       expect(savedUser).toBeDefined();
       expect(savedUser!.email).toBe(createUserDto.email);
       
+      // Verify logger was called
+      expect(loggerService.logMethodEntry).toHaveBeenCalled();
+      expect(loggerService.logMethodExit).toHaveBeenCalled();
+      expect(loggerService.log).toHaveBeenCalled();
+      
       // Store for later tests
       createdUser = savedUser!;
     });
@@ -106,6 +127,10 @@ describe('UsersService', () => {
 
       // Act & Assert
       await expect(service.createUser(createUserDto)).rejects.toThrow(ConflictException);
+      
+      // Verify logger was called
+      expect(loggerService.logMethodEntry).toHaveBeenCalled();
+      expect(loggerService.error).toHaveBeenCalled();
     });
   });
 
