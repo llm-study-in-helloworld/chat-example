@@ -306,7 +306,7 @@ describe('AuthService', () => {
       const user = await userRepository.findOneOrFail({ email: 'test@example.com' });
       
       jest.spyOn(refreshTokenService, 'revokeAllUserRefreshTokens').mockResolvedValue();
-      jest.spyOn(tokenBlacklistService, 'blacklistUserTokens').mockResolvedValue();
+      jest.spyOn(tokenBlacklistService, 'blacklistUserTokens').mockReturnValue();
       
       // Act
       const result = await authService.logout(user);

@@ -8,6 +8,7 @@ describe('TokenBlacklistService', () => {
   let service: TokenBlacklistService;
   let jwtService: JwtService;
   let loggerService: LoggerService;
+  let intervalRef: NodeJS.Timeout;
 
   const mockDecodedToken = (userId: number, expiryInSeconds: number) => ({
     sub: userId,
@@ -78,13 +79,22 @@ describe('TokenBlacklistService', () => {
     loggerService = module.get<LoggerService>(LoggerService);
 
     // Mock setInterval to avoid actual timed execution
-    jest.spyOn(global, 'setInterval').mockImplementation(() => {
-      return { unref: jest.fn() } as any;
+    jest.spyOn(global, 'setInterval').mockImplementation((callback, delay) => {
+      intervalRef = { unref: jest.fn() } as unknown as NodeJS.Timeout;
+      return intervalRef;
     });
   });
 
   afterEach(() => {
     jest.clearAllMocks();
+    
+    // Clear the interval if it exists
+    if (intervalRef) {
+      clearInterval(intervalRef as unknown as NodeJS.Timeout);
+    }
+    
+    // Restore the original setInterval implementation
+    jest.restoreAllMocks();
   });
 
   it('should be defined', () => {
@@ -136,7 +146,7 @@ describe('TokenBlacklistService', () => {
       service['userTokens'].set(userId, new Set([token1, token2]));
       
       // Act
-      await service.blacklistUserTokens(userId);
+      service.blacklistUserTokens(userId);
       
       // Assert
       expect(service.isBlacklisted(token1)).toBe(true);
@@ -151,7 +161,7 @@ describe('TokenBlacklistService', () => {
 
     it('should handle users with no tokens gracefully', async () => {
       // Act & Assert
-      await expect(service.blacklistUserTokens(999)).resolves.not.toThrow();
+      expect(() => service.blacklistUserTokens(999)).not.toThrow();
       
       // Verify logger was called
       expect(loggerService.logMethodEntry).toHaveBeenCalledWith('blacklistUserTokens', 'TokenBlacklistService');
@@ -168,7 +178,7 @@ describe('TokenBlacklistService', () => {
       service.setLatestUserToken(userId, token);
       
       // Act
-      await service.blacklistUserTokens(userId);
+      service.blacklistUserTokens(userId);
       
       // Assert
       expect(service['latestUserTokens'].has(userId)).toBe(false);

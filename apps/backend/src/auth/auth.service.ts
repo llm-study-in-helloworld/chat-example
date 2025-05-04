@@ -2,6 +2,7 @@ import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
 import { Request } from 'express';
+import { v4 as uuidv4 } from 'uuid';
 import { User } from '../entities';
 import { LoggerService } from '../logger/logger.service';
 import { UsersService } from '../users/users.service';
@@ -34,7 +35,7 @@ export class AuthService {
       const user = await this.usersService.findByEmail(email);
       if (!user) {
         this.logger.warn(`Authentication failed: User with email ${email} not found`, 'AuthService');
-        throw new UnauthorizedException('Invalid credentials');
+        throw new UnauthorizedException('User not found');
       }
       
       const isPasswordValid = await user.verifyPassword(password);
@@ -73,6 +74,8 @@ export class AuthService {
         sub: user.id, 
         email: user.email,
         nickname: user.nickname,
+        // make unique id for each token
+        jti: uuidv4(),
         // Add precise timestamp with milliseconds to make each token unique
         iat: now,
         // Set explicit expiration time
@@ -83,7 +86,7 @@ export class AuthService {
       this.logger.debug(`Access token created for user ${user.id}`, 'AuthService');
       
       // Set this as the latest token and invalidate previous ones
-      await this.tokenBlacklistService.blacklistUserTokens(user.id);
+      this.tokenBlacklistService.blacklistUserTokens(user.id);
       this.tokenBlacklistService.setLatestUserToken(user.id, accessToken);
       this.logger.debug(`Previous tokens blacklisted for user ${user.id}`, 'AuthService');
       
@@ -190,7 +193,7 @@ export class AuthService {
       await this.refreshTokenService.revokeAllUserRefreshTokens(user.id);
       this.logger.debug(`All refresh tokens revoked for user ${user.id}`, 'AuthService');
       
-      await this.tokenBlacklistService.blacklistUserTokens(user.id);
+      this.tokenBlacklistService.blacklistUserTokens(user.id);
       this.logger.debug(`All access tokens blacklisted for user ${user.id}`, 'AuthService');
       
       this.logger.log(`User ${user.email} (ID: ${user.id}) successfully logged out`, 'AuthService');

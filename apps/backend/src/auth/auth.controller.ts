@@ -92,19 +92,20 @@ export class AuthController {
     @Body() changePasswordDto: ChangePasswordDto,
     @Res({ passthrough: true }) response: Response
   ): Promise<{ success: boolean }> {
+    // First, try to change the password
     const success = await this.usersService.changePassword(
       user, 
       changePasswordDto
     );
 
     if(!success) {
-      return { success: false };
+      throw new UnauthorizedException('Invalid password');
     }
     
-    // Invalidate all tokens for user after password change
+    // If password change was successful, invalidate all tokens
     await this.authService.logout(user);
-      
-    // Clear cookies
+    
+    // Clear all cookies to ensure the client has to log in again
     response.clearCookie('jwt', {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
@@ -119,7 +120,7 @@ export class AuthController {
       path: '/api/auth/refresh'
     });
     
-    // Set empty tokens with expired date
+    // Set expired cookies to ensure they're removed from the client
     response.cookie('jwt', '', {
       httpOnly: true,
       secure: process.env.NODE_ENV === 'production',
@@ -136,7 +137,8 @@ export class AuthController {
       path: '/api/auth/refresh'
     });
     
-    return { success };
+    // Return success response
+    return { success: true };
   }
 
   /**

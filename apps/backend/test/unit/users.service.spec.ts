@@ -231,7 +231,8 @@ describe('UsersService', () => {
       passwordChangeDto.newPassword = 'NewPassword789';
 
       // Act & Assert
-      await expect(service.changePassword(user, passwordChangeDto)).rejects.toThrow(UnauthorizedException);
+      const result = await service.changePassword(user, passwordChangeDto);
+      expect(result).toBeFalsy();
     });
   });
 

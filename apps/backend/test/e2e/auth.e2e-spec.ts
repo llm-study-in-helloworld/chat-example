@@ -3,10 +3,8 @@ import { INestApplication, ValidationPipe } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 import cookieParser from 'cookie-parser';
 import request from 'supertest';
-import { LoggerService } from '../../src/logger/logger.service';
 import { AppTestModule } from '../app-test.module';
 import { TestUserHelper } from './helpers';
-import { mockLoggerService } from './helpers/logger-mock';
 import { TestUser } from './helpers/test-user.type';
 
 describe('AuthController (e2e)', () => {
@@ -24,8 +22,8 @@ describe('AuthController (e2e)', () => {
     const moduleFixture: TestingModule = await Test.createTestingModule({
       imports: [AppTestModule],
     })
-    .overrideProvider(LoggerService)
-    .useValue(mockLoggerService)
+    // .overrideProvider(LoggerService)
+    // .useValue(mockLoggerService)
     .compile();
 
     app = moduleFixture.createNestApplication();
@@ -437,7 +435,7 @@ describe('AuthController (e2e)', () => {
           password: newPassword
         })
         .expect(201);
-      
+
       expect(loginResponse.body.token).toBeDefined();
       expect(loginResponse.body.user).toBeDefined();
       expect(loginResponse.body.user.email).toBe(testUser.email);

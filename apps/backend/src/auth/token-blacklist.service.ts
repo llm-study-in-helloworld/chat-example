@@ -24,7 +24,8 @@ export class TokenBlacklistService {
     private readonly logger: LoggerService
   ) {
     // 만료된 토큰 정리를 위한 주기적 작업
-    setInterval(() => this.cleanupExpiredTokens(), 1000 * 60 * 60); // 1시간마다 실행
+    const intervalRef = setInterval(() => this.cleanupExpiredTokens(), 1000 * 60 * 60); // 1시간마다 실행
+    intervalRef.unref(); // Don't keep the process alive just for this interval
     this.logger.debug('Token blacklist service initialized with hourly cleanup', 'TokenBlacklistService');
   }
 
@@ -70,7 +71,7 @@ export class TokenBlacklistService {
   /**
    * 사용자의 이전 토큰을 블랙리스트에 추가하고 새 토큰을 저장
    */
-  async blacklistUserTokens(userId: number): Promise<void> {
+  blacklistUserTokens(userId: number): void {
     this.logger.logMethodEntry('blacklistUserTokens', 'TokenBlacklistService');
     const startTime = Date.now();
     

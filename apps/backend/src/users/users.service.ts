@@ -169,11 +169,11 @@ export class UsersService {
       const isPasswordValid = await user.verifyPassword(passwordChangeDto.currentPassword);
       if (!isPasswordValid) {
         this.logger.warn(`Password change failed for user ${user.id}: Invalid current password`, 'UsersService');
-        throw new UnauthorizedException('Invalid password');
+        return false;
       }
 
       // Hash and set the new password
-      user.passwordHash = await this.hashPassword(passwordChangeDto.newPassword);
+      this.userRepository.merge(user).passwordHash = await this.hashPassword(passwordChangeDto.newPassword);
 
       await this.em.flush();
       this.logger.logDatabase('update', 'User', { id: user.id, passwordChanged: true }, 'UsersService');
