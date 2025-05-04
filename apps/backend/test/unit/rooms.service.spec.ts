@@ -7,9 +7,9 @@ import { Room, RoomUser, User } from '../../src/entities';
 import { LoggerService } from '../../src/logger/logger.service';
 import { RoomsService } from '../../src/rooms/rooms.service';
 import testConfig from '../mikro-orm.config.test';
-import { createMockLoggerService } from '../fixtures/logger.fixtures';
-import { createRoomFixture, TestRoomData } from '../fixtures/room.fixtures';
-import { createUserFixture, TestUserData } from '../fixtures/user.fixtures';
+import { createMockLoggerService } from './fixtures/logger.fixtures';
+import { createRoomFixture, TestRoomData } from './fixtures/room.fixtures';
+import { createUserFixture, TestUserData } from './fixtures/user.fixtures';
 
 describe('RoomsService', () => {
   let service: RoomsService;

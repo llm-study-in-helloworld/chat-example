@@ -12,8 +12,8 @@ import { User } from '../../src/entities';
 import { LoggerService } from '../../src/logger/logger.service';
 import { UsersService } from '../../src/users/users.service';
 import testConfig from '../mikro-orm.config.test';
-import { createMockLoggerService } from '../fixtures/logger.fixtures';
-import { createUserFixture, TestUserData } from '../fixtures/user.fixtures';
+import { createMockLoggerService } from './fixtures/logger.fixtures';
+import { createUserFixture, TestUserData } from './fixtures/user.fixtures';
 
 describe('AuthService', () => {
   let authService: AuthService;

@@ -28,7 +28,7 @@ export const authService = {
   },
   
   updatePassword: async (currentPassword: string, newPassword: string): Promise<{ success: boolean }> => {
-    const { data } = await apiClient.patch<{ success: boolean }>('/users/password', {
+    const { data } = await apiClient.patch<{ success: boolean }>('/auth/password', {
       currentPassword,
       newPassword
     });

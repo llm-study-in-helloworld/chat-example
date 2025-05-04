@@ -2,7 +2,7 @@ import { JwtService } from '@nestjs/jwt';
 import { Test, TestingModule } from '@nestjs/testing';
 import { TokenBlacklistService } from '../../src/auth/token-blacklist.service';
 import { LoggerService } from '../../src/logger/logger.service';
-import { createMockLoggerService } from '../fixtures/logger.fixtures';
+import { createMockLoggerService } from './fixtures/logger.fixtures';
 
 describe('TokenBlacklistService', () => {
   let service: TokenBlacklistService;

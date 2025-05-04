@@ -7,8 +7,8 @@ import { RefreshTokenService } from '../../src/auth/refresh-token.service';
 import { RefreshToken, User } from '../../src/entities';
 import { LoggerService } from '../../src/logger/logger.service';
 import testConfig from '../mikro-orm.config.test';
-import { createMockLoggerService } from '../fixtures/logger.fixtures';
-import { createUserFixture, TestUserData } from '../fixtures/user.fixtures';
+import { createMockLoggerService } from './fixtures/logger.fixtures';
+import { createUserFixture, TestUserData } from './fixtures/user.fixtures';
 
 describe('RefreshTokenService', () => {
   let service: RefreshTokenService;
