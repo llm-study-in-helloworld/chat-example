@@ -1,6 +1,8 @@
 import { CreateUserRequest } from '@chat-example/types';
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import { authService } from '../api/authService';
+import { useAuthStore } from '../store/authStore';
 
 const RegisterPage = () => {
   const [formData, setFormData] = useState<CreateUserRequest & { confirmPassword: string }>({
@@ -12,6 +14,7 @@ const RegisterPage = () => {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
+  const { setAuth } = useAuthStore();
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
@@ -34,24 +37,23 @@ const RegisterPage = () => {
     
     try {
       setLoading(true);
+      setError('');
       
-      // Prepare registration data
-      const registrationData: CreateUserRequest = {
-        nickname: formData.nickname,
-        email: formData.email,
-        password: formData.password
-      };
+      // Register user using real API
+      const response = await authService.register(
+        formData.email,
+        formData.password,
+        formData.nickname
+      );
       
-      // TODO: Implement actual registration logic with API call
-      // For now, simulate success
-      console.log('Would register with:', registrationData);
-      setTimeout(() => {
-        setLoading(false);
-        navigate('/login');
-      }, 1000);
-    } catch (err) {
+      // Set authentication state with token and user info
+      setAuth(response.user, response.token);
+      
+      // Navigate to main app or login
+      navigate('/');
+    } catch (err: any) {
       setLoading(false);
-      setError('Registration failed. Please try again.');
+      setError(err.response?.data?.message || 'Registration failed. Please try again.');
     }
   };
 
