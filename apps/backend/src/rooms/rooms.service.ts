@@ -2,14 +2,15 @@ import { RoomRole, RoomType } from '@chat-example/types';
 import { EntityManager, QueryOrder } from '@mikro-orm/core';
 import { InjectRepository } from '@mikro-orm/nestjs';
 import { EntityRepository } from '@mikro-orm/postgresql';
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException, UseInterceptors } from '@nestjs/common';
 import { RoomResponseDto, RoomUserResponseDto } from '../dto';
 import { Room, RoomUser, User } from '../entities';
-import { LoggerService } from '../logger';
+import { LoggerService, LogInterceptor } from '../logger';
 import { RoomQueryDto, UpdateRoomRequestDto } from './dto';
 /**
  * 채팅방 관련 비즈니스 로직을 처리하는 서비스
  */
+@UseInterceptors(LogInterceptor)
 @Injectable()
 export class RoomsService {
   constructor(
@@ -24,10 +25,6 @@ export class RoomsService {
   ) {}
 
   async isOwner({roomId, userId}: {roomId: number, userId: number}): Promise<boolean> {
-    this.logger.logMethodEntry('isOwner', 'RoomsService');
-    const startTime = Date.now();
-    
-    try {
       this.logger.debug(`Checking if user ${userId} is owner of room ${roomId}`, 'RoomsService');
       
       const roomUser = await this.roomUserRepository.findOne({
@@ -40,24 +37,12 @@ export class RoomsService {
       this.logger.debug(`User ${userId} is ${isOwner ? '' : 'not '}owner of room ${roomId}`, 'RoomsService');
       
       return isOwner;
-    } catch (error: unknown) {
-      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-      const errorStack = error instanceof Error ? error.stack : undefined;
-      this.logger.error(`Error checking room ownership: ${errorMessage}`, errorStack, 'RoomsService');
-      return false;
-    } finally {
-      this.logger.logMethodExit('isOwner', Date.now() - startTime, 'RoomsService');
-    }
   }
 
   /**
    * 특정 사용자가 참여 중인 모든 채팅방 목록 조회
    */
   async getUserRooms(userId: number): Promise<RoomResponseDto[]> {
-    this.logger.logMethodEntry('getUserRooms', 'RoomsService');
-    const startTime = Date.now();
-    
-    try {
       this.logger.debug(`Fetching rooms for user ${userId}`, 'RoomsService');
       
       const roomUsers = await this.roomUserRepository.find(
@@ -69,14 +54,6 @@ export class RoomsService {
       
       const rooms = await this.formatRoomResponse(roomUsers.map(ru => ru.room), userId);
       return rooms;
-    } catch (error: unknown) {
-      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-      const errorStack = error instanceof Error ? error.stack : undefined;
-      this.logger.error(`Error fetching user rooms for user ${userId}: ${errorMessage}`, errorStack, 'RoomsService');
-      throw error;
-    } finally {
-      this.logger.logMethodExit('getUserRooms', Date.now() - startTime, 'RoomsService');
-    }
   }
   
   /**
@@ -89,10 +66,6 @@ export class RoomsService {
     ownerId: number,
     isPrivate: boolean
   }): Promise<RoomResponseDto> {
-    this.logger.logMethodEntry('createRoom', 'RoomsService');
-    const startTime = Date.now();
-    
-    try {
       // 트랜잭션 시작
       const userIdsSet = new Set([...userIds, ownerId]);
       
@@ -162,24 +135,12 @@ export class RoomsService {
       this.logger.log(`Room created: ID ${result.id}, name: "${result.name}", owner: ${result.ownerId}`, 'RoomsService');
       
       return formattedRoom;
-    } catch (error: unknown) {
-      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-      const errorStack = error instanceof Error ? error.stack : undefined;
-      this.logger.error(`Error creating room: ${errorMessage}`, errorStack, 'RoomsService');
-      throw error;
-    } finally {
-      this.logger.logMethodExit('createRoom', Date.now() - startTime, 'RoomsService');
-    }
   }
 
   /**
    * 채팅방 정보 조회
    */
   async getRoomById({roomId, userId}: {roomId: number, userId: number}): Promise<RoomResponseDto | null> {
-    this.logger.logMethodEntry('getRoomById', 'RoomsService');
-    const startTime = Date.now();
-    
-    try {
       this.logger.debug(`Fetching room ${roomId} for user ${userId}`, 'RoomsService');
       
       // Use a direct SQL query to efficiently load room with its users in a single operation
@@ -197,23 +158,11 @@ export class RoomsService {
 
       const roomDtos = await this.formatRoomResponse([room], userId);
       return roomDtos[0];
-    } catch (error: unknown) {
-      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-      const errorStack = error instanceof Error ? error.stack : undefined;
-      this.logger.error(`Error fetching room ${roomId}: ${errorMessage}`, errorStack, 'RoomsService');
-      throw error;
-    } finally {
-      this.logger.logMethodExit('getRoomById', Date.now() - startTime, 'RoomsService');
-    }
   }
   /**
    * 채팅방의 참여자 목록 조회
    */
   async getRoomUsers(roomId: number): Promise<RoomUserResponseDto[]> {
-    this.logger.logMethodEntry('getRoomUsers', 'RoomsService');
-    const startTime = Date.now();
-    
-    try {
       this.logger.debug(`Fetching users for room ${roomId}`, 'RoomsService');
       
       const roomUsers = await this.roomUserRepository.find(
@@ -224,24 +173,12 @@ export class RoomsService {
       this.logger.debug(`Found ${roomUsers.length} users in room ${roomId}`, 'RoomsService');
       
       return roomUsers.map(roomUser => RoomUserResponseDto.fromEntity(roomUser));
-    } catch (error: unknown) {
-      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-      const errorStack = error instanceof Error ? error.stack : undefined;
-      this.logger.error(`Error fetching room users for room ${roomId}: ${errorMessage}`, errorStack, 'RoomsService');
-      throw error;
-    } finally {
-      this.logger.logMethodExit('getRoomUsers', Date.now() - startTime, 'RoomsService');
-    }
   }
 
   /**
    * 사용자를 채팅방에 추가
    */
   async addUserToRoom(roomId: number, userId: number): Promise<RoomUser> {
-    this.logger.logMethodEntry('addUserToRoom', 'RoomsService');
-    const startTime = Date.now();
-    
-    try {
       this.logger.debug(`Adding user ${userId} to room ${roomId}`, 'RoomsService');
       
       // Find both the room and user in parallel to avoid sequential queries
@@ -275,24 +212,12 @@ export class RoomsService {
       
       this.logger.log(`User ${userId} added to room ${roomId}`, 'RoomsService');
       return roomUser;
-    } catch (error: unknown) {
-      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-      const errorStack = error instanceof Error ? error.stack : undefined;
-      this.logger.error(`Error adding user ${userId} to room ${roomId}: ${errorMessage}`, errorStack, 'RoomsService');
-      throw error;
-    } finally {
-      this.logger.logMethodExit('addUserToRoom', Date.now() - startTime, 'RoomsService');
-    }
   }
 
   /**
    * 사용자를 채팅방에서 제거
    */
   async removeUserFromRoom(roomId: number, userId: number): Promise<boolean> {
-    this.logger.logMethodEntry('removeUserFromRoom', 'RoomsService');
-    const startTime = Date.now();
-    
-    try {
       this.logger.debug(`Removing user ${userId} from room ${roomId}`, 'RoomsService');
       
       const result = await this.roomUserRepository.nativeDelete({ room: { id: roomId }, user: { id: userId }});
@@ -308,26 +233,14 @@ export class RoomsService {
       }
       
       return success;
-    } catch (error: unknown) {
-      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-      const errorStack = error instanceof Error ? error.stack : undefined;
-      this.logger.error(`Error removing user ${userId} from room ${roomId}: ${errorMessage}`, errorStack, 'RoomsService');
-      throw error;
-    } finally {
-      this.logger.logMethodExit('removeUserFromRoom', Date.now() - startTime, 'RoomsService');
-    }
   }
 
   /**
    * 사용자가 채팅방에 접근할 권한이 있는지 확인
    */
   async canUserJoinRoom({userId, roomId}: {userId: number, roomId: number}): Promise<boolean> {
-    this.logger.logMethodEntry('canUserJoinRoom', 'RoomsService');
-    const startTime = Date.now();
+    this.logger.debug(`Checking if user ${userId} can join room ${roomId}`, 'RoomsService');
     
-    try {
-      this.logger.debug(`Checking if user ${userId} can join room ${roomId}`, 'RoomsService');
-      
       const room = await this.roomRepository.findOne({ id: roomId }, { fields: ['ownerId', 'isPrivate', 'isDirect', 'isActive'] });
       if (!room) {
         this.logger.debug(`Room ${roomId} not found`, 'RoomsService');
@@ -346,22 +259,11 @@ export class RoomsService {
 
       this.logger.debug(`User ${userId} is already in room ${roomId}`, 'RoomsService');
       return true;
-    } catch (error: unknown) {
-      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-      const errorStack = error instanceof Error ? error.stack : undefined;
-      this.logger.error(`Error checking if user ${userId} can join room ${roomId}: ${errorMessage}`, errorStack, 'RoomsService');
-      return false;
-    } finally {
-      this.logger.logMethodExit('canUserJoinRoom', Date.now() - startTime, 'RoomsService');
-    }
   }
 
+
   async isUserInRoom({userId, roomId}: {userId: number, roomId: number}): Promise<boolean> {
-    this.logger.logMethodEntry('isUserInRoom', 'RoomsService');
-    const startTime = Date.now();
-    
-    try {
-      this.logger.debug(`Checking if user ${userId} is in room ${roomId}`, 'RoomsService');
+    this.logger.debug(`Checking if user ${userId} is in room ${roomId}`, 'RoomsService');
       
       // Use a direct SQL query to check for existence
       const result = await this.roomUserRepository.findOne({
@@ -373,25 +275,13 @@ export class RoomsService {
       this.logger.debug(`User ${userId} is ${isInRoom ? '' : 'not '}in room ${roomId}`, 'RoomsService');
       
       return isInRoom;
-    } catch (error: unknown) {
-      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-      const errorStack = error instanceof Error ? error.stack : undefined;
-      this.logger.error(`Error checking if user ${userId} is in room ${roomId}: ${errorMessage}`, errorStack, 'RoomsService');
-      return false;
-    } finally {
-      this.logger.logMethodExit('isUserInRoom', Date.now() - startTime, 'RoomsService');
-    }
   }
 
   /**
    * 채팅방 마지막 읽은 시간 업데이트
    */
   async updateLastSeen(userId: number, roomId: number): Promise<void> {
-    this.logger.logMethodEntry('updateLastSeen', 'RoomsService');
-    const startTime = Date.now();
-    
-    try {
-      this.logger.debug(`Updating last seen time for user ${userId} in room ${roomId}`, 'RoomsService');
+    this.logger.debug(`Updating last seen time for user ${userId} in room ${roomId}`, 'RoomsService');
       
       const roomUser = await this.roomUserRepository.findOne({
         room: { id: roomId },
@@ -406,27 +296,19 @@ export class RoomsService {
       } else {
         this.logger.debug(`User ${userId} not found in room ${roomId}, cannot update last seen time`, 'RoomsService');
       }
-    } catch (error: unknown) {
-      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-      const errorStack = error instanceof Error ? error.stack : undefined;
-      this.logger.error(`Error updating last seen time for user ${userId} in room ${roomId}: ${errorMessage}`, errorStack, 'RoomsService');
-    } finally {
-      this.logger.logMethodExit('updateLastSeen', Date.now() - startTime, 'RoomsService');
-    }
   }
+
 
   /**
    * 채팅방 목록을 DTO로 변환
    * @private
    */
   private async formatRoomResponse(rooms: Room[], userId: number): Promise<RoomResponseDto[]> {
-    this.logger.logMethodEntry('formatRoomResponse', 'RoomsService');
-    const startTime = Date.now();
+    this.logger.debug(`Formatting response for ${rooms.length} rooms`, 'RoomsService');
     
-    try {
-      if (rooms.length === 0) {
-        return [];
-      }
+    if (rooms.length === 0) {
+      return [];
+    }
 
       this.logger.debug(`Formatting response for ${rooms.length} rooms`, 'RoomsService');
       
@@ -454,22 +336,13 @@ export class RoomsService {
         roomDtos.push(dto);
       }
       
-      return roomDtos;
-    } catch (error: unknown) {
-      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-      const errorStack = error instanceof Error ? error.stack : undefined;
-      this.logger.error(`Error formatting room response: ${errorMessage}`, errorStack, 'RoomsService');
-      throw error;
-    } finally {
-      this.logger.logMethodExit('formatRoomResponse', Date.now() - startTime, 'RoomsService');
-    }
+    return roomDtos;
   }
+
   
   private async getDirectMessageUser(rooms: Room[], userId: number) {
-    this.logger.logMethodEntry('getDirectMessageUser', 'RoomsService');
-    const startTime = Date.now();
+    this.logger.debug(`Getting other users for ${rooms.length} direct messages`, 'RoomsService');
     
-    try {
       const directRooms = rooms.filter(room => room.isDirect);
       const directRoomIds = directRooms.map(room => room.id);
       
@@ -501,14 +374,6 @@ export class RoomsService {
       }
       
       return otherUsersByRoomId;
-    } catch (error: unknown) {
-      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-      const errorStack = error instanceof Error ? error.stack : undefined;
-      this.logger.error(`Error getting direct message users: ${errorMessage}`, errorStack, 'RoomsService');
-      throw error;
-    } finally {
-      this.logger.logMethodExit('getDirectMessageUser', Date.now() - startTime, 'RoomsService');
-    }
   }
 
   /**
@@ -516,10 +381,8 @@ export class RoomsService {
    * @private
    */
   private async calculateUnreadCounts(roomIds: number[], userId: number): Promise<Record<number, number>> {
-    this.logger.logMethodEntry('calculateUnreadCounts', 'RoomsService');
-    const startTime = Date.now();
+    this.logger.debug(`Calculating unread counts for user ${userId} in ${roomIds.length} rooms`, 'RoomsService');
     
-    try {
       if (roomIds.length === 0) {
         return {};
       }
@@ -554,24 +417,12 @@ export class RoomsService {
       }
       
       return counts;
-    } catch (error: unknown) {
-      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-      const errorStack = error instanceof Error ? error.stack : undefined;
-      this.logger.error(`Error calculating unread counts: ${errorMessage}`, errorStack, 'RoomsService');
-      throw error;
-    } finally {
-      this.logger.logMethodExit('calculateUnreadCounts', Date.now() - startTime, 'RoomsService');
-    }
   }
 
   /**
    * 채팅방 정보 업데이트
    */
   async updateRoom(roomId: number, updateRoomDto: UpdateRoomRequestDto): Promise<RoomResponseDto | null> {
-    this.logger.logMethodEntry('updateRoom', 'RoomsService');
-    const startTime = Date.now();
-    
-    try {
       this.logger.debug(`Updating room ${roomId}`, 'RoomsService');
       
       const room = await this.roomRepository.findOne({ id: roomId });
@@ -591,25 +442,13 @@ export class RoomsService {
       this.logger.log(`Room ${roomId} updated successfully`, 'RoomsService');
       
       return roomDtos[0];
-    } catch (error: unknown) {
-      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-      const errorStack = error instanceof Error ? error.stack : undefined;
-      this.logger.error(`Error updating room ${roomId}: ${errorMessage}`, errorStack, 'RoomsService');
-      throw error;
-    } finally {
-      this.logger.logMethodExit('updateRoom', Date.now() - startTime, 'RoomsService');
-    }
   }
 
   /**
    * 채팅방 삭제
    */
   async deleteRoom(roomId: number): Promise<boolean> {
-    this.logger.logMethodEntry('deleteRoom', 'RoomsService');
-    const startTime = Date.now();
-    
-    try {
-      this.logger.debug(`Deleting room ${roomId}`, 'RoomsService');
+    this.logger.debug(`Deleting room ${roomId}`, 'RoomsService');
       
       const room = await this.roomRepository.findOne({ id: roomId });
       
@@ -625,25 +464,14 @@ export class RoomsService {
       
       this.logger.log(`Room ${roomId} soft-deleted successfully`, 'RoomsService');
       return true;
-    } catch (error: unknown) {
-      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-      const errorStack = error instanceof Error ? error.stack : undefined;
-      this.logger.error(`Error deleting room ${roomId}: ${errorMessage}`, errorStack, 'RoomsService');
-      throw error;
-    } finally {
-      this.logger.logMethodExit('deleteRoom', Date.now() - startTime, 'RoomsService');
-    }
   }
 
   /**
    * 사용자의 채팅방 역할 업데이트
    */
   async updateUserRole(roomId: number, userId: number, role: RoomRole): Promise<RoomUserResponseDto> {
-    this.logger.logMethodEntry('updateUserRole', 'RoomsService');
-    const startTime = Date.now();
-    
-    try {
-      this.logger.debug(`Updating role for user ${userId} in room ${roomId} to ${role}`, 'RoomsService');
+    this.logger.debug(`Updating role for user ${userId} in room ${roomId} to ${role}`, 'RoomsService');
+      
       
       const roomUser = await this.roomUserRepository.findOne({
         room: { id: roomId },
@@ -661,14 +489,6 @@ export class RoomsService {
       
       this.logger.log(`Updated role for user ${userId} in room ${roomId} to ${role}`, 'RoomsService');
       return RoomUserResponseDto.fromEntity(roomUser);
-    } catch (error: unknown) {
-      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-      const errorStack = error instanceof Error ? error.stack : undefined;
-      this.logger.error(`Error updating role for user ${userId} in room ${roomId}: ${errorMessage}`, errorStack, 'RoomsService');
-      throw error;
-    } finally {
-      this.logger.logMethodExit('updateUserRole', Date.now() - startTime, 'RoomsService');
-    }
   }
 
   /**
@@ -678,10 +498,6 @@ export class RoomsService {
     userId: number, 
     query: RoomQueryDto
   ): Promise<{ items: RoomResponseDto[], totalItems: number, page: number, limit: number }> {
-    this.logger.logMethodEntry('getUserRoomsWithFilters', 'RoomsService');
-    const startTime = Date.now();
-    
-    try {
       const { type, search, page = 1, limit = 10 } = query;
       
       this.logger.debug(`Fetching rooms for user ${userId} with filters: ${JSON.stringify({ type, search, page, limit })}`, 'RoomsService');
@@ -726,14 +542,6 @@ export class RoomsService {
         page,
         limit
       };
-    } catch (error: unknown) {
-      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-      const errorStack = error instanceof Error ? error.stack : undefined;
-      this.logger.error(`Error fetching rooms with filters for user ${userId}: ${errorMessage}`, errorStack, 'RoomsService');
-      throw error;
-    } finally {
-      this.logger.logMethodExit('getUserRoomsWithFilters', Date.now() - startTime, 'RoomsService');
-    }
   }
 
   /**
@@ -743,10 +551,7 @@ export class RoomsService {
     query: RoomQueryDto,
     userId?: number
   ): Promise<{ items: RoomResponseDto[], totalItems: number, page: number, limit: number }> {
-    this.logger.logMethodEntry('getPublicRooms', 'RoomsService');
-    const startTime = Date.now();
     
-    try {
       const { search, page = 1, limit = 10 } = query;
       
       this.logger.debug(`Fetching public rooms with search: "${search || ''}", page: ${page}, limit: ${limit}`, 'RoomsService');
@@ -821,13 +626,5 @@ export class RoomsService {
         page,
         limit
       };
-    } catch (error: unknown) {
-      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-      const errorStack = error instanceof Error ? error.stack : undefined;
-      this.logger.error(`Error fetching public rooms: ${errorMessage}`, errorStack, 'RoomsService');
-      throw error;
-    } finally {
-      this.logger.logMethodExit('getPublicRooms', Date.now() - startTime, 'RoomsService');
     }
-  }
 } 
