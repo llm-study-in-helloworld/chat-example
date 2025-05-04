@@ -1,6 +1,6 @@
 import { EntityManager, MikroORM } from '@mikro-orm/core';
 import { MikroOrmModule } from '@mikro-orm/nestjs';
-import { EntityRepository } from '@mikro-orm/postgresql';
+import { EntityRepository } from '@mikro-orm/mysql';
 import { Test, TestingModule } from '@nestjs/testing';
 import bcrypt from 'bcrypt';
 import { Room, RoomUser, User } from '../../src/entities';

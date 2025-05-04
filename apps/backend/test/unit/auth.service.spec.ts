@@ -1,6 +1,6 @@
 import { EntityManager, MikroORM } from '@mikro-orm/core';
 import { MikroOrmModule } from '@mikro-orm/nestjs';
-import { EntityRepository } from '@mikro-orm/postgresql';
+import { EntityRepository } from '@mikro-orm/mysql';
 import { UnauthorizedException } from '@nestjs/common';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { JwtModule, JwtService } from '@nestjs/jwt';

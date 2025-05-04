@@ -5,8 +5,8 @@ import cookieParser from 'cookie-parser';
 import request from 'supertest';
 import { LoggerService } from '../../src/logger';
 import { AppTestModule } from '../app-test.module';
-import { mockLoggerService } from '../logger-mock';
 import { TestUserHelper } from './helpers';
+import { mockLoggerService } from './helpers/logger-mock';
 import { TestUser } from './helpers/test-user.type';
 
 describe('AuthController (e2e)', () => {

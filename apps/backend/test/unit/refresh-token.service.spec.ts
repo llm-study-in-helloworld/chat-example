@@ -1,6 +1,6 @@
 import { EntityManager, MikroORM } from '@mikro-orm/core';
+import { EntityRepository } from '@mikro-orm/mysql';
 import { MikroOrmModule } from '@mikro-orm/nestjs';
-import { EntityRepository } from '@mikro-orm/postgresql';
 import { UnauthorizedException } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 import { RefreshTokenService } from '../../src/auth/refresh-token.service';

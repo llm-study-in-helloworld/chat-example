@@ -1,7 +1,7 @@
 import { RoomRole, RoomType } from '@chat-example/types';
 import { EntityManager, QueryOrder } from '@mikro-orm/core';
+import { EntityRepository } from '@mikro-orm/mysql';
 import { InjectRepository } from '@mikro-orm/nestjs';
-import { EntityRepository } from '@mikro-orm/postgresql';
 import { Injectable, NotFoundException, UseInterceptors } from '@nestjs/common';
 import { RoomResponseDto, RoomUserResponseDto } from '../dto';
 import { Room, RoomUser, User } from '../entities';
@@ -154,7 +154,7 @@ export class RoomsService {
       }
       
       // Use the roomId to get all roomUsers in one query to avoid N+1 issue
-      await this.em.populate(room, ['roomUsers.user']);
+      await this.em.populate(room, ['roomUsers.user'] as any);
 
       const roomDtos = await this.formatRoomResponse([room], userId);
       return roomDtos[0];
@@ -172,7 +172,7 @@ export class RoomsService {
       
       this.logger.debug(`Found ${roomUsers.length} users in room ${roomId}`, 'RoomsService');
       
-      return roomUsers.map(roomUser => RoomUserResponseDto.fromEntity(roomUser));
+      return roomUsers.map((roomUser: RoomUser) => RoomUserResponseDto.fromEntity(roomUser));
   }
 
   /**
@@ -356,7 +356,7 @@ export class RoomsService {
         const otherUsersQuery = await this.em.getConnection().execute(`
           SELECT ru.room_id, u.id, u.nickname, u.image_url 
           FROM room_user ru
-          JOIN "user" u ON ru.user_id = u.id
+          JOIN \`user\` u ON ru.user_id = u.id
           WHERE ru.room_id IN (${directRoomIds.join(',')})
           AND ru.user_id != ${userId}
         `);
@@ -588,7 +588,7 @@ export class RoomsService {
         // Format rooms to DTOs
         const roomDtos = userId 
           ? await this.formatRoomResponse(publicRooms, userId)
-          : publicRooms.map(room => RoomResponseDto.fromEntity(room));
+          : publicRooms.map((room: Room) => RoomResponseDto.fromEntity(room));
         
         return {
           items: roomDtos,
@@ -618,7 +618,7 @@ export class RoomsService {
       // Format rooms to DTOs
       const roomDtos = userId 
         ? await this.formatRoomResponse(publicRooms, userId)
-        : publicRooms.map(room => RoomResponseDto.fromEntity(room));
+        : publicRooms.map((room: Room) => RoomResponseDto.fromEntity(room));
       
       return {
         items: roomDtos,

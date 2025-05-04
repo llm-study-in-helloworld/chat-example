@@ -1,6 +1,6 @@
 import { EntityManager, FilterQuery, QueryOrder } from '@mikro-orm/core';
+import { EntityRepository } from '@mikro-orm/mysql';
 import { InjectRepository } from '@mikro-orm/nestjs';
-import { EntityRepository } from '@mikro-orm/postgresql';
 import { BadRequestException, ForbiddenException, Injectable, NotFoundException, UseInterceptors } from '@nestjs/common';
 import { MessageReactionResponseDto, MessageResponseDto } from '../dto';
 import {

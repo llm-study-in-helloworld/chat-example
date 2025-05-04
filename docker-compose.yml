@@ -13,17 +13,17 @@ services:
       - pnpm_store:/pnpm/store
     environment:
       - NODE_ENV=development
-      - DB_HOST=postgres
-      - DB_PORT=5432
-      - DB_NAME=postgres
-      - DB_USER=postgres
-      - DB_PASSWORD=postgres
+      - DB_HOST=mysql
+      - DB_PORT=3306
+      - DB_NAME=chat_app
+      - DB_USER=root
+      - DB_PASSWORD=password
       - JWT_SECRET=dev-secret-key
       - PORT=3000
       - TURBO_TELEMETRY_DISABLED=1
       - PNPM_VERSION=8.6.0
     depends_on:
-      - postgres
+      - mysql
     working_dir: /app/apps/backend
     restart: unless-stopped
 
@@ -71,20 +71,27 @@ services:
       - net.core.somaxconn=4096
       - net.ipv4.ip_local_port_range=1024 65000
 
-  postgres:
-    image: postgres:16-alpine
+  mysql:
+    image: mysql/mysql-server:8.0
+    platform: linux/amd64
     ports:
-      - "12312:5432"
+      - "12321:3306"
     environment:
-      - POSTGRES_DB=chat_app
-      - POSTGRES_USER=postgres
-      - POSTGRES_PASSWORD=postgres
+      - MYSQL_DATABASE=chat_app
+      - MYSQL_ROOT_PASSWORD=password
+      - MYSQL_ROOT_HOST=%
     volumes:
-      - postgres_data:/var/lib/postgresql/data
+      - mysql_data:/var/lib/mysql
     restart: unless-stopped
+    command: --default-authentication-plugin=mysql_native_password --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "root", "-p$$MYSQL_ROOT_PASSWORD"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
   
 volumes:
-  postgres_data:
+  mysql_data:
   backend_node_modules:
   turbo_cache:
   pnpm_store:

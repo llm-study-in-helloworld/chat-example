@@ -1,17 +1,22 @@
 import { Options } from '@mikro-orm/core';
-import { PostgreSqlDriver } from '@mikro-orm/postgresql';
+import { MySqlDriver } from '@mikro-orm/mysql';
 import { Mention, Message, MessageReaction, RefreshToken, Room, RoomUser, User } from './entities';
 
-const config: Options<PostgreSqlDriver> = {
-  driver: PostgreSqlDriver,
+const config: Options<MySqlDriver> = {
+  driver: MySqlDriver,
   dbName: process.env.DB_NAME || 'chat_app',
   host: process.env.DB_HOST || 'localhost',
-  port: parseInt(process.env.DB_PORT || '5432'),
-  user: process.env.DB_USER || 'postgres',
-  password: process.env.DB_PASSWORD || 'postgres',
+  port: parseInt(process.env.DB_PORT || '3306'),
+  user: process.env.DB_USER || 'root',
+  password: process.env.DB_PASSWORD || 'password',
   entities: [User, Room, RoomUser, Message, MessageReaction, Mention, RefreshToken],
   entitiesTs: ['src/**/*.entity.ts'],
   debug: process.env.NODE_ENV !== 'production',
+  driverOptions: {
+    connection: {
+      charset: 'utf8mb4',
+    },
+  },
   migrations: {
     tableName: 'mikro_migrations',
     path: 'dist/migrations',
@@ -19,8 +24,10 @@ const config: Options<PostgreSqlDriver> = {
   },
   schemaGenerator: {
     disableForeignKeys: true,
-    createForeignKeyConstraints: false,
+    createForeignKeyConstraints: true,
+    ignoreSchema: [],
   },
+  baseDir: process.cwd(),
   seeder: {
     path: 'dist/seeders',
     pathTs: 'src/seeders',
