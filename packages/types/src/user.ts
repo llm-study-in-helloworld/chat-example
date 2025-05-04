@@ -5,7 +5,7 @@ export interface BaseUser {
   id: number;
   email: string;
   nickname: string;
-  imageUrl?: string;
+  imageUrl?: string | null;
 }
 
 /**
@@ -22,7 +22,7 @@ export interface User extends BaseUser {
 export interface MessageUser {
   id: number;
   nickname: string;
-  imageUrl?: string;
+  imageUrl?: string | null;
 }
 
 /**
