@@ -18,9 +18,6 @@ import { ReactionResponseDto, ReactionUpdateEventDto, SocketErrorDto, SocketSucc
 
 /**
  * 실시간 채팅을 위한 웹소켓 게이트웨이
- * 
- * Note: NestJS automatically handles EntityManager within the services.
- * Each service method has its own transaction context through dependency injection.
  */
 @Injectable()
 @WebSocketGateway({ cors: true })
