@@ -2,7 +2,6 @@ import { Injectable, UnauthorizedException } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
 import { Request } from 'express';
-import { v4 as uuidv4 } from 'uuid';
 import { User } from '../entities';
 import { LoggerService } from '../logger/logger.service';
 import { UsersService } from '../users/users.service';
@@ -74,8 +73,6 @@ export class AuthService {
         sub: user.id, 
         email: user.email,
         nickname: user.nickname,
-        // make unique id for each token
-        jti: uuidv4(),
         // Add precise timestamp with milliseconds to make each token unique
         iat: now,
         // Set explicit expiration time

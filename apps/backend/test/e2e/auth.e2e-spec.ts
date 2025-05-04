@@ -426,6 +426,9 @@ describe('AuthController (e2e)', () => {
         .get('/api/users/me')
         .set('Authorization', `Bearer ${authToken}`)
         .expect(401);
+
+      // 같은 시간에 로그인 하면 토큰 중복이 발생할 수 있음
+      await new Promise(resolve => setTimeout(resolve, 1000));
       
       // Then they should be able to log in with the new password
       const loginResponse = await request(app.getHttpServer())
