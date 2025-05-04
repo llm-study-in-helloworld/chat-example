@@ -1,28 +1,95 @@
-import { Message, Reaction, Room } from '../store/chatStore';
+import { MessageResponse, ReactionResponse, RoomResponse, RoomUserResponse } from '@chat-example/types';
 import apiClient from './apiClient';
 
 interface PaginatedResponse<T> {
   items: T[];
-  total: number;
+  totalItems: number;
+  itemCount: number;
+  itemsPerPage: number;
+  totalPages: number;
+  currentPage: number;
+}
+
+export interface RoomQueryParams {
+  page?: number;
+  limit?: number;
+  search?: string;
+  type?: 'direct' | 'group';
+}
+
+export interface PaginatedRoomResponse {
+  items: RoomResponse[];
+  meta: {
+    totalItems: number;
+    itemCount: number;
+    itemsPerPage: number;
+    totalPages: number;
+    currentPage: number;
+  };
 }
 
 export const chatService = {
-  getRooms: async (): Promise<Room[]> => {
-    const { data } = await apiClient.get<Room[]>('/rooms');
+  getRooms: async (): Promise<RoomResponse[]> => {
+    const { data } = await apiClient.get<RoomResponse[]>('/rooms');
     return data;
   },
   
-  getRoom: async (roomId: number): Promise<Room> => {
-    const { data } = await apiClient.get<Room>(`/rooms/${roomId}`);
+  getRoom: async (roomId: number): Promise<RoomResponse> => {
+    const { data } = await apiClient.get<RoomResponse>(`/rooms/${roomId}`);
     return data;
   },
   
-  createRoom: async (userIds: number[], name?: string): Promise<Room> => {
-    const { data } = await apiClient.post<Room>('/rooms', { 
+  getPublicRooms: async (params: RoomQueryParams): Promise<PaginatedRoomResponse> => {
+    const { data } = await apiClient.get<PaginatedRoomResponse>('/rooms/public', { 
+      params 
+    });
+    return data;
+  },
+  
+  joinRoom: async (roomId: number): Promise<RoomResponse> => {
+    // Use the join endpoint we created
+    const { data } = await apiClient.post<RoomResponse>(`/rooms/${roomId}/join`);
+    return data;
+  },
+  
+  leaveRoom: async (roomId: number): Promise<{ success: boolean }> => {
+    const { data } = await apiClient.delete<{ success: boolean }>(`/rooms/${roomId}/leave`);
+    return data;
+  },
+  
+  getRoomUsers: async (roomId: number): Promise<RoomUserResponse[]> => {
+    const { data } = await apiClient.get<RoomUserResponse[]>(`/rooms/${roomId}/users`);
+    return data;
+  },
+  
+  addUserToRoom: async (roomId: number, userId: number): Promise<{ success: boolean }> => {
+    const { data } = await apiClient.post<{ success: boolean }>(`/rooms/${roomId}/users`, { userId });
+    return data;
+  },
+  
+  removeUserFromRoom: async (roomId: number, userId: number): Promise<{ success: boolean }> => {
+    const { data } = await apiClient.delete<{ success: boolean }>(`/rooms/${roomId}/users/${userId}`);
+    return data;
+  },
+  
+  updateLastSeen: async (roomId: number): Promise<{ success: boolean }> => {
+    const { data } = await apiClient.post<{ success: boolean }>(`/rooms/${roomId}/seen`);
+    return data;
+  },
+  
+  createRoom: async (userIds: number[], name?: string, isPrivate?: boolean, isDirect?: boolean): Promise<RoomResponse> => {
+    const { data } = await apiClient.post<RoomResponse>('/rooms', { 
       userIds, 
       name,
-      isGroup: !!name
+      isPrivate,
+      isDirect,
+      isActive: true
     });
+    return data;
+  },
+  
+  updateRoom: async (roomId: number, updateData: { name?: string, description?: string, isPrivate?: boolean }): Promise<RoomResponse> => {
+    const { data } = await apiClient.patch<RoomResponse>(`/rooms/${roomId}`, updateData);
     return data;
   },
   
@@ -30,16 +97,17 @@ export const chatService = {
     roomId: number, 
     limit: number = 20, 
     offset: number = 0
-  ): Promise<PaginatedResponse<Message>> => {
-    const { data } = await apiClient.get<PaginatedResponse<Message>>(
-      `/rooms/${roomId}/messages`, 
+  ): Promise<MessageResponse[]> => {
+    // Use the correct endpoint structure from the MessagesController
+    const { data } = await apiClient.get<MessageResponse[]>(
+      `/messages/room/${roomId}`, 
       { params: { limit, offset } }
     );
     return data;
   },
   
-  getMessage: async (messageId: number): Promise<Message> => {
-    const { data } = await apiClient.get<Message>(`/messages/${messageId}`);
+  getMessage: async (messageId: number): Promise<MessageResponse> => {
+    const { data } = await apiClient.get<MessageResponse>(`/messages/${messageId}`);
     return data;
   },
   
@@ -47,8 +115,8 @@ export const chatService = {
     roomId: number, 
     content: string, 
     parentId?: number
-  ): Promise<Message> => {
-    const { data } = await apiClient.post<Message>('/messages', {
+  ): Promise<MessageResponse> => {
+    const { data } = await apiClient.post<MessageResponse>('/messages', {
       roomId,
       content,
       parentId
@@ -56,8 +124,20 @@ export const chatService = {
     return data;
   },
   
-  updateMessage: async (messageId: number, content: string): Promise<Message> => {
-    const { data } = await apiClient.put<Message>(`/messages/${messageId}`, { content });
+  replyToMessage: async (
+    roomId: number,
+    parentId: number,
+    content: string
+  ): Promise<MessageResponse> => {
+    const { data } = await apiClient.post<MessageResponse>(`/messages/${parentId}/reply`, {
+      roomId,
+      content
+    });
+    return data;
+  },
+  
+  updateMessage: async (messageId: number, content: string): Promise<MessageResponse> => {
+    const { data } = await apiClient.put<MessageResponse>(`/messages/${messageId}`, { content });
     return data;
   },
   
@@ -66,13 +146,13 @@ export const chatService = {
     return data;
   },
   
-  getReplies: async (messageId: number): Promise<Message[]> => {
-    const { data } = await apiClient.get<Message[]>(`/messages/${messageId}/replies`);
+  getReplies: async (messageId: number): Promise<MessageResponse[]> => {
+    const { data } = await apiClient.get<MessageResponse[]>(`/messages/${messageId}/replies`);
     return data;
   },
   
-  toggleReaction: async (messageId: number, emoji: string): Promise<Reaction | { success: boolean, removed: boolean }> => {
-    const { data } = await apiClient.post<Reaction | { success: boolean, removed: boolean }>(
+  toggleReaction: async (messageId: number, emoji: string): Promise<ReactionResponse | { success: boolean, removed: boolean }> => {
+    const { data } = await apiClient.post<ReactionResponse | { success: boolean, removed: boolean }>(
       `/messages/reaction`, 
       { messageId, emoji }
     );

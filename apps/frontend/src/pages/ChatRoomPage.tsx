@@ -1,79 +1,38 @@
-import { CreateMessageRequest, MessageResponse, MessageUser } from '@chat-example/types';
-import { useEffect, useState } from 'react';
+import { CreateMessageRequest, MessageResponse } from '@chat-example/types';
+import { useEffect, useRef, useState } from 'react';
 import { useParams } from 'react-router-dom';
+import { chatService } from '../api/chatService';
+import { useAuthStore } from '../store/authStore';
 
 const ChatRoomPage = () => {
   const { roomId } = useParams();
   const [messages, setMessages] = useState<MessageResponse[]>([]);
   const [newMessage, setNewMessage] = useState('');
   const [loading, setLoading] = useState(true);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
+  const { user } = useAuthStore();
 
-  // Mock user data
-  const currentUser: MessageUser = {
-    id: 1,
-    nickname: 'CurrentUser',
-    imageUrl: null
+  // Scroll to bottom of messages
+  const scrollToBottom = () => {
+    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   };
 
-  // Mock data for demonstration
+  // Fetch messages from API
   useEffect(() => {
-    // Simulate loading messages from API
     const fetchMessages = async () => {
+      if (!roomId) return;
+
       setLoading(true);
       try {
-        // In a real app, fetch messages from your API
-        const mockMessages: MessageResponse[] = [
-          {
-            id: 1,
-            content: 'Hello there!',
-            roomId: parseInt(roomId || '1'),
-            senderId: 2,
-            parentId: null,
-            createdAt: new Date(Date.now() - 1000 * 60 * 5).toISOString(),
-            updatedAt: new Date(Date.now() - 1000 * 60 * 5).toISOString(),
-            deletedAt: null,
-            isDeleted: false,
-            sender: { id: 2, nickname: 'Alice', imageUrl: null },
-            reactions: [],
-            mentions: []
-          },
-          {
-            id: 2,
-            content: 'Hi Alice! How are you?',
-            roomId: parseInt(roomId || '1'),
-            senderId: 1,
-            parentId: null,
-            createdAt: new Date(Date.now() - 1000 * 60 * 4).toISOString(),
-            updatedAt: new Date(Date.now() - 1000 * 60 * 4).toISOString(),
-            deletedAt: null,
-            isDeleted: false,
-            sender: { id: 1, nickname: 'CurrentUser', imageUrl: null },
-            reactions: [],
-            mentions: []
-          },
-          {
-            id: 3,
-            content: 'I\'m doing great! How about you?',
-            roomId: parseInt(roomId || '1'),
-            senderId: 2,
-            parentId: null,
-            createdAt: new Date(Date.now() - 1000 * 60 * 3).toISOString(),
-            updatedAt: new Date(Date.now() - 1000 * 60 * 3).toISOString(),
-            deletedAt: null,
-            isDeleted: false,
-            sender: { id: 2, nickname: 'Alice', imageUrl: null },
-            reactions: [],
-            mentions: []
-          }
-        ];
-        
-        // Simulate network delay
-        setTimeout(() => {
-          setMessages(mockMessages);
-          setLoading(false);
-        }, 1000);
+        const roomIdNumber = parseInt(roomId);
+        const response = await chatService.getMessages(roomIdNumber);
+        console.log('API Response:', response);
+        // Set messages directly since the API now returns an array
+        setMessages(response || []);
+        console.log('Messages set to:', response || []);
       } catch (error) {
         console.error('Error fetching messages:', error);
+      } finally {
         setLoading(false);
       }
     };
@@ -81,40 +40,56 @@ const ChatRoomPage = () => {
     fetchMessages();
   }, [roomId]);
 
-  const handleSendMessage = (e: React.FormEvent) => {
+  // Scroll to bottom when messages change
+  useEffect(() => {
+    scrollToBottom();
+  }, [messages]);
+
+  const handleSendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!newMessage.trim()) return;
+    if (!newMessage.trim() || !roomId || !user) return;
     
     const messageRequest: CreateMessageRequest = {
       content: newMessage,
-      roomId: parseInt(roomId || '1')
+      roomId: parseInt(roomId)
     };
     
-    // Create a new message
-    const message: MessageResponse = {
-      id: Date.now(),
+    // Optimistically add message to UI
+    const optimisticMessage: MessageResponse = {
+      id: Date.now(), // Temporary ID, will be replaced by server's ID
       content: newMessage,
-      roomId: parseInt(roomId || '1'),
-      senderId: currentUser.id,
+      roomId: parseInt(roomId),
+      senderId: user.id,
       parentId: null,
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
       deletedAt: null,
       isDeleted: false,
-      sender: currentUser,
+      sender: {
+        id: user.id,
+        nickname: user.nickname,
+        imageUrl: user.imageUrl
+      },
       reactions: [],
-      mentions: []
+      mentions: [],
+      replyCount: 0
     };
     
-    // Add to messages
-    setMessages(prev => [...prev, message]);
-    
-    // Clear input
+    setMessages(prev => [...prev, optimisticMessage]);
     setNewMessage('');
     
-    // In a real app, send the message to your API
-    // Example: api.sendMessage(messageRequest);
+    try {
+      // Send message to API
+      await chatService.createMessage(parseInt(roomId), newMessage);
+      
+      // Could refresh messages here to get the accurate server data
+      // but we'll skip for now to avoid the extra API call
+    } catch (error) {
+      console.error('Error sending message:', error);
+      // Remove optimistic message on error
+      setMessages(prev => prev.filter(msg => msg.id !== optimisticMessage.id));
+    }
   };
 
   // Function to format timestamps
@@ -122,6 +97,8 @@ const ChatRoomPage = () => {
     const date = new Date(timestamp);
     return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
   };
+
+  const currentUserId = user?.id;
 
   return (
     <div className="flex h-full flex-col">
@@ -145,16 +122,16 @@ const ChatRoomPage = () => {
             {messages.map(message => (
               <div 
                 key={message.id} 
-                className={`flex ${message.sender.id === currentUser.id ? 'justify-end' : 'justify-start'}`}
+                className={`flex ${message.senderId === currentUserId ? 'justify-end' : 'justify-start'}`}
               >
                 <div 
                   className={`max-w-[80%] rounded-lg px-4 py-2 ${
-                    message.sender.id === currentUser.id 
+                    message.senderId === currentUserId 
                       ? 'bg-primary text-white' 
                       : 'bg-gray-100 text-gray-900'
                   }`}
                 >
-                  {message.sender.id !== currentUser.id && (
+                  {message.senderId !== currentUserId && (
                     <div className="mb-1 text-xs font-semibold">{message.sender.nickname}</div>
                   )}
                   <div>{message.content}</div>
@@ -164,6 +141,7 @@ const ChatRoomPage = () => {
                 </div>
               </div>
             ))}
+            <div ref={messagesEndRef} />
           </div>
         )}
       </div>

@@ -45,6 +45,8 @@ const RoomList: React.FC<RoomListProps> = ({ rooms, onSelectRoom }) => {
   // Get the other user in a 1:1 chat
   const getOtherUser = (room: Room) => {
     if (room.isGroup) return null;
+    // Check if users array exists and has elements
+    if (!room.users || room.users.length === 0) return null;
     return room.users[0] || null;
   };
 
@@ -86,7 +88,7 @@ const RoomList: React.FC<RoomListProps> = ({ rooms, onSelectRoom }) => {
               {room.isGroup ? (
                 <div className="relative">
                   <div className="flex -space-x-2">
-                    {room.users.slice(0, 3).map((user) => (
+                    {room.users && room.users.slice(0, 3).map((user) => (
                       <Avatar
                         key={user.id}
                         src={user.imageUrl}

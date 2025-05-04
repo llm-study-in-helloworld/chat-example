@@ -10,6 +10,8 @@ import RegisterPage from './pages/RegisterPage';
 const ChatLayout = lazy(() => import('./components/Layout/ChatLayout'));
 const ChatRoomPage = lazy(() => import('./pages/ChatRoomPage'));
 const ProfilePage = lazy(() => import('./pages/ProfilePage'));
+const CreateRoomPage = lazy(() => import('./pages/CreateRoomPage'));
+const BrowseRoomsPage = lazy(() => import('./pages/BrowseRoomsPage'));
 
 // Loading component
 const Loading = () => (
@@ -31,6 +33,8 @@ function App() {
           <Route element={<ChatLayout />}>
             <Route path="/" element={<Navigate to="/chat" replace />} />
             <Route path="/chat" element={<ChatRoomPage />} />
+            <Route path="/chat/create" element={<CreateRoomPage />} />
+            <Route path="/chat/browse" element={<BrowseRoomsPage />} />
             <Route path="/chat/:roomId" element={<ChatRoomPage />} />
             <Route path="/profile" element={<ProfilePage />} />
           </Route>

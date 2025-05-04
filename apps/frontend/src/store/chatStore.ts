@@ -1,15 +1,47 @@
 import {
   MessageResponse,
-  MessageUser,
   ReactionResponse,
   RoomResponse
 } from '@chat-example/types';
 import { create } from 'zustand';
 import { immer } from 'zustand/middleware/immer';
 
+// Define a Room type for use in the frontend
+export interface Room {
+  id: number;
+  name: string;
+  description?: string;
+  imageUrl?: string;
+  isPrivate: boolean;
+  isDirect: boolean;
+  isGroup: boolean;
+  isActive: boolean;
+  ownerId: number;
+  otherUser?: {
+    id: number;
+    nickname: string;
+    imageUrl?: string;
+    presence?: 'online' | 'offline';
+  };
+  users: Array<{
+    id: number;
+    nickname: string;
+    imageUrl?: string;
+    presence?: 'online' | 'offline';
+  }>;
+  lastMessage?: {
+    id: number;
+    content: string;
+    senderId: number;
+    insertedAt: string;
+    isDeleted?: boolean;
+  };
+  unreadCount?: number;
+}
+
 interface ChatStore {
   // State
-  rooms: RoomResponse[];
+  rooms: Room[];
   currentRoomId: number | null;
   messages: Record<number, MessageResponse[]>;
   reactions: Record<number, ReactionResponse[]>;
@@ -36,7 +68,22 @@ export const useChatStore = create<ChatStore>()(
     presence: {},
     
     setRooms: (rooms) => set((state) => {
-      state.rooms = rooms;
+      // Map RoomResponse to our Room interface
+      state.rooms = rooms.map(room => ({
+        id: room.id,
+        name: room.name || '',
+        description: room.description,
+        imageUrl: room.imageUrl,
+        isPrivate: room.isPrivate,
+        isDirect: room.isDirect || false,
+        isGroup: !room.isDirect,
+        isActive: room.isActive !== false, // Default to true if not specified
+        ownerId: room.ownerId,
+        otherUser: (room as any).otherUser,
+        users: (room as any).users || [],
+        lastMessage: (room as any).lastMessage,
+        unreadCount: room.unreadCount || 0
+      }));
     }),
     
     setCurrentRoom: (roomId) => set((state) => {
@@ -48,6 +95,18 @@ export const useChatStore = create<ChatStore>()(
         state.messages[roomId] = [];
       }
       state.messages[roomId].push(message);
+      
+      // Also update the lastMessage in the corresponding room
+      const roomIndex = state.rooms.findIndex(r => r.id === roomId);
+      if (roomIndex !== -1) {
+        state.rooms[roomIndex].lastMessage = {
+          id: message.id,
+          content: message.content,
+          senderId: message.senderId,
+          insertedAt: message.createdAt,
+          isDeleted: message.isDeleted
+        };
+      }
     }),
     
     updateMessage: (messageId, content) => set((state) => {
@@ -118,12 +177,14 @@ export const useChatStore = create<ChatStore>()(
       
       // Update user presence in rooms
       state.rooms.forEach((room, roomIndex) => {
-        // Need to access users property which isn't in RoomResponse type
-        // @ts-ignore
-        const users = room.users || [];
-        const userIndex = users.findIndex((u: MessageUser) => u.id === userId);
+        // Update presence in otherUser if it matches
+        if (room.otherUser && room.otherUser.id === userId) {
+          state.rooms[roomIndex].otherUser!.presence = status;
+        }
+        
+        // Update presence in users array
+        const userIndex = room.users.findIndex(u => u.id === userId);
         if (userIndex !== -1) {
-          // @ts-ignore
           state.rooms[roomIndex].users[userIndex].presence = status;
         }
       });
