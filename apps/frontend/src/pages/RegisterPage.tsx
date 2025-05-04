@@ -14,7 +14,7 @@ const RegisterPage = () => {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const navigate = useNavigate();
-  const { setAuth } = useAuthStore();
+  const { setAuthFromResponse } = useAuthStore();
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const { name, value } = e.target;
@@ -47,7 +47,7 @@ const RegisterPage = () => {
       );
       
       // Set authentication state with token and user info
-      setAuth(response.user, response.token);
+      setAuthFromResponse(response);
       
       // Navigate to main app or login
       navigate('/');

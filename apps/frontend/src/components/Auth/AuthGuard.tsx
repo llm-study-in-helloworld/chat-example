@@ -4,7 +4,7 @@ import { authService } from '../../api/authService';
 import { useAuthStore } from '../../store/authStore';
 
 const AuthGuard: React.FC = () => {
-  const { isAuthenticated, token, user, setAuth } = useAuthStore();
+  const { isAuthenticated, token, user, updateUser } = useAuthStore();
   const location = useLocation();
   const [isLoading, setIsLoading] = useState(true);
   const [isValid, setIsValid] = useState(false);
@@ -22,7 +22,8 @@ const AuthGuard: React.FC = () => {
         
         // If we have a token but different user details, update them
         if (user?.id !== currentUser.id || user?.email !== currentUser.email) {
-          setAuth(currentUser, token);
+          // Update user profile directly
+          updateUser(currentUser);
         }
         
         setIsValid(true);
@@ -35,7 +36,7 @@ const AuthGuard: React.FC = () => {
     };
 
     validateAuth();
-  }, [token, user, setAuth]);
+  }, [token, user, updateUser]);
 
   if (isLoading) {
     return (

@@ -17,7 +17,7 @@ const LoginPage: React.FC = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const from = (location.state as any)?.from?.pathname || '/';
-  const { setAuth } = useAuthStore();
+  const { setAuthFromResponse } = useAuthStore();
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
 
@@ -35,7 +35,7 @@ const LoginPage: React.FC = () => {
     
     try {
       const result = await authService.login(data.email, data.password);
-      setAuth(result.user, result.token);
+      setAuthFromResponse(result);
       navigate(from, { replace: true });
     } catch (err: any) {
       setError(err.response?.data?.message || 'Failed to login. Please check your credentials.');

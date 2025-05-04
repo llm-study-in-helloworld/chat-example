@@ -5,11 +5,9 @@ const ProfilePage = () => {
   // Mock user data
   const [user, setUser] = useState<User>({
     id: 1,
-    username: 'JohnDoe',
     email: 'john.doe@example.com',
     nickname: 'JohnDoe',
     imageUrl: null,
-    bio: 'Chat application enthusiast',
     createdAt: new Date().toISOString(),
     updatedAt: new Date().toISOString()
   });
@@ -18,7 +16,6 @@ const ProfilePage = () => {
   const [formData, setFormData] = useState<UpdateUserRequest>({
     nickname: user.nickname,
     email: user.email,
-    bio: user.bio
   });
   const [saving, setSaving] = useState(false);
 
@@ -40,7 +37,6 @@ const ProfilePage = () => {
         ...prev,
         nickname: formData.nickname || prev.nickname,
         email: formData.email || prev.email,
-        bio: formData.bio || prev.bio,
         updatedAt: new Date().toISOString()
       }));
       
@@ -56,7 +52,6 @@ const ProfilePage = () => {
     setFormData({
       nickname: user.nickname,
       email: user.email,
-      bio: user.bio
     });
     setIsEditing(false);
   };
@@ -131,20 +126,6 @@ const ProfilePage = () => {
                 />
               </div>
               
-              <div>
-                <label htmlFor="bio" className="block text-sm font-medium text-gray-700">
-                  Bio
-                </label>
-                <textarea
-                  id="bio"
-                  name="bio"
-                  rows={3}
-                  value={formData.bio}
-                  onChange={handleChange}
-                  className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 shadow-sm focus:border-primary focus:outline-none focus:ring-primary"
-                />
-              </div>
-              
               <div className="flex justify-end space-x-2">
                 <button
                   type="button"
@@ -172,11 +153,6 @@ const ProfilePage = () => {
               <div>
                 <h3 className="text-sm font-medium text-gray-500">Email</h3>
                 <p className="mt-1">{user.email}</p>
-              </div>
-              
-              <div>
-                <h3 className="text-sm font-medium text-gray-500">Bio</h3>
-                <p className="mt-1">{user.bio || 'No bio provided'}</p>
               </div>
             </div>
           )}

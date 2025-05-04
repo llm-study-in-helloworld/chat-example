@@ -1,21 +1,17 @@
+import { AuthResponse, User } from '@chat-example/types';
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { immer } from 'zustand/middleware/immer';
-import { User } from './chatStore';
-
-export interface AuthUser extends Omit<User, 'presence'> {
-  email: string;
-}
 
 interface AuthState {
   // State
-  user: AuthUser | null;
+  user: User | null;
   token: string | null;
   isAuthenticated: boolean;
   
   // Actions
-  setAuth: (user: AuthUser, token: string) => void;
-  updateUser: (user: Partial<AuthUser>) => void;
+  setAuthFromResponse: (response: AuthResponse) => void;
+  updateUser: (user: Partial<User>) => void;
   logout: () => void;
 }
 
@@ -26,9 +22,9 @@ export const useAuthStore = create<AuthState>()(
       token: null,
       isAuthenticated: false,
       
-      setAuth: (user, token) => set((state) => {
-        state.user = user;
-        state.token = token;
+      setAuthFromResponse: (response) => set((state) => {
+        state.user = response.user as User;
+        state.token = response.token;
         state.isAuthenticated = true;
       }),
       

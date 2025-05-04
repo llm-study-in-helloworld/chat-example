@@ -1,38 +1,29 @@
-import { AuthUser } from '../store/authStore';
+import { AuthResponse, User } from '@chat-example/types';
 import apiClient from './apiClient';
 
-interface LoginResponse {
-  token: string;
-  user: AuthUser;
-}
-
-interface RegisterResponse {
-  token: string;
-  user: AuthUser;
-}
-
 export const authService = {
-  login: async (email: string, password: string): Promise<LoginResponse> => {
-    const { data } = await apiClient.post<LoginResponse>('/auth/login', { email, password });
+  login: async (email: string, password: string): Promise<AuthResponse> => {
+    const { data } = await apiClient.post<AuthResponse>('/auth/login', { email, password });
     return data;
   },
   
-  register: async (email: string, password: string, nickname: string): Promise<RegisterResponse> => {
-    const { data } = await apiClient.post<RegisterResponse>('/auth/signup', { 
+  register: async (email: string, password: string, nickname: string): Promise<AuthResponse> => {
+    const { data } = await apiClient.post<AuthResponse>('/auth/signup', { 
       email, 
       password, 
       nickname 
     });
+
     return data;
   },
   
-  getCurrentUser: async (): Promise<AuthUser> => {
-    const { data } = await apiClient.get<AuthUser>('/users/me');
+  getCurrentUser: async (): Promise<User> => {
+    const { data } = await apiClient.get<User>('/users/me');
     return data;
   },
   
-  updateProfile: async (userData: Partial<AuthUser>): Promise<AuthUser> => {
-    const { data } = await apiClient.patch<AuthUser>('/users/profile', userData);
+  updateProfile: async (userData: Partial<User>): Promise<User> => {
+    const { data } = await apiClient.patch<User>('/users/profile', userData);
     return data;
   },
   
@@ -45,9 +36,13 @@ export const authService = {
   },
   
   logout: async (): Promise<void> => {
-    // Just a client-side logout, no endpoint needed
-    // For server invalidation, you could add:
-    // await apiClient.post('/auth/logout');
+    // Server-side logout to invalidate tokens
+    try {
+      await apiClient.post('/auth/logout');
+    } catch (error) {
+      console.error('Error during logout:', error);
+      // Continue with client-side logout even if server-side fails
+    }
     return;
   }
 }; 

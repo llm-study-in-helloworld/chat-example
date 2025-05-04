@@ -1,68 +1,30 @@
+import {
+  MessageResponse,
+  MessageUser,
+  ReactionResponse,
+  RoomResponse
+} from '@chat-example/types';
 import { create } from 'zustand';
 import { immer } from 'zustand/middleware/immer';
 
-export interface Message {
-  id: number;
-  roomId: number;
-  senderId: number;
-  content: string;
-  insertedAt: string;
-  updatedAt?: string;
-  deletedAt?: string;
-  parentId?: number;
-  sender?: User;
-  reactions?: Reaction[];
-  mentions?: Mention[];
-}
-
-export interface Reaction {
-  id: number;
-  messageId: number;
-  userId: number;
-  emoji: string;
-  user?: User;
-}
-
-export interface Room {
-  id: number;
-  name?: string;
-  isGroup: boolean;
-  users: User[];
-  lastMessage?: Message;
-}
-
-export interface User {
-  id: number;
-  nickname: string;
-  imageUrl?: string;
-  presence?: 'online' | 'offline';
-}
-
-export interface Mention {
-  id: number;
-  messageId: number;
-  mentionedUserId: number;
-  mentionedUser?: User;
-}
-
 interface ChatStore {
   // State
-  rooms: Room[];
+  rooms: RoomResponse[];
   currentRoomId: number | null;
-  messages: Record<number, Message[]>;
-  reactions: Record<number, Reaction[]>;
-  presence: Record<number, User['presence']>;
+  messages: Record<number, MessageResponse[]>;
+  reactions: Record<number, ReactionResponse[]>;
+  presence: Record<number, 'online' | 'offline'>;
   
   // Actions
-  setRooms: (rooms: Room[]) => void;
+  setRooms: (rooms: RoomResponse[]) => void;
   setCurrentRoom: (roomId: number | null) => void;
-  addMessage: (roomId: number, message: Message) => void;
+  addMessage: (roomId: number, message: MessageResponse) => void;
   updateMessage: (messageId: number, content: string) => void;
   deleteMessage: (messageId: number) => void;
-  setMessages: (roomId: number, messages: Message[]) => void;
-  addReaction: (messageId: number, reaction: Reaction) => void;
+  setMessages: (roomId: number, messages: MessageResponse[]) => void;
+  addReaction: (messageId: number, reaction: ReactionResponse) => void;
   removeReaction: (messageId: number, reactionId: number) => void;
-  setPresence: (userId: number, status: User['presence']) => void;
+  setPresence: (userId: number, status: 'online' | 'offline') => void;
 }
 
 export const useChatStore = create<ChatStore>()(
@@ -86,12 +48,6 @@ export const useChatStore = create<ChatStore>()(
         state.messages[roomId] = [];
       }
       state.messages[roomId].push(message);
-      
-      // Update lastMessage in room
-      const roomIndex = state.rooms.findIndex(r => r.id === roomId);
-      if (roomIndex !== -1) {
-        state.rooms[roomIndex].lastMessage = message;
-      }
     }),
     
     updateMessage: (messageId, content) => set((state) => {
@@ -110,6 +66,7 @@ export const useChatStore = create<ChatStore>()(
         const index = state.messages[roomId].findIndex(m => m.id === messageId);
         if (index !== -1) {
           state.messages[roomId][index].deletedAt = new Date().toISOString();
+          state.messages[roomId][index].isDeleted = true;
           break;
         }
       }
@@ -161,8 +118,12 @@ export const useChatStore = create<ChatStore>()(
       
       // Update user presence in rooms
       state.rooms.forEach((room, roomIndex) => {
-        const userIndex = room.users.findIndex(u => u.id === userId);
+        // Need to access users property which isn't in RoomResponse type
+        // @ts-ignore
+        const users = room.users || [];
+        const userIndex = users.findIndex((u: MessageUser) => u.id === userId);
         if (userIndex !== -1) {
+          // @ts-ignore
           state.rooms[roomIndex].users[userIndex].presence = status;
         }
       });
