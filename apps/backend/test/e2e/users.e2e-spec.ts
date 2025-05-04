@@ -183,7 +183,7 @@ describe('UsersController (e2e)', () => {
         })
         .expect(201);
       
-      expect(loginResponse.body.accessToken).toBeDefined();
+      expect(loginResponse.body.token).toBeDefined();
     });
     
     it('Scenario: User tries to change password with incorrect current password', async () => {

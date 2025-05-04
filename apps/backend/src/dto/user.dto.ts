@@ -1,7 +1,7 @@
 /**
  * User 엔티티의 기본 속성을 정의하는 인터페이스
  */
-import { User } from '@chat-example/types';
+import { AuthResponse, User } from '@chat-example/types';
 import { User as UserEntity } from '../entities';
 
 /**
@@ -29,3 +29,17 @@ export class UserResponseDto implements User {
     return dto;
   }
 } 
+
+export class AuthResponseDto implements AuthResponse {
+  token: string = '';
+  user: UserResponseDto = new UserResponseDto();
+
+  static fromEntity(user: UserEntity, token: string): AuthResponseDto {
+    const dto = new AuthResponseDto();
+
+    dto.token = token;
+    dto.user = UserResponseDto.fromEntity(user);
+
+    return dto;
+  }
+}

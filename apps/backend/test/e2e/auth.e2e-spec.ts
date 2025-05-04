@@ -99,15 +99,17 @@ describe('AuthController (e2e)', () => {
         .send(loginData)
         .expect(201);
       
-      // Then they should receive an access token
-      expect(response.body.accessToken).toBeDefined();
-      expect(typeof response.body.accessToken).toBe('string');
+      // Then they should receive an auth response with token and user
+      expect(response.body.token).toBeDefined();
+      expect(typeof response.body.token).toBe('string');
       
-      // And they should receive a refresh token
-      expect(response.body.refreshToken).toBeDefined();
-      expect(typeof response.body.refreshToken).toBe('string');
+      // And user information should be included
+      expect(response.body.user).toBeDefined();
+      expect(response.body.user.id).toBeDefined();
+      expect(response.body.user.email).toBe(testUser.email);
+      expect(response.body.user.nickname).toBeDefined();
       
-      // And the tokens should be set as cookies
+      // And they should have cookies set
       const cookies = response.headers['set-cookie'] as unknown as string[];
       expect(cookies).toBeDefined();
       expect(cookies.some((cookie: string) => cookie.includes('jwt='))).toBe(true);
@@ -167,23 +169,34 @@ describe('AuthController (e2e)', () => {
         .set('Cookie', `refresh_token=${initialRefreshToken}`)
         .expect(201);
       
-      // Then they should receive a new access token and refresh token
-      expect(response.body.accessToken).toBeDefined();
-      expect(typeof response.body.accessToken).toBe('string');
-      expect(response.body.refreshToken).toBeDefined();
-      expect(typeof response.body.refreshToken).toBe('string');
+      // Then they should receive a new token in the response
+      expect(response.body.token).toBeDefined();
+      expect(typeof response.body.token).toBe('string');
       
-      // The tokens should be different because we waited a second
-      expect(response.body.accessToken).not.toBe(initialAccessToken);
-      expect(response.body.refreshToken).not.toBe(initialRefreshToken);
+      // And the token should be different
+      expect(response.body.token).not.toBe(initialAccessToken);
+      
+      // The user data should be included
+      expect(response.body.user).toBeDefined();
+      expect(response.body.user.email).toBe(uniqueTestUser.email);
+      
+      // And cookies should be refreshed
+      const cookies = response.headers['set-cookie'] as unknown as string[];
+      expect(cookies).toBeDefined();
+      expect(cookies.some((cookie: string) => cookie.includes('jwt='))).toBe(true);
+      expect(cookies.some((cookie: string) => cookie.includes('refresh_token='))).toBe(true);
       
       // And the new access token should work for protected resources
       const protectedResponse = await request(app.getHttpServer())
         .get('/api/users/me')
-        .set('Authorization', `Bearer ${response.body.accessToken}`)
+        .set('Authorization', `Bearer ${response.body.token}`)
         .expect(200);
       
       expect(protectedResponse.body.email).toBe(uniqueTestUser.email);
+      
+      // Extract the new refresh token from the cookie
+      const refreshCookie = cookies.find(cookie => cookie.includes('refresh_token=') && cookie.includes('Max-Age='));
+      const cookieValue = refreshCookie?.split(';')[0].split('=')[1];
       
       // And the old refresh token should no longer work
       await request(app.getHttpServer())
@@ -191,8 +204,8 @@ describe('AuthController (e2e)', () => {
         .set('Cookie', `refresh_token=${initialRefreshToken}`)
         .expect(401);
       
-      accessToken = response.body.accessToken;
-      refreshToken = response.body.refreshToken;
+      accessToken = response.body.token;
+      refreshToken = cookieValue || '';
     });
     
     it('Scenario: Cannot refresh token without valid refresh token cookie', async () => {

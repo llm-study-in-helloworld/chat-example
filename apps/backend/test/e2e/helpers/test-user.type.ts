@@ -18,7 +18,7 @@ export interface TestUser {
 export interface TestUserResponse {
   user: TestUser;
   token: string;
-  refreshToken: string;
+  refreshToken?: string;
 }
 
 /**

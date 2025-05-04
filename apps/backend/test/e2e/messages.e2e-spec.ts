@@ -197,7 +197,7 @@ describe('MessagesController (e2e)', () => {
       expect(response.body.length).toBeGreaterThanOrEqual(1); // At least our 3 test messages
       
       // Verify message properties
-      const originalMessage = response.body.find(msg => msg.id === messageId);
+      const originalMessage = response.body.find((msg: any) => msg.id === messageId);
       expect(originalMessage).toBeDefined();
       expect(originalMessage.content).toBe('Hello, this is a test message!');
       expect(originalMessage.replyCount).toBe(2);
@@ -461,7 +461,7 @@ describe('MessagesController (e2e)', () => {
       const expectedReplyCounts = [3, 1, 0, 2, 0];
       
       for (let i = 0; i < parentMessages.length; i++) {
-        const parentMsg = response.body.find(msg => msg.id === parentMessages[i]);
+        const parentMsg = response.body.find((msg: any) => msg.id === parentMessages[i]);
         expect(parentMsg).toBeDefined();
         expect(parentMsg.replyCount).toBe(expectedReplyCounts[i]);
       }
@@ -482,7 +482,7 @@ describe('MessagesController (e2e)', () => {
       expect(response.body.length).toBe(3);
       
       // And all should have the same parent ID
-      response.body.forEach(reply => {
+      response.body.forEach((reply: any) => {
         expect(reply.parentId).toBe(parentWithManyReplies);
       });
     });
@@ -541,7 +541,7 @@ describe('MessagesController (e2e)', () => {
       // Then all messages should have the correct reply count
       // Check the new messages have 3 replies each
       for (const parentId of additionalParents) {
-        const parentMsg = response.body.find(msg => msg.id === parentId);
+        const parentMsg = response.body.find((msg: any) => msg.id === parentId);
         expect(parentMsg).toBeDefined();
         expect(parentMsg.replyCount).toBe(3);
       }

@@ -1,6 +1,6 @@
 import { INestApplication } from '@nestjs/common';
 import request from 'supertest';
-import { TestUser, TestUserResponse } from '../types/test-user.type';
+import { TestUser, TestUserResponse } from './test-user.type';
 
 /**
  * Helper class for managing test users in e2e tests
@@ -63,11 +63,22 @@ export class TestUserHelper {
       password: userData.password,
       nickname: userData.nickname
     };
+
+    // Extract refresh token from cookie
+    const cookies = loginResponse.headers['set-cookie'] as unknown as string[];
+    let refreshToken: string | undefined;
+    
+    if (cookies && cookies.length > 0) {
+      const refreshCookie = cookies.find(cookie => cookie.includes('refresh_token=') && cookie.includes('Max-Age='));
+      if (refreshCookie) {
+        refreshToken = refreshCookie.split(';')[0].split('=')[1];
+      }
+    }
     
     return {
       user,
-      token: loginResponse.body.accessToken,
-      refreshToken: loginResponse.body.refreshToken
+      token: loginResponse.body.token,
+      refreshToken
     };
   }
   
@@ -103,6 +114,6 @@ export class TestUserHelper {
       })
       .expect(201);
     
-    return loginResponse.body.accessToken;
+    return loginResponse.body.token;
   }
 } 

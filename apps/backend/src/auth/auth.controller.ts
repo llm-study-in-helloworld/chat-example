@@ -1,6 +1,6 @@
 import { Body, Controller, Delete, HttpCode, HttpStatus, Post, Req, Res, UnauthorizedException, UseGuards } from '@nestjs/common';
 import { Request, Response } from 'express';
-import { UserResponseDto } from '../dto';
+import { AuthResponseDto, UserResponseDto } from '../dto';
 import { User } from '../entities';
 import { CreateUserDto } from '../users/dto/create-user.dto';
 import { DeleteUserDto } from '../users/dto/delete-user.dto';
@@ -31,7 +31,7 @@ export class AuthController {
     @Body() loginDto: { email: string; password: string },
     @Req() request: Request,
     @Res({ passthrough: true }) response: Response
-  ) {
+  ): Promise<AuthResponseDto> {
     try {
       // First, clear any existing cookies
       response.clearCookie('jwt', {
@@ -74,7 +74,7 @@ export class AuthController {
         path: '/api/auth/refresh' // Restrict to the refresh endpoint path
       });
       
-      return result;
+      return AuthResponseDto.fromEntity(user, result.accessToken);
     } catch (error) {
       throw new UnauthorizedException('Invalid credentials');
     }
@@ -90,7 +90,7 @@ export class AuthController {
     @CurrentUser() user: User,
     @RefreshToken() refreshToken: string,
     @Res({ passthrough: true }) response: Response
-  ) {
+  ): Promise<AuthResponseDto> {
     try {
       const result = await this.authService.refreshTokens(user.id, refreshToken, request);
 
@@ -127,7 +127,7 @@ export class AuthController {
         path: '/api/auth/refresh' // Restrict to the refresh endpoint path
       });
       
-      return result;
+      return AuthResponseDto.fromEntity(user, result.accessToken);
     } catch (error) {
       console.error('Error refreshing token:', error);
       
