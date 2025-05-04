@@ -10,6 +10,7 @@ import RegisterPage from './pages/RegisterPage';
 const ChatLayout = lazy(() => import('./components/Layout/ChatLayout'));
 const ChatRoomPage = lazy(() => import('./pages/ChatRoomPage'));
 const ProfilePage = lazy(() => import('./pages/ProfilePage'));
+const SecuritySettingsPage = lazy(() => import('./pages/SecuritySettingsPage'));
 const CreateRoomPage = lazy(() => import('./pages/CreateRoomPage'));
 const BrowseRoomsPage = lazy(() => import('./pages/BrowseRoomsPage'));
 
@@ -37,6 +38,7 @@ function App() {
             <Route path="/chat/browse" element={<BrowseRoomsPage />} />
             <Route path="/chat/:roomId" element={<ChatRoomPage />} />
             <Route path="/profile" element={<ProfilePage />} />
+            <Route path="/settings/security" element={<SecuritySettingsPage />} />
           </Route>
         </Route>
         

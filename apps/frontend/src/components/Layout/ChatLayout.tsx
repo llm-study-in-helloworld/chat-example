@@ -14,6 +14,7 @@ const ChatLayout: React.FC = () => {
   const { setRooms } = useChatStore();
   const { socket } = useSocket();
   const [isMobileSidebarOpen, setIsMobileSidebarOpen] = useState(false);
+  const [userMenuOpen, setUserMenuOpen] = useState(false);
 
   // Fetch rooms
   const { data: rooms, isLoading, error } = useQuery({
@@ -154,38 +155,116 @@ const ChatLayout: React.FC = () => {
           
           {/* User Profile */}
           <div className="mt-4 flex items-center justify-between border-t border-gray-100 pt-4">
-            <div className="flex items-center">
-              <Avatar 
-                src={user?.imageUrl} 
-                name={user?.nickname || 'User'} 
-                size="md" 
-              />
-              <div className="ml-3">
-                <p className="font-medium text-gray-900">{user?.nickname}</p>
-                <p className="text-xs text-gray-500">{user?.email}</p>
-              </div>
-            </div>
-            
-            <button
-              onClick={handleLogout}
-              className="rounded-full p-2 text-gray-400 hover:bg-gray-100 hover:text-gray-600"
-            >
-              <svg
-                xmlns="http://www.w3.org/2000/svg"
-                width="20"
-                height="20"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                strokeWidth="2"
-                strokeLinecap="round"
-                strokeLinejoin="round"
+            <div className="relative flex items-center">
+              <button
+                onClick={() => setUserMenuOpen(!userMenuOpen)}
+                className="flex items-center focus:outline-none"
               >
-                <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
-                <polyline points="16 17 21 12 16 7" />
-                <line x1="21" y1="12" x2="9" y2="12" />
-              </svg>
-            </button>
+                <Avatar 
+                  src={user?.imageUrl} 
+                  name={user?.nickname || 'User'} 
+                  size="md" 
+                />
+                <div className="ml-3">
+                  <p className="font-medium text-gray-900">{user?.nickname}</p>
+                  <p className="text-xs text-gray-500">{user?.email}</p>
+                </div>
+                <svg
+                  xmlns="http://www.w3.org/2000/svg"
+                  width="16"
+                  height="16"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  className="ml-1 text-gray-400"
+                >
+                  <polyline points="6 9 12 15 18 9"></polyline>
+                </svg>
+              </button>
+              
+              {userMenuOpen && (
+                <div className="absolute bottom-full left-0 mb-2 w-48 rounded-md bg-white py-1 shadow-lg ring-1 ring-black ring-opacity-5">
+                  <button
+                    onClick={() => {
+                      navigate('/profile');
+                      setUserMenuOpen(false);
+                    }}
+                    className="flex w-full items-center px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-100"
+                  >
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      width="16"
+                      height="16"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      className="mr-2 text-gray-500"
+                    >
+                      <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+                      <circle cx="12" cy="7" r="4"></circle>
+                    </svg>
+                    Profile
+                  </button>
+                  
+                  <button
+                    onClick={() => {
+                      navigate('/settings/security');
+                      setUserMenuOpen(false);
+                    }}
+                    className="flex w-full items-center px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-100"
+                  >
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      width="16"
+                      height="16"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      className="mr-2 text-gray-500"
+                    >
+                      <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+                      <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
+                    </svg>
+                    Security
+                  </button>
+                  
+                  <button
+                    onClick={() => {
+                      handleLogout();
+                      setUserMenuOpen(false);
+                    }}
+                    className="flex w-full items-center px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-100"
+                  >
+                    <svg
+                      xmlns="http://www.w3.org/2000/svg"
+                      width="16"
+                      height="16"
+                      viewBox="0 0 24 24"
+                      fill="none"
+                      stroke="currentColor"
+                      strokeWidth="2"
+                      strokeLinecap="round"
+                      strokeLinejoin="round"
+                      className="mr-2 text-gray-500"
+                    >
+                      <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"></path>
+                      <polyline points="16 17 21 12 16 7"></polyline>
+                      <line x1="21" y1="12" x2="9" y2="12"></line>
+                    </svg>
+                    Logout
+                  </button>
+                </div>
+              )}
+            </div>
           </div>
         </div>
       </div>
