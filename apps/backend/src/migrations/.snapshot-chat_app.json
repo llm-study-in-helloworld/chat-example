@@ -1,38 +1,36 @@
 {
-  "namespaces": [
-    "public"
-  ],
-  "name": "public",
+  "namespaces": [],
   "tables": [
     {
       "columns": {
         "id": {
           "name": "id",
-          "type": "serial",
-          "unsigned": false,
+          "type": "int",
+          "unsigned": true,
           "autoincrement": true,
           "primary": true,
           "nullable": false,
+          "length": null,
           "mappedType": "integer"
         },
         "created_at": {
           "name": "created_at",
-          "type": "timestamptz",
+          "type": "datetime",
           "unsigned": false,
           "autoincrement": false,
           "primary": false,
           "nullable": false,
-          "length": 6,
+          "length": null,
           "mappedType": "datetime"
         },
         "updated_at": {
           "name": "updated_at",
-          "type": "timestamptz",
+          "type": "datetime",
           "unsigned": false,
           "autoincrement": false,
           "primary": false,
           "nullable": false,
-          "length": 6,
+          "length": null,
           "mappedType": "datetime"
         },
         "email": {
@@ -77,7 +75,6 @@
         }
       },
       "name": "user",
-      "schema": "public",
       "indexes": [
         {
           "columnNames": [
@@ -100,7 +97,7 @@
           "unique": false
         },
         {
-          "keyName": "user_pkey",
+          "keyName": "PRIMARY",
           "columnNames": [
             "id"
           ],
@@ -118,31 +115,32 @@
       "columns": {
         "id": {
           "name": "id",
-          "type": "serial",
-          "unsigned": false,
+          "type": "int",
+          "unsigned": true,
           "autoincrement": true,
           "primary": true,
           "nullable": false,
+          "length": null,
           "mappedType": "integer"
         },
         "created_at": {
           "name": "created_at",
-          "type": "timestamptz",
+          "type": "datetime",
           "unsigned": false,
           "autoincrement": false,
           "primary": false,
           "nullable": false,
-          "length": 6,
+          "length": null,
           "mappedType": "datetime"
         },
         "updated_at": {
           "name": "updated_at",
-          "type": "timestamptz",
+          "type": "datetime",
           "unsigned": false,
           "autoincrement": false,
           "primary": false,
           "nullable": false,
-          "length": 6,
+          "length": null,
           "mappedType": "datetime"
         },
         "name": {
@@ -177,46 +175,59 @@
         },
         "is_private": {
           "name": "is_private",
-          "type": "boolean",
+          "type": "tinyint(1)",
           "unsigned": false,
           "autoincrement": false,
           "primary": false,
           "nullable": false,
+          "length": 1,
           "mappedType": "boolean"
         },
         "is_direct": {
           "name": "is_direct",
-          "type": "boolean",
+          "type": "tinyint(1)",
           "unsigned": false,
           "autoincrement": false,
           "primary": false,
           "nullable": false,
+          "length": 1,
           "mappedType": "boolean"
         },
         "is_active": {
           "name": "is_active",
-          "type": "boolean",
+          "type": "tinyint(1)",
           "unsigned": false,
           "autoincrement": false,
           "primary": false,
           "nullable": false,
+          "length": 1,
           "mappedType": "boolean"
         },
         "owner_id": {
           "name": "owner_id",
           "type": "int",
-          "unsigned": false,
+          "unsigned": true,
           "autoincrement": false,
           "primary": false,
           "nullable": false,
+          "length": null,
           "mappedType": "integer"
         }
       },
       "name": "room",
-      "schema": "public",
       "indexes": [
         {
-          "keyName": "room_pkey",
+          "columnNames": [
+            "owner_id"
+          ],
+          "composite": false,
+          "keyName": "room_owner_id_index",
+          "constraint": false,
+          "primary": false,
+          "unique": false
+        },
+        {
+          "keyName": "PRIMARY",
           "columnNames": [
             "id"
           ],
@@ -233,11 +244,11 @@
           "columnNames": [
             "owner_id"
           ],
-          "localTableName": "public.room",
+          "localTableName": "room",
           "referencedColumnNames": [
             "id"
           ],
-          "referencedTableName": "public.user",
+          "referencedTableName": "user",
           "updateRule": "cascade"
         }
       },
@@ -247,49 +258,52 @@
       "columns": {
         "id": {
           "name": "id",
-          "type": "serial",
-          "unsigned": false,
+          "type": "int",
+          "unsigned": true,
           "autoincrement": true,
           "primary": true,
           "nullable": false,
+          "length": null,
           "mappedType": "integer"
         },
         "created_at": {
           "name": "created_at",
-          "type": "timestamptz",
+          "type": "datetime",
           "unsigned": false,
           "autoincrement": false,
           "primary": false,
           "nullable": false,
-          "length": 6,
+          "length": null,
           "mappedType": "datetime"
         },
         "updated_at": {
           "name": "updated_at",
-          "type": "timestamptz",
+          "type": "datetime",
           "unsigned": false,
           "autoincrement": false,
           "primary": false,
           "nullable": false,
-          "length": 6,
+          "length": null,
           "mappedType": "datetime"
         },
         "room_id": {
           "name": "room_id",
           "type": "int",
-          "unsigned": false,
+          "unsigned": true,
           "autoincrement": false,
           "primary": false,
           "nullable": false,
+          "length": null,
           "mappedType": "integer"
         },
         "user_id": {
           "name": "user_id",
           "type": "int",
-          "unsigned": false,
+          "unsigned": true,
           "autoincrement": false,
           "primary": false,
           "nullable": false,
+          "length": null,
           "mappedType": "integer"
         },
         "role": {
@@ -305,28 +319,47 @@
         },
         "joined_at": {
           "name": "joined_at",
-          "type": "timestamptz",
+          "type": "datetime",
           "unsigned": false,
           "autoincrement": false,
           "primary": false,
           "nullable": false,
-          "length": 6,
+          "length": null,
           "mappedType": "datetime"
         },
         "last_seen_at": {
           "name": "last_seen_at",
-          "type": "timestamptz",
+          "type": "datetime",
           "unsigned": false,
           "autoincrement": false,
           "primary": false,
           "nullable": true,
-          "length": 6,
+          "length": null,
           "mappedType": "datetime"
         }
       },
       "name": "room_user",
-      "schema": "public",
       "indexes": [
+        {
+          "columnNames": [
+            "room_id"
+          ],
+          "composite": false,
+          "keyName": "room_user_room_id_index",
+          "constraint": false,
+          "primary": false,
+          "unique": false
+        },
+        {
+          "columnNames": [
+            "user_id"
+          ],
+          "composite": false,
+          "keyName": "room_user_user_id_index",
+          "constraint": false,
+          "primary": false,
+          "unique": false
+        },
         {
           "keyName": "room_user_room_id_last_seen_at_index",
           "columnNames": [
@@ -350,7 +383,7 @@
           "unique": false
         },
         {
-          "keyName": "room_user_pkey",
+          "keyName": "PRIMARY",
           "columnNames": [
             "id"
           ],
@@ -367,11 +400,11 @@
           "columnNames": [
             "room_id"
           ],
-          "localTableName": "public.room_user",
+          "localTableName": "room_user",
           "referencedColumnNames": [
             "id"
           ],
-          "referencedTableName": "public.room",
+          "referencedTableName": "room",
           "updateRule": "cascade"
         },
         "room_user_user_id_foreign": {
@@ -379,11 +412,11 @@
           "columnNames": [
             "user_id"
           ],
-          "localTableName": "public.room_user",
+          "localTableName": "room_user",
           "referencedColumnNames": [
             "id"
           ],
-          "referencedTableName": "public.user",
+          "referencedTableName": "user",
           "updateRule": "cascade"
         }
       },
@@ -393,88 +426,92 @@
       "columns": {
         "id": {
           "name": "id",
-          "type": "serial",
-          "unsigned": false,
+          "type": "int",
+          "unsigned": true,
           "autoincrement": true,
           "primary": true,
           "nullable": false,
+          "length": null,
           "mappedType": "integer"
         },
         "created_at": {
           "name": "created_at",
-          "type": "timestamptz",
+          "type": "datetime",
           "unsigned": false,
           "autoincrement": false,
           "primary": false,
           "nullable": false,
-          "length": 6,
+          "length": null,
           "mappedType": "datetime"
         },
         "updated_at": {
           "name": "updated_at",
-          "type": "timestamptz",
+          "type": "datetime",
           "unsigned": false,
           "autoincrement": false,
           "primary": false,
           "nullable": false,
-          "length": 6,
+          "length": null,
           "mappedType": "datetime"
         },
         "token": {
           "name": "token",
-          "type": "uuid",
+          "type": "varchar(36)",
           "unsigned": false,
           "autoincrement": false,
           "primary": false,
           "nullable": false,
-          "mappedType": "uuid"
+          "length": 36,
+          "mappedType": "string"
         },
         "user_id": {
           "name": "user_id",
           "type": "int",
-          "unsigned": false,
+          "unsigned": true,
           "autoincrement": false,
           "primary": false,
           "nullable": false,
+          "length": null,
           "mappedType": "integer"
         },
         "issued_at": {
           "name": "issued_at",
-          "type": "timestamptz",
+          "type": "datetime",
           "unsigned": false,
           "autoincrement": false,
           "primary": false,
           "nullable": false,
-          "length": 6,
+          "length": null,
           "mappedType": "datetime"
         },
         "expires_at": {
           "name": "expires_at",
-          "type": "timestamptz",
+          "type": "datetime",
           "unsigned": false,
           "autoincrement": false,
           "primary": false,
           "nullable": false,
-          "length": 6,
+          "length": null,
           "mappedType": "datetime"
         },
         "revoked_at": {
           "name": "revoked_at",
-          "type": "timestamptz",
+          "type": "datetime",
           "unsigned": false,
           "autoincrement": false,
           "primary": false,
           "nullable": true,
-          "length": 6,
+          "length": null,
           "mappedType": "datetime"
         },
         "is_revoked": {
           "name": "is_revoked",
-          "type": "boolean",
+          "type": "tinyint(1)",
           "unsigned": false,
           "autoincrement": false,
           "primary": false,
           "nullable": false,
+          "length": 1,
           "default": "false",
           "mappedType": "boolean"
         },
@@ -485,6 +522,7 @@
           "autoincrement": false,
           "primary": false,
           "nullable": true,
+          "length": null,
           "mappedType": "text"
         },
         "ip_address": {
@@ -494,11 +532,11 @@
           "autoincrement": false,
           "primary": false,
           "nullable": true,
+          "length": null,
           "mappedType": "text"
         }
       },
       "name": "refresh_token",
-      "schema": "public",
       "indexes": [
         {
           "columnNames": [
@@ -511,7 +549,17 @@
           "unique": false
         },
         {
-          "keyName": "refresh_token_pkey",
+          "columnNames": [
+            "user_id"
+          ],
+          "composite": false,
+          "keyName": "refresh_token_user_id_index",
+          "constraint": false,
+          "primary": false,
+          "unique": false
+        },
+        {
+          "keyName": "PRIMARY",
           "columnNames": [
             "id"
           ],
@@ -528,11 +576,11 @@
           "columnNames": [
             "user_id"
           ],
-          "localTableName": "public.refresh_token",
+          "localTableName": "refresh_token",
           "referencedColumnNames": [
             "id"
           ],
-          "referencedTableName": "public.user",
+          "referencedTableName": "user",
           "updateRule": "cascade"
         }
       },
@@ -542,58 +590,62 @@
       "columns": {
         "id": {
           "name": "id",
-          "type": "serial",
-          "unsigned": false,
+          "type": "int",
+          "unsigned": true,
           "autoincrement": true,
           "primary": true,
           "nullable": false,
+          "length": null,
           "mappedType": "integer"
         },
         "created_at": {
           "name": "created_at",
-          "type": "timestamptz",
+          "type": "datetime",
           "unsigned": false,
           "autoincrement": false,
           "primary": false,
           "nullable": false,
-          "length": 6,
+          "length": null,
           "mappedType": "datetime"
         },
         "updated_at": {
           "name": "updated_at",
-          "type": "timestamptz",
+          "type": "datetime",
           "unsigned": false,
           "autoincrement": false,
           "primary": false,
           "nullable": false,
-          "length": 6,
+          "length": null,
           "mappedType": "datetime"
         },
         "room_id": {
           "name": "room_id",
           "type": "int",
-          "unsigned": false,
+          "unsigned": true,
           "autoincrement": false,
           "primary": false,
           "nullable": false,
+          "length": null,
           "mappedType": "integer"
         },
         "sender_id": {
           "name": "sender_id",
           "type": "int",
-          "unsigned": false,
+          "unsigned": true,
           "autoincrement": false,
           "primary": false,
           "nullable": false,
+          "length": null,
           "mappedType": "integer"
         },
         "parent_id": {
           "name": "parent_id",
           "type": "int",
-          "unsigned": false,
+          "unsigned": true,
           "autoincrement": false,
           "primary": false,
           "nullable": true,
+          "length": null,
           "mappedType": "integer"
         },
         "content": {
@@ -608,18 +660,27 @@
         },
         "deleted_at": {
           "name": "deleted_at",
-          "type": "timestamptz",
+          "type": "datetime",
           "unsigned": false,
           "autoincrement": false,
           "primary": false,
           "nullable": true,
-          "length": 6,
+          "length": null,
           "mappedType": "datetime"
         }
       },
       "name": "message",
-      "schema": "public",
       "indexes": [
+        {
+          "columnNames": [
+            "room_id"
+          ],
+          "composite": false,
+          "keyName": "message_room_id_index",
+          "constraint": false,
+          "primary": false,
+          "unique": false
+        },
         {
           "keyName": "message_sender_id_index",
           "columnNames": [
@@ -652,7 +713,7 @@
           "unique": false
         },
         {
-          "keyName": "message_pkey",
+          "keyName": "PRIMARY",
           "columnNames": [
             "id"
           ],
@@ -669,11 +730,11 @@
           "columnNames": [
             "room_id"
           ],
-          "localTableName": "public.message",
+          "localTableName": "message",
           "referencedColumnNames": [
             "id"
           ],
-          "referencedTableName": "public.room",
+          "referencedTableName": "room",
           "updateRule": "cascade"
         },
         "message_sender_id_foreign": {
@@ -681,11 +742,11 @@
           "columnNames": [
             "sender_id"
           ],
-          "localTableName": "public.message",
+          "localTableName": "message",
           "referencedColumnNames": [
             "id"
           ],
-          "referencedTableName": "public.user",
+          "referencedTableName": "user",
           "updateRule": "cascade"
         },
         "message_parent_id_foreign": {
@@ -693,11 +754,11 @@
           "columnNames": [
             "parent_id"
           ],
-          "localTableName": "public.message",
+          "localTableName": "message",
           "referencedColumnNames": [
             "id"
           ],
-          "referencedTableName": "public.message",
+          "referencedTableName": "message",
           "deleteRule": "set null",
           "updateRule": "cascade"
         }
@@ -708,49 +769,52 @@
       "columns": {
         "id": {
           "name": "id",
-          "type": "serial",
-          "unsigned": false,
+          "type": "int",
+          "unsigned": true,
           "autoincrement": true,
           "primary": true,
           "nullable": false,
+          "length": null,
           "mappedType": "integer"
         },
         "created_at": {
           "name": "created_at",
-          "type": "timestamptz",
+          "type": "datetime",
           "unsigned": false,
           "autoincrement": false,
           "primary": false,
           "nullable": false,
-          "length": 6,
+          "length": null,
           "mappedType": "datetime"
         },
         "updated_at": {
           "name": "updated_at",
-          "type": "timestamptz",
+          "type": "datetime",
           "unsigned": false,
           "autoincrement": false,
           "primary": false,
           "nullable": false,
-          "length": 6,
+          "length": null,
           "mappedType": "datetime"
         },
         "message_id": {
           "name": "message_id",
           "type": "int",
-          "unsigned": false,
+          "unsigned": true,
           "autoincrement": false,
           "primary": false,
           "nullable": false,
+          "length": null,
           "mappedType": "integer"
         },
         "user_id": {
           "name": "user_id",
           "type": "int",
-          "unsigned": false,
+          "unsigned": true,
           "autoincrement": false,
           "primary": false,
           "nullable": false,
+          "length": null,
           "mappedType": "integer"
         },
         "emoji": {
@@ -765,8 +829,27 @@
         }
       },
       "name": "message_reaction",
-      "schema": "public",
       "indexes": [
+        {
+          "columnNames": [
+            "message_id"
+          ],
+          "composite": false,
+          "keyName": "message_reaction_message_id_index",
+          "constraint": false,
+          "primary": false,
+          "unique": false
+        },
+        {
+          "columnNames": [
+            "user_id"
+          ],
+          "composite": false,
+          "keyName": "message_reaction_user_id_index",
+          "constraint": false,
+          "primary": false,
+          "unique": false
+        },
         {
           "keyName": "message_reaction_message_id_user_id_index",
           "columnNames": [
@@ -790,7 +873,7 @@
           "unique": false
         },
         {
-          "keyName": "message_reaction_pkey",
+          "keyName": "PRIMARY",
           "columnNames": [
             "id"
           ],
@@ -807,11 +890,11 @@
           "columnNames": [
             "message_id"
           ],
-          "localTableName": "public.message_reaction",
+          "localTableName": "message_reaction",
           "referencedColumnNames": [
             "id"
           ],
-          "referencedTableName": "public.message",
+          "referencedTableName": "message",
           "updateRule": "cascade"
         },
         "message_reaction_user_id_foreign": {
@@ -819,11 +902,11 @@
           "columnNames": [
             "user_id"
           ],
-          "localTableName": "public.message_reaction",
+          "localTableName": "message_reaction",
           "referencedColumnNames": [
             "id"
           ],
-          "referencedTableName": "public.user",
+          "referencedTableName": "user",
           "updateRule": "cascade"
         }
       },
@@ -833,55 +916,67 @@
       "columns": {
         "id": {
           "name": "id",
-          "type": "serial",
-          "unsigned": false,
+          "type": "int",
+          "unsigned": true,
           "autoincrement": true,
           "primary": true,
           "nullable": false,
+          "length": null,
           "mappedType": "integer"
         },
         "created_at": {
           "name": "created_at",
-          "type": "timestamptz",
+          "type": "datetime",
           "unsigned": false,
           "autoincrement": false,
           "primary": false,
           "nullable": false,
-          "length": 6,
+          "length": null,
           "mappedType": "datetime"
         },
         "updated_at": {
           "name": "updated_at",
-          "type": "timestamptz",
+          "type": "datetime",
           "unsigned": false,
           "autoincrement": false,
           "primary": false,
           "nullable": false,
-          "length": 6,
+          "length": null,
           "mappedType": "datetime"
         },
         "message_id": {
           "name": "message_id",
           "type": "int",
-          "unsigned": false,
+          "unsigned": true,
           "autoincrement": false,
           "primary": false,
           "nullable": false,
+          "length": null,
           "mappedType": "integer"
         },
         "mentioned_user_id": {
           "name": "mentioned_user_id",
           "type": "int",
-          "unsigned": false,
+          "unsigned": true,
           "autoincrement": false,
           "primary": false,
           "nullable": false,
+          "length": null,
           "mappedType": "integer"
         }
       },
       "name": "mention",
-      "schema": "public",
       "indexes": [
+        {
+          "columnNames": [
+            "message_id"
+          ],
+          "composite": false,
+          "keyName": "mention_message_id_index",
+          "constraint": false,
+          "primary": false,
+          "unique": false
+        },
         {
           "keyName": "mention_mentioned_user_id_index",
           "columnNames": [
@@ -893,7 +988,7 @@
           "unique": false
         },
         {
-          "keyName": "mention_pkey",
+          "keyName": "PRIMARY",
           "columnNames": [
             "id"
           ],
@@ -910,11 +1005,11 @@
           "columnNames": [
             "message_id"
           ],
-          "localTableName": "public.mention",
+          "localTableName": "mention",
           "referencedColumnNames": [
             "id"
           ],
-          "referencedTableName": "public.message",
+          "referencedTableName": "message",
           "updateRule": "cascade"
         },
         "mention_mentioned_user_id_foreign": {
@@ -922,11 +1017,11 @@
           "columnNames": [
             "mentioned_user_id"
           ],
-          "localTableName": "public.mention",
+          "localTableName": "mention",
           "referencedColumnNames": [
             "id"
           ],
-          "referencedTableName": "public.user",
+          "referencedTableName": "user",
           "updateRule": "cascade"
         }
       },

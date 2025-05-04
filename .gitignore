@@ -72,3 +72,6 @@ lerna-debug.log*
 
 # Docker
 certs/
+
+# Database
+mysql_data/
