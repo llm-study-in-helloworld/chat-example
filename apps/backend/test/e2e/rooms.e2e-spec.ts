@@ -4,9 +4,10 @@ import { INestApplication, ValidationPipe } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 import cookieParser from 'cookie-parser';
 import request from 'supertest';
-import { RoomUser } from '../../src/entities';
+import { LoggerService } from '../../src/logger/logger.service';
 import { AppTestModule } from '../app-test.module';
 import { TestUserHelper } from './helpers';
+import { mockLoggerService } from './helpers/logger-mock';
 import { AccessTokensDict, TestUser } from './helpers/test-user.type';
 
 describe('RoomsController (e2e)', () => {
@@ -22,7 +23,10 @@ describe('RoomsController (e2e)', () => {
   beforeAll(async () => {
     const moduleFixture: TestingModule = await Test.createTestingModule({
       imports: [AppTestModule],
-    }).compile();
+    })
+    .overrideProvider(LoggerService)
+    .useValue(mockLoggerService)
+    .compile();
 
     app = moduleFixture.createNestApplication();
     em = app.get<EntityManager>(EntityManager);
@@ -526,4 +530,4 @@ describe('RoomsController (e2e)', () => {
         .expect(400); // Bad Request
     });
   });
-}); 
+});

@@ -3,7 +3,9 @@ import { INestApplication, ValidationPipe } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 import cookieParser from 'cookie-parser';
 import request from 'supertest';
+import { LoggerService } from '../../src/logger';
 import { AppTestModule } from '../app-test.module';
+import { mockLoggerService } from './helpers/logger-mock';
 
 describe('AppController (e2e)', () => {
   let app: INestApplication;
@@ -13,7 +15,10 @@ describe('AppController (e2e)', () => {
   beforeAll(async () => {
     const moduleFixture: TestingModule = await Test.createTestingModule({
       imports: [AppTestModule],
-    }).compile();
+    })
+    .overrideProvider(LoggerService)
+    .useValue(mockLoggerService)
+    .compile();
 
     app = moduleFixture.createNestApplication();
     orm = app.get<MikroORM>(MikroORM);

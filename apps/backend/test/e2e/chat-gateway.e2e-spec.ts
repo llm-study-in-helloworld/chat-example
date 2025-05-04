@@ -7,10 +7,12 @@ import { io, Socket } from 'socket.io-client';
 import request from 'supertest';
 import { MessageResponseDto } from '../../src/dto';
 import { ReactionResponseDto, ReactionUpdateEventDto, SocketErrorDto, SocketSuccessDto, UserPresenceEventDto } from '../../src/gateway/dto/socket-response.dto';
+import { LoggerService } from '../../src/logger/logger.service';
 import { CreateMessageDto } from '../../src/messages/dto/create-message.dto';
 import { ReactionDto } from '../../src/messages/dto/reaction.dto';
 import { AppTestModule } from '../app-test.module';
 import { TestUserHelper } from './helpers';
+import { mockLoggerService } from './helpers/logger-mock';
 import { AccessTokensDict, TestUser } from './helpers/test-user.type';
 
 // Define type for socket responses
@@ -36,7 +38,10 @@ describe('ChatGateway (e2e)', () => {
   beforeAll(async () => {
     const moduleFixture: TestingModule = await Test.createTestingModule({
       imports: [AppTestModule],
-    }).compile();
+    })
+    .overrideProvider(LoggerService)
+    .useValue(mockLoggerService)
+    .compile();
 
     app = moduleFixture.createNestApplication();
     httpServer = createServer(app.getHttpServer());

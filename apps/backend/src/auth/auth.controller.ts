@@ -1,7 +1,8 @@
-import { Body, Controller, Delete, HttpCode, HttpStatus, Post, Req, Res, UnauthorizedException, UseGuards } from '@nestjs/common';
+import { Body, Controller, Delete, HttpCode, HttpStatus, Patch, Post, Req, Res, UnauthorizedException, UseGuards } from '@nestjs/common';
 import { Request, Response } from 'express';
 import { AuthResponseDto, UserResponseDto } from '../dto';
 import { User } from '../entities';
+import { ChangePasswordDto } from '../users/dto/change-password.dto';
 import { CreateUserDto } from '../users/dto/create-user.dto';
 import { DeleteUserDto } from '../users/dto/delete-user.dto';
 import { UsersService } from '../users/users.service';
@@ -78,6 +79,64 @@ export class AuthController {
     } catch (error) {
       throw new UnauthorizedException('Invalid credentials');
     }
+  }
+
+  /**
+   * 비밀번호 변경 엔드포인트
+   */
+  @UseGuards(JwtAuthGuard)
+  @Patch('password')
+  @HttpCode(HttpStatus.OK)
+  async changePassword(
+    @CurrentUser() user: User,
+    @Body() changePasswordDto: ChangePasswordDto,
+    @Res({ passthrough: true }) response: Response
+  ): Promise<{ success: boolean }> {
+    const success = await this.usersService.changePassword(
+      user, 
+      changePasswordDto
+    );
+
+    if(!success) {
+      return { success: false };
+    }
+    
+    // Invalidate all tokens for user after password change
+    await this.authService.logout(user);
+      
+    // Clear cookies
+    response.clearCookie('jwt', {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'strict',
+      path: '/'
+    });
+    
+    response.clearCookie('refresh_token', {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'strict',
+      path: '/api/auth/refresh'
+    });
+    
+    // Set empty tokens with expired date
+    response.cookie('jwt', '', {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'strict',
+      expires: new Date(0),
+      path: '/'
+    });
+    
+    response.cookie('refresh_token', '', {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'strict',
+      expires: new Date(0),
+      path: '/api/auth/refresh'
+    });
+    
+    return { success };
   }
 
   /**

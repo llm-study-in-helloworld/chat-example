@@ -3,8 +3,10 @@ import { INestApplication, ValidationPipe } from '@nestjs/common';
 import { Test, TestingModule } from '@nestjs/testing';
 import cookieParser from 'cookie-parser';
 import request from 'supertest';
+import { LoggerService } from '../../src/logger/logger.service';
 import { AppTestModule } from '../app-test.module';
 import { TestUserHelper } from './helpers';
+import { mockLoggerService } from './helpers/logger-mock';
 import { TestUser } from './helpers/test-user.type';
 
 describe('AuthController (e2e)', () => {
@@ -21,7 +23,10 @@ describe('AuthController (e2e)', () => {
   beforeAll(async () => {
     const moduleFixture: TestingModule = await Test.createTestingModule({
       imports: [AppTestModule],
-    }).compile();
+    })
+    .overrideProvider(LoggerService)
+    .useValue(mockLoggerService)
+    .compile();
 
     app = moduleFixture.createNestApplication();
     em = app.get<EntityManager>(EntityManager);
@@ -375,6 +380,92 @@ describe('AuthController (e2e)', () => {
           email: testUser.email,
           password: testUser.password
         })
+        .expect(401); // Unauthorized
+    });
+  });
+  
+  describe('Feature: Password Management', () => {
+    let testUser: TestUser;
+    let authToken: string;
+    
+    beforeEach(async () => {
+      const result = await userHelper.createTestUser(12);
+      testUser = result.user;
+      authToken = result.token;
+    });
+    
+    it('Scenario: User changes their password', async () => {
+      // Given an authenticated user and password change data
+      const newPassword = 'newPassword123';
+      const passwordChange = {
+        currentPassword: testUser.password,
+        newPassword: newPassword
+      };
+      
+      // When they change their password
+      const response = await request(app.getHttpServer())
+        .patch('/api/auth/password')
+        .set('Authorization', `Bearer ${authToken}`)
+        .send(passwordChange)
+        .expect(200);
+        
+      expect(response.body.success).toBe(true);
+      
+      // Then the cookies should be cleared
+      const cookies = response.headers['set-cookie'] as unknown as string[];
+      expect(cookies).toBeDefined();
+      expect(cookies.some((cookie: string) => 
+        cookie.includes('jwt=;') || 
+        cookie.includes('Expires=Thu, 01 Jan 1970'))
+      ).toBe(true);
+      expect(cookies.some((cookie: string) => 
+        cookie.includes('refresh_token=;') || 
+        cookie.includes('Expires=Thu, 01 Jan 1970'))
+      ).toBe(true);
+      
+      // And the old token should no longer work
+      await request(app.getHttpServer())
+        .get('/api/users/me')
+        .set('Authorization', `Bearer ${authToken}`)
+        .expect(401);
+      
+      // Then they should be able to log in with the new password
+      const loginResponse = await request(app.getHttpServer())
+        .post('/api/auth/login')
+        .send({
+          email: testUser.email,
+          password: newPassword
+        })
+        .expect(201);
+      
+      expect(loginResponse.body.token).toBeDefined();
+      expect(loginResponse.body.user).toBeDefined();
+      expect(loginResponse.body.user.email).toBe(testUser.email);
+      
+      // Update the test user's password for future tests
+      testUser.password = newPassword;
+      
+      // And they should be able to access protected resources with the new token
+      const meResponse = await request(app.getHttpServer())
+        .get('/api/users/me')
+        .set('Authorization', `Bearer ${loginResponse.body.token}`)
+        .expect(200);
+        
+      expect(meResponse.body.email).toBe(testUser.email);
+    });
+    
+    it('Scenario: User tries to change password with incorrect current password', async () => {
+      // Given incorrect current password
+      const incorrectPasswordChange = {
+        currentPassword: 'wrongPassword',
+        newPassword: 'anotherPassword123'
+      };
+      
+      // When they try to change their password
+      await request(app.getHttpServer())
+        .patch('/api/auth/password')
+        .set('Authorization', `Bearer ${authToken}`)
+        .send(incorrectPasswordChange)
         .expect(401); // Unauthorized
     });
   });
