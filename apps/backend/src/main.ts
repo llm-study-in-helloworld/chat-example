@@ -1,11 +1,13 @@
 import { ValidationPipe } from '@nestjs/common';
 import { NestFactory } from '@nestjs/core';
 import cookieParser from 'cookie-parser';
+import { WINSTON_MODULE_NEST_PROVIDER } from 'nest-winston';
 import { AppModule } from './app.module';
 
 async function bootstrap() {
   // Node.js v22 성능 최적화
   const app = await NestFactory.create(AppModule, {
+    // Use built-in logger during startup, will be replaced with Winston
     logger: ['error', 'warn', 'log'],
     cors: {
       origin: ['http://localhost:5173', 'http://127.0.0.1:5173', 'https://localhost:5002'],
@@ -15,6 +17,9 @@ async function bootstrap() {
     },
     abortOnError: false,
   });
+
+  // Use Winston logger
+  app.useLogger(app.get(WINSTON_MODULE_NEST_PROVIDER));
 
   // 쿠키 파서 미들웨어 등록
   app.use(cookieParser());
@@ -35,7 +40,9 @@ async function bootstrap() {
   app.enableShutdownHooks();
   
   await app.listen(3000);
-  console.info(`Application is running on: ${await app.getUrl()}`);
+  
+  const logger = app.get(WINSTON_MODULE_NEST_PROVIDER);
+  logger.log(`Application is running on: ${await app.getUrl()}`, 'Bootstrap');
 }
 
 bootstrap(); 

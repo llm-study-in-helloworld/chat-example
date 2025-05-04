@@ -1,13 +1,14 @@
-import { Module } from '@nestjs/common';
 import { MikroOrmModule } from '@mikro-orm/nestjs';
+import { Module } from '@nestjs/common';
 import { ConfigModule } from '@nestjs/config';
-import { UsersModule } from './users/users.module';
 import { AuthModule } from './auth/auth.module';
-import { RoomsModule } from './rooms/rooms.module';
-import { MessagesModule } from './messages/messages.module';
-import { GatewayModule } from './gateway/gateway.module';
-import mikroOrmConfig from './mikro-orm.config';
 import * as entities from './entities';
+import { GatewayModule } from './gateway/gateway.module';
+import { LoggerModule } from './logger';
+import { MessagesModule } from './messages/messages.module';
+import mikroOrmConfig from './mikro-orm.config';
+import { RoomsModule } from './rooms/rooms.module';
+import { UsersModule } from './users/users.module';
 
 @Module({
   imports: [
@@ -15,6 +16,7 @@ import * as entities from './entities';
       isGlobal: true,
       envFilePath: '.env',
     }),
+    LoggerModule,
     MikroOrmModule.forRoot(mikroOrmConfig),
     MikroOrmModule.forFeature({
       entities: Object.values(entities)
