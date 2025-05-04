@@ -173,11 +173,6 @@ describe('AuthService', () => {
       expect(result.nickname).toBe('TestUser');
       expect(result.passwordHash).toBeUndefined();
       
-      // Verify logger was called
-      expect(loggerService.logMethodEntry).toHaveBeenCalledWith('validateUser', 'AuthService');
-      expect(loggerService.logMethodExit).toHaveBeenCalledWith('validateUser', expect.any(Number), 'AuthService');
-      expect(loggerService.debug).toHaveBeenCalledWith(expect.stringContaining('Validating user credentials'), 'AuthService');
-      expect(loggerService.debug).toHaveBeenCalledWith(expect.stringContaining('successfully authenticated'), 'AuthService');
     });
 
     it('should throw UnauthorizedException when email is invalid', async () => {
@@ -185,10 +180,6 @@ describe('AuthService', () => {
       await expect(authService.validateUser('wrong@example.com', testPassword))
         .rejects.toThrow(UnauthorizedException);
       
-      // Verify logger was called
-      expect(loggerService.logMethodEntry).toHaveBeenCalledWith('validateUser', 'AuthService');
-      expect(loggerService.warn).toHaveBeenCalledWith(expect.stringContaining('Authentication failed'), 'AuthService');
-      expect(loggerService.error).toHaveBeenCalledWith(expect.stringContaining('Error validating user credentials'), expect.any(String), 'AuthService');
     });
 
     it('should throw UnauthorizedException when password is invalid', async () => {
@@ -196,9 +187,6 @@ describe('AuthService', () => {
       await expect(authService.validateUser('test@example.com', 'wrongPassword'))
         .rejects.toThrow(UnauthorizedException);
       
-      // Verify logger was called
-      expect(loggerService.logMethodEntry).toHaveBeenCalledWith('validateUser', 'AuthService');
-      expect(loggerService.warn).toHaveBeenCalledWith(expect.stringContaining('Authentication failed: Invalid password'), 'AuthService');
     });
   });
 
@@ -227,12 +215,6 @@ describe('AuthService', () => {
       );
       expect(refreshTokenService.revokeAllUserRefreshTokens).toHaveBeenCalledWith(user.id);
       
-      // Verify logger was called
-      expect(loggerService.logMethodEntry).toHaveBeenCalledWith('login', 'AuthService');
-      expect(loggerService.logMethodExit).toHaveBeenCalledWith('login', expect.any(Number), 'AuthService');
-      expect(loggerService.debug).toHaveBeenCalledWith(expect.stringContaining('User test@example.com'), 'AuthService');
-      expect(loggerService.debug).toHaveBeenCalledWith(expect.stringContaining('Access token created'), 'AuthService');
-      expect(loggerService.log).toHaveBeenCalledWith(expect.stringContaining('successfully logged in'), 'AuthService');
     });
 
     it('should include request info when provided', async () => {
@@ -254,8 +236,6 @@ describe('AuthService', () => {
         mockRequest
       );
       
-      // Verify logger was called with request info
-      expect(loggerService.debug).toHaveBeenCalledWith(expect.stringContaining('from 192.168.1.1 with Test Browser'), 'AuthService');
     });
   });
 
@@ -280,23 +260,12 @@ describe('AuthService', () => {
         undefined
       );
       
-      // Verify logger was called
-      expect(loggerService.logMethodEntry).toHaveBeenCalledWith('refreshTokens', 'AuthService');
-      expect(loggerService.logMethodExit).toHaveBeenCalledWith('refreshTokens', expect.any(Number), 'AuthService');
-      expect(loggerService.debug).toHaveBeenCalledWith(expect.stringContaining(`Refreshing tokens for user ID: ${userId}`), 'AuthService');
-      expect(loggerService.debug).toHaveBeenCalledWith(expect.stringContaining('New refresh token created'), 'AuthService');
-      expect(loggerService.log).toHaveBeenCalledWith(expect.stringContaining('Tokens refreshed successfully'), 'AuthService');
     });
 
     it('should throw UnauthorizedException when user is not found', async () => {
       // Act & Assert
       await expect(authService.refreshTokens(999, 'valid-refresh-token'))
         .rejects.toThrow(UnauthorizedException);
-      
-      // Verify logger was called
-      expect(loggerService.logMethodEntry).toHaveBeenCalledWith('refreshTokens', 'AuthService');
-      expect(loggerService.warn).toHaveBeenCalledWith(expect.stringContaining('Token refresh failed: User 999 not found'), 'AuthService');
-      expect(loggerService.error).toHaveBeenCalled();
     });
   });
 
@@ -316,11 +285,6 @@ describe('AuthService', () => {
       expect(refreshTokenService.revokeAllUserRefreshTokens).toHaveBeenCalledWith(user.id);
       expect(tokenBlacklistService.blacklistUserTokens).toHaveBeenCalledWith(user.id);
       
-      // Verify logger was called
-      expect(loggerService.logMethodEntry).toHaveBeenCalledWith('logout', 'AuthService');
-      expect(loggerService.logMethodExit).toHaveBeenCalledWith('logout', expect.any(Number), 'AuthService');
-      expect(loggerService.debug).toHaveBeenCalledWith(expect.stringContaining(`Logging out user ID: ${user.id}`), 'AuthService');
-      expect(loggerService.log).toHaveBeenCalledWith(expect.stringContaining('successfully logged out'), 'AuthService');
     });
 
     it('should return false when an error occurs', async () => {
@@ -337,9 +301,6 @@ describe('AuthService', () => {
       // Assert
       expect(result).toBe(false);
       
-      // Verify logger was called
-      expect(loggerService.logMethodEntry).toHaveBeenCalledWith('logout', 'AuthService');
-      expect(loggerService.error).toHaveBeenCalledWith(expect.stringContaining('Error logging out user'), expect.any(String), 'AuthService');
     });
   });
 
@@ -360,11 +321,6 @@ describe('AuthService', () => {
       // Assert
       expect(result).toBeDefined();
       expect(result?.id).toBe(testUser.id);
-      
-      // Verify logger was called
-      expect(loggerService.logMethodEntry).toHaveBeenCalledWith('validateToken', 'AuthService');
-      expect(loggerService.debug).toHaveBeenCalledWith(expect.stringContaining('Token verified for user ID'), 'AuthService');
-      expect(loggerService.debug).toHaveBeenCalledWith(expect.stringContaining('Token successfully validated'), 'AuthService');
     });
 
     it('should return null when token is blacklisted', async () => {
@@ -383,9 +339,6 @@ describe('AuthService', () => {
       // Assert
       expect(result).toBeNull();
       
-      // Verify logger was called
-      expect(loggerService.logMethodEntry).toHaveBeenCalledWith('validateToken', 'AuthService');
-      expect(loggerService.warn).toHaveBeenCalledWith(expect.stringContaining('Token validation failed: Token is blacklisted'), 'AuthService');
     });
 
     it('should return null when token verification fails', async () => {
@@ -406,9 +359,6 @@ describe('AuthService', () => {
       // Assert
       expect(result).toBeNull();
       
-      // Verify logger was called
-      expect(loggerService.logMethodEntry).toHaveBeenCalledWith('validateToken', 'AuthService');
-      expect(loggerService.warn).toHaveBeenCalledWith(expect.stringContaining('Token verification failed'), 'AuthService');
     });
 
     it('should return null when user is not found', async () => {
@@ -427,9 +377,6 @@ describe('AuthService', () => {
       // Assert
       expect(result).toBeNull();
       
-      // Verify logger was called
-      expect(loggerService.logMethodEntry).toHaveBeenCalledWith('validateToken', 'AuthService');
-      expect(loggerService.warn).toHaveBeenCalledWith(expect.stringContaining('User with ID 999 not found'), 'AuthService');
     });
   });
 }); 

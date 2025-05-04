@@ -1,5 +1,6 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, UseInterceptors } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
+import { LogInterceptor } from '../logger/log.interceptor';
 import { LoggerService } from '../logger/logger.service';
 
 interface BlacklistedToken {
@@ -10,8 +11,14 @@ interface BlacklistedToken {
 /**
  * 로그아웃 시 JWT 토큰을 블랙리스트에 추가하는 서비스
  * 실제 프로덕션에서는 Redis 등을 사용하여 구현하는 것이 좋음
+ * 
+ * Note: This service uses both the LogInterceptor for automatic method logging and manual
+ * logMethodEntry/logMethodExit calls to maintain compatibility with existing tests.
+ * The LogInterceptor will primarily handle HTTP and WebSocket requests, while the manual
+ * logging ensures all direct method calls are properly logged.
  */
 @Injectable()
+@UseInterceptors(LogInterceptor)
 export class TokenBlacklistService {
   private readonly blacklist: Map<string, Date> = new Map();
   // Store tokens by userId for easy lookup and invalidation

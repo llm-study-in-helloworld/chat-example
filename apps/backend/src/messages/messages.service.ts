@@ -25,6 +25,11 @@ interface UpdateMessageDto {
 
 /**
  * 메시지 관련 비즈니스 로직을 처리하는 서비스
+ * 
+ * Note: This service uses both the LogInterceptor for automatic method logging and manual
+ * logMethodEntry/logMethodExit calls to maintain compatibility with existing tests.
+ * The LogInterceptor will primarily handle HTTP and WebSocket requests, while the manual
+ * logging ensures all direct method calls are properly logged.
  */
 @Injectable()
 @UseInterceptors(LogInterceptor)
@@ -48,6 +53,7 @@ export class MessagesService {
    * 채팅방의 메시지 목록 조회
    */
   async getRoomMessages(roomId: number, limit = 20, offset = 0): Promise<MessageResponseDto[]> {
+    this.logger.logMethodEntry('getRoomMessages', 'MessagesService');
     this.logger.debug(`Fetching messages for room ${roomId} with limit ${limit} and offset ${offset}`, 'MessagesService');
     
     const messages = await this.em.find(Message, { room: roomId, parent: null }, {
@@ -60,6 +66,7 @@ export class MessagesService {
     this.logger.debug(`Found ${messages.length} messages in room ${roomId}`, 'MessagesService');
     
     const result = await this.formatMessagesResponse(messages);
+    this.logger.logMethodExit('getRoomMessages', undefined, 'MessagesService');
     return result;
   }
 

@@ -1,13 +1,14 @@
-import { Injectable, UnauthorizedException } from '@nestjs/common';
+import { Injectable, UnauthorizedException, UseInterceptors } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { JwtService } from '@nestjs/jwt';
 import { Request } from 'express';
 import { User } from '../entities';
-import { LoggerService } from '../logger/logger.service';
+import { LoggerService, LogInterceptor } from '../logger';
 import { UsersService } from '../users/users.service';
 import { RefreshTokenService } from './refresh-token.service';
 import { TokenBlacklistService } from './token-blacklist.service';
 
+@UseInterceptors(LogInterceptor)
 @Injectable()
 export class AuthService {
   private accessTokenExpiresIn: number;
@@ -25,10 +26,6 @@ export class AuthService {
   }
 
   async validateUser(email: string, password: string): Promise<any> {
-    this.logger.logMethodEntry('validateUser', 'AuthService');
-    const startTime = Date.now();
-    
-    try {
       this.logger.debug(`Validating user credentials for: ${email}`, 'AuthService');
       
       const user = await this.usersService.findByEmail(email);
@@ -48,22 +45,10 @@ export class AuthService {
       // eslint-disable-next-line @typescript-eslint/no-unused-vars
       const { passwordHash, ...result } = user;
       return result;
-    } catch (error: unknown) {
-      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-      const errorStack = error instanceof Error ? error.stack : undefined;
-      this.logger.error(`Error validating user credentials: ${errorMessage}`, errorStack, 'AuthService');
-      throw error;
-    } finally {
-      this.logger.logMethodExit('validateUser', Date.now() - startTime, 'AuthService');
-    }
   }
 
   async login(user: any, req?: Request) {
-    this.logger.logMethodEntry('login', 'AuthService');
-    const startTime = Date.now();
-    
-    try {
-      this.logger.debug(`User ${user.email} (ID: ${user.id}) initiating login`, 'AuthService');
+    this.logger.debug(`User ${user.email} (ID: ${user.id}) initiating login`, 'AuthService');
       
       // Calculate exact timestamps
       const now = Math.floor(Date.now() / 1000); // Current time in seconds
@@ -108,22 +93,10 @@ export class AuthService {
           nickname: user.nickname,
           imageUrl: user.imageUrl,
         },
-      };
-    } catch (error: unknown) {
-      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-      const errorStack = error instanceof Error ? error.stack : undefined;
-      this.logger.error(`Error during login: ${errorMessage}`, errorStack, 'AuthService');
-      throw error;
-    } finally {
-      this.logger.logMethodExit('login', Date.now() - startTime, 'AuthService');
-    }
+    };
   }
 
   async refreshTokens(userId: number, refreshToken: string, req?: Request) {
-    this.logger.logMethodEntry('refreshTokens', 'AuthService');
-    const startTime = Date.now();
-    
-    try {
       this.logger.debug(`Refreshing tokens for user ID: ${userId}`, 'AuthService');
       
       // Rotate the refresh token
@@ -170,23 +143,12 @@ export class AuthService {
           imageUrl: user.imageUrl,
         },
       };
-    } catch (error: unknown) {
-      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-      const errorStack = error instanceof Error ? error.stack : undefined;
-      this.logger.error(`Error refreshing tokens: ${errorMessage}`, errorStack, 'AuthService');
-      throw error;
-    } finally {
-      this.logger.logMethodExit('refreshTokens', Date.now() - startTime, 'AuthService');
-    }
   }
 
   async logout(user: User): Promise<boolean> {
-    this.logger.logMethodEntry('logout', 'AuthService');
-    const startTime = Date.now();
-    
     try {
       this.logger.debug(`Logging out user ID: ${user.id}`, 'AuthService');
-      
+        
       await this.refreshTokenService.revokeAllUserRefreshTokens(user.id);
       this.logger.debug(`All refresh tokens revoked for user ${user.id}`, 'AuthService');
       
@@ -197,20 +159,13 @@ export class AuthService {
       return true;
     } catch (error: unknown) {
       const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-      const errorStack = error instanceof Error ? error.stack : undefined;
-      this.logger.error(`Error logging out user ${user.id}: ${errorMessage}`, errorStack, 'AuthService');
+      this.logger.error(`Error logging out user ${user.id}: ${errorMessage}`, 'AuthService');
       return false;
-    } finally {
-      this.logger.logMethodExit('logout', Date.now() - startTime, 'AuthService');
     }
   }
 
   async validateToken(token: string): Promise<User | null> {
-    this.logger.logMethodEntry('validateToken', 'AuthService');
-    const startTime = Date.now();
     
-    try {
-      // 블랙리스트 확인
       if (this.tokenBlacklistService.isBlacklisted(token)) {
         this.logger.warn(`Token validation failed: Token is blacklisted`, 'AuthService');
         return null;
@@ -235,13 +190,5 @@ export class AuthService {
         this.logger.warn(`Token verification failed: ${errorMessage}`, 'AuthService');
         return null;
       }
-    } catch (error: unknown) {
-      const errorMessage = error instanceof Error ? error.message : 'Unknown error';
-      const errorStack = error instanceof Error ? error.stack : undefined;
-      this.logger.error(`Error validating token: ${errorMessage}`, errorStack, 'AuthService');
-      return null;
-    } finally {
-      this.logger.logMethodExit('validateToken', Date.now() - startTime, 'AuthService');
-    }
   }
 } 

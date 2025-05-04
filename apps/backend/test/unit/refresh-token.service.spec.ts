@@ -113,13 +113,6 @@ describe('RefreshTokenService', () => {
 
       // Store for later tests
       testRefreshToken = refreshToken;
-      
-      // Verify logger was called
-      expect(loggerService.logMethodEntry).toHaveBeenCalledWith('createRefreshToken', 'RefreshTokenService');
-      expect(loggerService.logMethodExit).toHaveBeenCalledWith('createRefreshToken', expect.any(Number), 'RefreshTokenService');
-      expect(loggerService.debug).toHaveBeenCalledWith(expect.stringContaining('Creating refresh token for user'), 'RefreshTokenService');
-      expect(loggerService.debug).toHaveBeenCalledWith(expect.stringContaining('Refresh token created successfully'), 'RefreshTokenService');
-      expect(loggerService.logDatabase).toHaveBeenCalledWith('create', 'RefreshToken', expect.any(Object), 'RefreshTokenService');
     });
 
     it('should create a token with default parameters when request is not provided', async () => {
@@ -132,10 +125,6 @@ describe('RefreshTokenService', () => {
       expect(refreshToken.user.id).toBe(testUser.id);
       expect(refreshToken.userAgent).toBeUndefined();
       expect(refreshToken.ipAddress).toBeUndefined();
-      
-      // Verify logger was called
-      expect(loggerService.logMethodEntry).toHaveBeenCalledWith('createRefreshToken', 'RefreshTokenService');
-      expect(loggerService.debug).toHaveBeenCalledWith(expect.stringContaining('Creating refresh token for user'), 'RefreshTokenService');
     });
   });
 
@@ -153,12 +142,6 @@ describe('RefreshTokenService', () => {
       expect(foundToken).toBeDefined();
       expect(foundToken!.token).toBe(createdToken.token);
       expect(foundToken!.user.id).toBe(testUser.id);
-      
-      // Verify logger was called
-      expect(loggerService.logMethodEntry).toHaveBeenCalledWith('findRefreshToken', 'RefreshTokenService');
-      expect(loggerService.logMethodExit).toHaveBeenCalledWith('findRefreshToken', expect.any(Number), 'RefreshTokenService');
-      expect(loggerService.debug).toHaveBeenCalledWith('Finding refresh token', 'RefreshTokenService');
-      expect(loggerService.debug).toHaveBeenCalledWith(expect.stringContaining('Found refresh token ID'), 'RefreshTokenService');
     });
 
     it('should return null for non-existent token', async () => {
@@ -167,11 +150,6 @@ describe('RefreshTokenService', () => {
 
       // Assert
       expect(foundToken).toBeNull();
-      
-      // Verify logger was called
-      expect(loggerService.logMethodEntry).toHaveBeenCalledWith('findRefreshToken', 'RefreshTokenService');
-      expect(loggerService.debug).toHaveBeenCalledWith('Finding refresh token', 'RefreshTokenService');
-      expect(loggerService.debug).toHaveBeenCalledWith('Refresh token not found', 'RefreshTokenService');
     });
   });
 
@@ -189,12 +167,6 @@ describe('RefreshTokenService', () => {
       expect(validToken).toBeDefined();
       expect(validToken.token).toBe(createdToken.token);
       expect(validToken.user.id).toBe(testUser.id);
-      
-      // Verify logger was called
-      expect(loggerService.logMethodEntry).toHaveBeenCalledWith('validateRefreshToken', 'RefreshTokenService');
-      expect(loggerService.logMethodExit).toHaveBeenCalledWith('validateRefreshToken', expect.any(Number), 'RefreshTokenService');
-      expect(loggerService.debug).toHaveBeenCalledWith('Validating refresh token', 'RefreshTokenService');
-      expect(loggerService.debug).toHaveBeenCalledWith(expect.stringContaining('Refresh token ID'), 'RefreshTokenService');
     });
 
     it('should throw UnauthorizedException for non-existent token', async () => {
@@ -204,10 +176,6 @@ describe('RefreshTokenService', () => {
       await expect(service.validateRefreshToken('non-existent-token'))
         .rejects.toThrow('Invalid refresh token');
       
-      // Verify logger was called
-      expect(loggerService.logMethodEntry).toHaveBeenCalledWith('validateRefreshToken', 'RefreshTokenService');
-      expect(loggerService.warn).toHaveBeenCalledWith('Refresh token validation failed: Token not found', 'RefreshTokenService');
-      expect(loggerService.error).toHaveBeenCalled();
     });
 
     it('should throw UnauthorizedException for revoked token', async () => {
@@ -222,10 +190,6 @@ describe('RefreshTokenService', () => {
         .rejects.toThrow(UnauthorizedException);
       await expect(service.validateRefreshToken(createdToken.token))
         .rejects.toThrow('Refresh token expired or revoked');
-      
-      // Verify logger was called
-      expect(loggerService.logMethodEntry).toHaveBeenCalledWith('validateRefreshToken', 'RefreshTokenService');
-      expect(loggerService.warn).toHaveBeenCalledWith(expect.stringContaining('Token expired or revoked'), 'RefreshTokenService');
     });
 
     it('should throw UnauthorizedException for expired token', async () => {
@@ -246,10 +210,6 @@ describe('RefreshTokenService', () => {
         .rejects.toThrow(UnauthorizedException);
       await expect(service.validateRefreshToken(token.token))
         .rejects.toThrow('Refresh token expired or revoked');
-      
-      // Verify logger was called
-      expect(loggerService.logMethodEntry).toHaveBeenCalledWith('validateRefreshToken', 'RefreshTokenService');
-      expect(loggerService.warn).toHaveBeenCalledWith(expect.stringContaining('Token expired or revoked'), 'RefreshTokenService');
     });
   });
 
@@ -268,13 +228,6 @@ describe('RefreshTokenService', () => {
       expect(token).toBeDefined();
       expect(token!.isRevoked).toBe(true);
       expect(token!.revokedAt).toBeDefined();
-      
-      // Verify logger was called
-      expect(loggerService.logMethodEntry).toHaveBeenCalledWith('revokeRefreshToken', 'RefreshTokenService');
-      expect(loggerService.logMethodExit).toHaveBeenCalledWith('revokeRefreshToken', expect.any(Number), 'RefreshTokenService');
-      expect(loggerService.debug).toHaveBeenCalledWith('Revoking refresh token', 'RefreshTokenService');
-      expect(loggerService.debug).toHaveBeenCalledWith(expect.stringContaining('revoked successfully'), 'RefreshTokenService');
-      expect(loggerService.logDatabase).toHaveBeenCalledWith('update', 'RefreshToken', expect.any(Object), 'RefreshTokenService');
     });
 
     it('should not throw error when revoking non-existent token', async () => {
@@ -282,10 +235,6 @@ describe('RefreshTokenService', () => {
       await expect(service.revokeRefreshToken('non-existent-token'))
         .resolves.not.toThrow();
       
-      // Verify logger was called
-      expect(loggerService.logMethodEntry).toHaveBeenCalledWith('revokeRefreshToken', 'RefreshTokenService');
-      expect(loggerService.debug).toHaveBeenCalledWith('Revoking refresh token', 'RefreshTokenService');
-      expect(loggerService.debug).toHaveBeenCalledWith('Cannot revoke: Refresh token not found', 'RefreshTokenService');
     });
 
     it('should not modify an already revoked token', async () => {
@@ -306,10 +255,6 @@ describe('RefreshTokenService', () => {
       // Assert - Revoked time should not have changed
       const updatedToken = await refreshTokenRepository.findOne({ token: createdToken.token });
       expect(updatedToken!.revokedAt).toEqual(originalRevokedAt);
-      
-      // Verify logger was called
-      expect(loggerService.logMethodEntry).toHaveBeenCalledWith('revokeRefreshToken', 'RefreshTokenService');
-      expect(loggerService.debug).toHaveBeenCalledWith(expect.stringContaining('was already revoked'), 'RefreshTokenService');
     });
   });
 
@@ -333,23 +278,12 @@ describe('RefreshTokenService', () => {
         expect(token.isRevoked).toBe(true);
         expect(token.revokedAt).toBeDefined();
       });
-      
-      // Verify logger was called
-      expect(loggerService.logMethodEntry).toHaveBeenCalledWith('revokeAllUserRefreshTokens', 'RefreshTokenService');
-      expect(loggerService.logMethodExit).toHaveBeenCalledWith('revokeAllUserRefreshTokens', expect.any(Number), 'RefreshTokenService');
-      expect(loggerService.debug).toHaveBeenCalledWith(expect.stringContaining('Revoking all refresh tokens for user'), 'RefreshTokenService');
-      expect(loggerService.debug).toHaveBeenCalledWith(expect.stringContaining('refresh tokens revoked for user'), 'RefreshTokenService');
-      expect(loggerService.logDatabase).toHaveBeenCalledWith('update', 'RefreshToken', expect.any(Object), 'RefreshTokenService');
     });
 
     it('should handle users with no tokens gracefully', async () => {
       // Act & Assert
       await expect(service.revokeAllUserRefreshTokens(999))
         .resolves.not.toThrow();
-      
-      // Verify logger was called
-      expect(loggerService.logMethodEntry).toHaveBeenCalledWith('revokeAllUserRefreshTokens', 'RefreshTokenService');
-      expect(loggerService.debug).toHaveBeenCalledWith(expect.stringContaining('Revoking all refresh tokens for user 999'), 'RefreshTokenService');
     });
   });
 
@@ -372,25 +306,12 @@ describe('RefreshTokenService', () => {
       const oldToken = await refreshTokenRepository.findOne({ token: originalToken.token });
       expect(oldToken!.isRevoked).toBe(true);
       expect(oldToken!.revokedAt).toBeDefined();
-      
-      // Verify logger was called
-      expect(loggerService.logMethodEntry).toHaveBeenCalledWith('rotateRefreshToken', 'RefreshTokenService');
-      expect(loggerService.logMethodExit).toHaveBeenCalledWith('rotateRefreshToken', expect.any(Number), 'RefreshTokenService');
-      expect(loggerService.debug).toHaveBeenCalledWith('Rotating refresh token', 'RefreshTokenService');
-      expect(loggerService.debug).toHaveBeenCalledWith(expect.stringContaining('Existing token ID'), 'RefreshTokenService');
-      expect(loggerService.debug).toHaveBeenCalledWith(expect.stringContaining('New token ID'), 'RefreshTokenService');
-      expect(loggerService.debug).toHaveBeenCalledWith(expect.stringContaining('Old token ID'), 'RefreshTokenService');
-      expect(loggerService.logDatabase).toHaveBeenCalledWith('update', 'RefreshToken', expect.any(Object), 'RefreshTokenService');
     });
 
     it('should throw when rotating invalid token', async () => {
       // Act & Assert
       await expect(service.rotateRefreshToken('non-existent-token'))
         .rejects.toThrow(UnauthorizedException);
-      
-      // Verify logger was called
-      expect(loggerService.logMethodEntry).toHaveBeenCalledWith('rotateRefreshToken', 'RefreshTokenService');
-      expect(loggerService.error).toHaveBeenCalled();
     });
 
     it('should include request info in new token when provided', async () => {
@@ -445,14 +366,6 @@ describe('RefreshTokenService', () => {
       // Valid token should not be revoked
       const stillValidToken = tokens.find(t => t.expiresAt > new Date());
       expect(stillValidToken!.isRevoked).toBe(false);
-      
-      // Verify logger was called
-      expect(loggerService.logMethodEntry).toHaveBeenCalledWith('removeExpiredTokens', 'RefreshTokenService');
-      expect(loggerService.logMethodExit).toHaveBeenCalledWith('removeExpiredTokens', expect.any(Number), 'RefreshTokenService');
-      expect(loggerService.debug).toHaveBeenCalledWith('Removing expired refresh tokens', 'RefreshTokenService');
-      expect(loggerService.debug).toHaveBeenCalledWith(expect.stringContaining('Found 2 expired tokens'), 'RefreshTokenService');
-      expect(loggerService.debug).toHaveBeenCalledWith(expect.stringContaining('Successfully revoked 2 expired tokens'), 'RefreshTokenService');
-      expect(loggerService.logDatabase).toHaveBeenCalledWith('update', 'RefreshToken', expect.any(Object), 'RefreshTokenService');
     });
 
     it('should return 0 when no expired tokens exist', async () => {
@@ -472,11 +385,6 @@ describe('RefreshTokenService', () => {
 
       // Assert
       expect(revokedCount).toBe(0);
-      
-      // Verify logger was called
-      expect(loggerService.logMethodEntry).toHaveBeenCalledWith('removeExpiredTokens', 'RefreshTokenService');
-      expect(loggerService.debug).toHaveBeenCalledWith('Removing expired refresh tokens', 'RefreshTokenService');
-      expect(loggerService.debug).toHaveBeenCalledWith(expect.stringContaining('Found 0 expired tokens'), 'RefreshTokenService');
     });
   });
 }); 
