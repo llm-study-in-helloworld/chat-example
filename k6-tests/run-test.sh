@@ -20,12 +20,6 @@ while [[ $# -gt 0 ]]; do
       TEST_TYPE="websocket"
       shift
       ;;
-    --simple)
-      TEST_SCRIPT="./simple-test.js"
-      TEST_TYPE="simple"
-      # For simple test, use shorter duration
-      shift
-      ;;
     --minimal)
       TEST_SCRIPT="./minimal-test.js"
       TEST_TYPE="minimal"
@@ -40,6 +34,11 @@ while [[ $# -gt 0 ]]; do
     --load)
       TEST_SCRIPT="./load-test.js"
       TEST_TYPE="load"
+      shift
+      ;;
+    --full)
+      TEST_SCRIPT="./full-workflow-test.js"
+      TEST_TYPE="full"
       shift
       ;;
     --script=*)
@@ -118,7 +117,7 @@ fi
 
 # Influxdb와 Grafana 먼저 시작
 echo -e "${YELLOW}🚀 InfluxDB 및 Grafana 컨테이너 시작...${NC}"
-$DOCKER_COMPOSE_CMD -f docker-compose-k6.yml up -d influxdb grafana
+$DOCKER_COMPOSE_CMD -f docker-compose-k6.yml up -d influxdb grafana  --remove-orphans
 echo "Grafana 대시보드가 시작되는 동안 5초 대기합니다..."
 sleep 5  # Grafana가 시작될 때까지 충분히 대기
 
