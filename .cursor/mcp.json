@@ -7,6 +7,10 @@
     "quick-chart-mcp": {
       "command": "npx",
       "args": ["quick-chart-mcp"]
+    },
+    "mermaid": {
+      "command": "npx",
+      "args": ["@peng-shawn/mermaid-mcp-server"]
     }
   }
 }
