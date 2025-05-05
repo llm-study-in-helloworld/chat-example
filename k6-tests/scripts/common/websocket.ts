@@ -15,7 +15,7 @@ export const wsConnectionErrors = new Trend('websocket_connection_errors');
  * Socket.io packets are formatted as: <packet type>[<packet data>]
  * For example: 0{"sid":"BExqLt0DlwJ02B87AAAB"}
  */
-function extractSocketIOJson(packet: string | ArrayBuffer | null): any {
+export function extractSocketIOJson(packet: string | ArrayBuffer | null): any {
   if (!packet || typeof packet !== 'string' || packet.length < 2) return null;
   
   // Find the first character that's not a digit (packet type)

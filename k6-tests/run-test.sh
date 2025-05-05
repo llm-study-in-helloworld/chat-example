@@ -20,6 +20,21 @@ while [[ $# -gt 0 ]]; do
       TEST_TYPE="websocket"
       shift
       ;;
+    --ws-stress)
+      TEST_SCRIPT="./websocket-stress-test.js"
+      TEST_TYPE="websocket-stress"
+      shift
+      ;;
+    --ws-flood)
+      TEST_SCRIPT="./websocket-message-flood-test.js"
+      TEST_TYPE="websocket-message-flood"
+      shift
+      ;;
+    --ws-reconnect)
+      TEST_SCRIPT="./websocket-reconnect-test.js"
+      TEST_TYPE="websocket-reconnect"
+      shift
+      ;;
     --minimal)
       TEST_SCRIPT="./minimal-test.js"
       TEST_TYPE="minimal"
@@ -63,12 +78,31 @@ while [[ $# -gt 0 ]]; do
       shift
       ;;
     --help)
-      echo "사용법: $0 [--websocket|--simple|--minimal|--realistic|--load] [--script=파일명.js] [--host=HOST] [--port=PORT] [--no-ts] [--cleanup-all]"
+      echo "사용법: $0 [옵션]"
+      echo ""
+      echo "기본 테스트 옵션:"
+      echo "  --minimal            최소한의 테스트 실행 (기본값)"
+      echo "  --websocket          기본 WebSocket 테스트 실행"
+      echo "  --realistic          현실적인 사용 패턴 테스트"
+      echo "  --load               부하 테스트 실행"
+      echo "  --full               전체 워크플로우 테스트 실행"
+      echo ""
+      echo "WebSocket 특화 테스트 옵션:"
+      echo "  --ws-stress          WebSocket 스트레스 테스트 (최대 200명 동시 사용자)"
+      echo "  --ws-flood           WebSocket 메시지 폭주 테스트 (메시지 처리량 테스트)"
+      echo "  --ws-reconnect       WebSocket 재연결 테스트 (연결 안정성 테스트)"
+      echo ""
+      echo "일반 옵션:"
+      echo "  --script=파일명.js    사용자 지정 테스트 스크립트 실행"
+      echo "  --host=HOST          API 호스트 지정 (기본값: nginx)"
+      echo "  --port=PORT          API 포트 지정 (기본값: 5002)"
+      echo "  --no-ts              TypeScript 빌드 단계 건너뛰기"
+      echo "  --cleanup-all        테스트 후 모든 컨테이너 정리"
       exit 1
       ;;
     *)
       echo "알 수 없는 옵션: $1"
-      echo "사용법: $0 [--websocket|--simple|--minimal|--realistic|--load] [--script=파일명.js] [--host=HOST] [--port=PORT] [--no-ts] [--cleanup-all]"
+      echo "사용법을 보려면 --help 옵션을 사용하세요."
       exit 1
       ;;
   esac

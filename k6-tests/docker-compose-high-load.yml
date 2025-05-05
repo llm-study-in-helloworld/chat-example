@@ -1,0 +1,94 @@
+version: '3'
+services:
+  k6:
+    image: grafana/k6:latest
+    ports:
+      - "6565:6565"
+    volumes:
+      - ./scripts:/scripts
+      - ./dist:/dist
+    environment:
+      - K6_OUT=influxdb
+      - K6_INFLUXDB_ADDR=http://influxdb:8086
+      - K6_INFLUXDB_DATABASE=k6
+      - TEST_SCRIPT=${TEST_SCRIPT:-websocket-message-flood-test.js}
+      - API_HOST=${API_HOST:-nginx}
+      - API_PORT=${API_PORT:-5002}
+      - K6_TLS_CERT_IGNORE=1
+      # Tuned environment variables for high load
+      - K6_BATCH_PER_HOST=50
+      - K6_NO_CONNECTION_REUSE=false
+      - K6_DISCARD_RESPONSE_BODIES=false
+      - K6_DNS_PREFETCH=true
+      - K6_NO_SETUP_TEARDOWN_CONNECTION_REUSE=true
+      - K6_NO_USAGE_REPORT=true
+      # System settings
+      - NODE_OPTIONS=${NODE_OPTIONS:---max-old-space-size=8192}
+    networks:
+      - k6-network
+      - chat-example_default
+    # Use host.docker.internal to access host machine from container
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    depends_on:
+      - influxdb
+    # Add resource limits
+    deploy:
+      resources:
+        limits:
+          cpus: '4'
+          memory: 12G
+        reservations:
+          cpus: '2'
+          memory: 4G
+    ulimits:
+      nofile:
+        soft: 250000
+        hard: 250000
+
+  influxdb:
+    image: influxdb:1.8
+    ports:
+      - "8086:8086"
+    environment:
+      - INFLUXDB_DB=k6
+    networks:
+      - k6-network
+    volumes:
+      - influxdb_data:/var/lib/influxdb
+    restart: unless-stopped
+    # Increased resources for InfluxDB
+    deploy:
+      resources:
+        limits:
+          cpus: '2'
+          memory: 4G
+
+  grafana:
+    image: grafana/grafana:latest
+    ports:
+      - "3001:3000"
+    environment:
+      - GF_AUTH_ANONYMOUS_ENABLED=true
+      - GF_AUTH_ANONYMOUS_ORG_ROLE=Admin
+      - GF_DASHBOARDS_DEFAULT_HOME_DASHBOARD_PATH=/var/lib/grafana/dashboards/dashboard.json
+    volumes:
+      - ./grafana/grafana-dashboard.json:/var/lib/grafana/dashboards/dashboard.json
+      - ./grafana/grafana-datasource.yml:/etc/grafana/provisioning/datasources/datasource.yml
+      - ./grafana/grafana-dashboard-provider.yml:/etc/grafana/provisioning/dashboards/dashboard_provider.yml
+      - grafana_data:/var/lib/grafana
+    networks:
+      - k6-network
+    depends_on:
+      - influxdb
+    restart: unless-stopped
+
+networks:
+  k6-network:
+    driver: bridge
+  chat-example_default:
+    external: true
+
+volumes:
+  influxdb_data:
+  grafana_data: 
