@@ -1,0 +1,21 @@
+{
+  "loadTest": {
+    "vus": [10, 50, 100, 200, 300, 400, 500, 600, 700, 800, 900, 1000],
+    "responseTime": [150, 300, 450, 800, 1200, 1800, 2400, 3000, 3500, 3800, 4000, 4200],
+    "failureRate": [0, 0, 1, 2, 3, 5, 7, 8, 8.5, 9, 9.2, 9.3]
+  },
+  "websocketMessageFlood": {
+    "vus": [10, 50, 100, 150, 200, 250, 300, 350, 400, 450, 500],
+    "messageDelivery": [100, 98, 95, 90, 86, 80, 75, 70, 65, 60, 50],
+    "connectionStability": [100, 100, 98, 95, 90, 85, 80, 75, 70, 65, 60]
+  },
+  "websocketReconnect": {
+    "vus": [1, 2, 3, 4, 5, 6, 7, 8, 9, 10],
+    "reconnectSuccess": [100, 100, 100, 98, 96, 94, 90, 86, 82, 76],
+    "reconnectTime": [120, 150, 200, 350, 500, 800, 1200, 1800, 2500, 3200]
+  },
+  "performanceIssues": {
+    "category": ["Memory Leaks", "Connection Handling", "Message Queuing", "CPU Bottlenecks", "DB Access"],
+    "severity": [8, 9, 6, 7, 4]
+  }
+}
