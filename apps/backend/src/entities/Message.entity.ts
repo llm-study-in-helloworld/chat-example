@@ -1,4 +1,4 @@
-import { BaseMessage } from '@chat-example/types';
+import { BaseMessage } from "@chat-example/types";
 import {
   Collection,
   Entity,
@@ -6,27 +6,27 @@ import {
   ManyToOne,
   OneToMany,
   Property,
-  Reference
-} from '@mikro-orm/core';
-import { CommonEntity } from './CommonEntity';
-import { Mention } from './Mention.entity';
-import { MessageReaction } from './MessageReaction.entity';
-import { Room } from './Room.entity';
-import { User } from './User.entity';
+  Reference,
+} from "@mikro-orm/core";
+import { CommonEntity } from "./CommonEntity";
+import { Mention } from "./Mention.entity";
+import { MessageReaction } from "./MessageReaction.entity";
+import { Room } from "./Room.entity";
+import { User } from "./User.entity";
 
 /**
  * 채팅 메시지 정보를 저장하는 엔티티
  */
 @Entity()
-@Index({ properties: ['room', 'createdAt'] })
-@Index({ properties: ['parent'] })
-@Index({ properties: ['sender'] })
+@Index({ properties: ["room", "createdAt"] })
+@Index({ properties: ["parent"] })
+@Index({ properties: ["sender"] })
 export class Message extends CommonEntity implements BaseMessage {
   @ManyToOne({
     entity: () => Room,
     persist: true,
     mapToPk: true,
-    fieldName: 'room_id'
+    fieldName: "room_id",
   })
   room!: number;
 
@@ -38,7 +38,7 @@ export class Message extends CommonEntity implements BaseMessage {
     entity: () => User,
     persist: true,
     eager: true,
-    fieldName: 'sender_id',
+    fieldName: "sender_id",
   })
   sender!: User;
 
@@ -51,7 +51,7 @@ export class Message extends CommonEntity implements BaseMessage {
     nullable: true,
     persist: true,
     mapToPk: true,
-    fieldName: 'parent_id'
+    fieldName: "parent_id",
   })
   parent?: number | null;
 
@@ -67,7 +67,7 @@ export class Message extends CommonEntity implements BaseMessage {
 
   @OneToMany({
     entity: () => MessageReaction,
-    mappedBy: 'messageId',
+    mappedBy: "messageId",
     eager: true,
     persist: false,
   })
@@ -75,7 +75,7 @@ export class Message extends CommonEntity implements BaseMessage {
 
   @OneToMany({
     entity: () => Mention,
-    mappedBy: 'messageId',
+    mappedBy: "messageId",
     eager: true,
     persist: false,
   })
@@ -85,14 +85,16 @@ export class Message extends CommonEntity implements BaseMessage {
    * 메시지의 모든 반응 참조값 배열을 반환
    */
   get allReactions(): Reference<MessageReaction>[] {
-    return this.reactions.getItems().map(reaction => Reference.create(reaction));
+    return this.reactions
+      .getItems()
+      .map((reaction) => Reference.create(reaction));
   }
 
   /**
    * 메시지의 모든 멘션 참조값 배열을 반환
    */
   get allMentions(): Reference<Mention>[] {
-    return this.mentions.getItems().map(mention => Reference.create(mention));
+    return this.mentions.getItems().map((mention) => Reference.create(mention));
   }
 
   /**
@@ -107,8 +109,8 @@ export class Message extends CommonEntity implements BaseMessage {
    */
   get displayContent(): string {
     if (this.isDeleted) {
-      return '삭제된 메시지';
+      return "삭제된 메시지";
     }
     return this.content;
   }
-} 
+}

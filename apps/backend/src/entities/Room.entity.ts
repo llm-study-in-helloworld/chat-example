@@ -1,15 +1,15 @@
-import { BaseRoom } from '@chat-example/types';
+import { BaseRoom } from "@chat-example/types";
 import {
   Collection,
   Entity,
   ManyToOne,
   OneToMany,
-  Property
-} from '@mikro-orm/core';
-import { CommonEntity } from './CommonEntity';
-import { Message } from './Message.entity';
-import { RoomUser } from './RoomUser.entity';
-import { User } from './User.entity';
+  Property,
+} from "@mikro-orm/core";
+import { CommonEntity } from "./CommonEntity";
+import { Message } from "./Message.entity";
+import { RoomUser } from "./RoomUser.entity";
+import { User } from "./User.entity";
 
 /**
  * 채팅방 정보를 저장하는 엔티티
@@ -37,7 +37,7 @@ export class Room extends CommonEntity implements BaseRoom {
 
   @ManyToOne({
     entity: () => User,
-    fieldName: 'owner_id',
+    fieldName: "owner_id",
     mapToPk: true,
     persist: true,
   })
@@ -45,7 +45,7 @@ export class Room extends CommonEntity implements BaseRoom {
 
   @OneToMany({
     entity: () => RoomUser,
-    mappedBy: 'room',
+    mappedBy: "room",
     eager: false,
     persist: false,
   })
@@ -53,9 +53,9 @@ export class Room extends CommonEntity implements BaseRoom {
 
   @OneToMany({
     entity: () => Message,
-    mappedBy: 'room',
+    mappedBy: "room",
     eager: false,
     persist: false,
   })
   messages = new Collection<Message>(this);
-} 
+}

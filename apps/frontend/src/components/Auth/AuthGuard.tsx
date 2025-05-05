@@ -1,7 +1,7 @@
-import React, { useEffect, useState } from 'react';
-import { Navigate, Outlet, useLocation } from 'react-router-dom';
-import { authService } from '../../api/authService';
-import { useAuthStore } from '../../store/authStore';
+import React, { useEffect, useState } from "react";
+import { Navigate, Outlet, useLocation } from "react-router-dom";
+import { authService } from "../../api/authService";
+import { useAuthStore } from "../../store/authStore";
 
 const AuthGuard: React.FC = () => {
   const { isAuthenticated, token, user, updateUser } = useAuthStore();
@@ -19,13 +19,13 @@ const AuthGuard: React.FC = () => {
       try {
         // Verify token by getting the user profile
         const currentUser = await authService.getCurrentUser();
-        
+
         // If we have a token but different user details, update them
         if (user?.id !== currentUser.id || user?.email !== currentUser.email) {
           // Update user profile directly
           updateUser(currentUser);
         }
-        
+
         setIsValid(true);
       } catch (error) {
         // If token is invalid, logout
@@ -55,4 +55,4 @@ const AuthGuard: React.FC = () => {
   return <Outlet />;
 };
 
-export default AuthGuard; 
+export default AuthGuard;

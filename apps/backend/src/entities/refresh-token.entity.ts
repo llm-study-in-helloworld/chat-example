@@ -1,17 +1,17 @@
-import { Entity, Index, ManyToOne, Property } from '@mikro-orm/core';
-import { v4 as uuidv4 } from 'uuid';
-import { CommonEntity } from './CommonEntity';
-import { User } from './User.entity';
+import { Entity, Index, ManyToOne, Property } from "@mikro-orm/core";
+import { v4 as uuidv4 } from "uuid";
+import { CommonEntity } from "./CommonEntity";
+import { User } from "./User.entity";
 
 @Entity()
 export class RefreshToken extends CommonEntity {
-  @Property({ type: 'uuid' })
+  @Property({ type: "uuid" })
   @Index()
   token: string = uuidv4();
 
   @ManyToOne(() => User, {
     persist: true,
-    fieldName: 'user_id',
+    fieldName: "user_id",
     eager: true,
   })
   user: User;
@@ -28,13 +28,18 @@ export class RefreshToken extends CommonEntity {
   @Property({ default: false })
   isRevoked: boolean = false;
 
-  @Property({ type: 'text', nullable: true })
+  @Property({ type: "text", nullable: true })
   userAgent?: string;
 
-  @Property({ type: 'text', nullable: true })
+  @Property({ type: "text", nullable: true })
   ipAddress?: string;
 
-  constructor(user: User, expiresInDays: number = 30, userAgent?: string, ipAddress?: string) {
+  constructor(
+    user: User,
+    expiresInDays: number = 30,
+    userAgent?: string,
+    ipAddress?: string,
+  ) {
     super();
     this.user = user;
     this.expiresAt = new Date();
@@ -55,4 +60,4 @@ export class RefreshToken extends CommonEntity {
   isValid(): boolean {
     return !this.isRevoked && !this.isExpired();
   }
-} 
+}

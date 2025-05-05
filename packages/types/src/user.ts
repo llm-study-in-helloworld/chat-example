@@ -62,4 +62,4 @@ export interface ChangePasswordRequest {
 export interface AuthResponse {
   user: User;
   token: string;
-} 
+}

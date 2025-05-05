@@ -1,4 +1,4 @@
-import { MessageUser } from './user';
+import { MessageUser } from "./user";
 
 /**
  * Base reaction interface for common properties
@@ -37,4 +37,4 @@ export interface CreateReactionRequest {
  */
 export interface UpdateReactionRequest {
   emoji: string;
-} 
+}

@@ -16,10 +16,10 @@ export const createMockLoggerService = () => {
   };
 
   // Add methods to silence Winston logger
-  Object.defineProperty(mockMethods, 'child', {
+  Object.defineProperty(mockMethods, "child", {
     value: jest.fn().mockReturnThis(),
-    configurable: true
+    configurable: true,
   });
 
   return mockMethods;
-}; 
+};

@@ -1,4 +1,4 @@
-import { IsNotEmpty, IsString, MinLength } from 'class-validator';
+import { IsNotEmpty, IsString, MinLength } from "class-validator";
 
 /**
  * DTO for password changes
@@ -13,4 +13,4 @@ export class ChangePasswordDto {
   @IsNotEmpty()
   @MinLength(8)
   newPassword!: string;
-} 
+}

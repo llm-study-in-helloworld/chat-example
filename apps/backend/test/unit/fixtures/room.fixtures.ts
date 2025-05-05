@@ -1,7 +1,7 @@
-import { RoomRole } from '@chat-example/types';
-import { EntityManager } from '@mikro-orm/core';
-import { Room, RoomUser, User } from '../../../src/entities';
-import { TestUserData } from './user.fixtures';
+import { RoomRole } from "@chat-example/types";
+import { EntityManager } from "@mikro-orm/core";
+import { Room, RoomUser, User } from "../../../src/entities";
+import { TestUserData } from "./user.fixtures";
 
 export interface CreateRoomOptions {
   name?: string;
@@ -34,16 +34,20 @@ export async function createRoomFixture(
   options: CreateRoomOptions = {},
 ): Promise<TestRoomData> {
   // Generate a unique identifier for test rooms
-  const uniqueId = `${Date.now()}-${Math.random().toString(36).substring(2, 7)}`;
-  
+  const uniqueId = `${Date.now()}-${Math.random()
+    .toString(36)
+    .substring(2, 7)}`;
+
   // Default values with overrides from options
   const name = options.name || `Test Room ${uniqueId}`;
-  const description = options.description || `Test room description ${uniqueId}`;
-  const imageUrl = options.imageUrl || `https://example.com/rooms/${uniqueId}.jpg`;
+  const description =
+    options.description || `Test room description ${uniqueId}`;
+  const imageUrl =
+    options.imageUrl || `https://example.com/rooms/${uniqueId}.jpg`;
   const isPrivate = options.isPrivate !== undefined ? options.isPrivate : false;
   const isDirect = options.isDirect !== undefined ? options.isDirect : false;
   const isActive = options.isActive !== undefined ? options.isActive : true;
-  
+
   // Create the room entity
   const room = new Room();
   room.name = name;
@@ -53,9 +57,9 @@ export async function createRoomFixture(
   room.isDirect = isDirect;
   room.isActive = isActive;
   room.ownerId = owner.id;
-  
+
   await em.persistAndFlush(room);
-  
+
   // Add owner as a member
   const ownerRoomUser = new RoomUser();
   ownerRoomUser.room = room;
@@ -63,12 +67,12 @@ export async function createRoomFixture(
   ownerRoomUser.joinedAt = new Date();
   ownerRoomUser.lastSeenAt = new Date();
   ownerRoomUser.role = RoomRole.OWNER;
-  
+
   await em.persist(ownerRoomUser);
-  
+
   // Add additional members
   const memberIds: number[] = [owner.id];
-  
+
   for (const member of members) {
     const memberRoomUser = new RoomUser();
     memberRoomUser.room = room;
@@ -76,13 +80,13 @@ export async function createRoomFixture(
     memberRoomUser.joinedAt = new Date();
     memberRoomUser.lastSeenAt = new Date();
     memberRoomUser.role = RoomRole.MEMBER;
-    
+
     await em.persist(memberRoomUser);
     memberIds.push(member.id);
   }
-  
+
   await em.flush();
-  
+
   // Return room data
   return {
     id: room.id,
@@ -93,7 +97,7 @@ export async function createRoomFixture(
     isDirect,
     isActive,
     ownerId: owner.id,
-    memberIds
+    memberIds,
   };
 }
 
@@ -110,9 +114,9 @@ export async function createDirectRoomFixture(
   const dmOptions: CreateRoomOptions = {
     ...options,
     isDirect: true,
-    name: options.name || `DM ${user1.nickname} & ${user2.nickname}`
+    name: options.name || `DM ${user1.nickname} & ${user2.nickname}`,
   };
-  
+
   return createRoomFixture(em, user1, [user2], dmOptions);
 }
 
@@ -127,12 +131,12 @@ export async function createRoomsFixture(
   optionsArray: CreateRoomOptions[] = [],
 ): Promise<TestRoomData[]> {
   const rooms: TestRoomData[] = [];
-  
+
   for (let i = 0; i < count; i++) {
     // Use provided options if available, otherwise use empty object
     const options = optionsArray[i] || {};
     rooms.push(await createRoomFixture(em, owner, members, options));
   }
-  
+
   return rooms;
-} 
+}

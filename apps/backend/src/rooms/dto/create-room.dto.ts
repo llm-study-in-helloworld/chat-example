@@ -1,6 +1,14 @@
-import { CreateRoomRequest } from '@chat-example/types';
-import { OmitType } from '@nestjs/swagger';
-import { ArrayMinSize, IsArray, IsBoolean, IsNotEmpty, IsNumber, IsOptional, IsString } from 'class-validator';
+import { CreateRoomRequest } from "@chat-example/types";
+import { OmitType } from "@nestjs/swagger";
+import {
+  ArrayMinSize,
+  IsArray,
+  IsBoolean,
+  IsNotEmpty,
+  IsNumber,
+  IsOptional,
+  IsString,
+} from "class-validator";
 
 /**
  * DTO for creating a new chat room request
@@ -40,9 +48,9 @@ export class CreateRoomDto implements CreateRoomRequest {
   @IsNumber()
   @IsNotEmpty()
   ownerId!: number;
-} 
+}
 
-export class CreateRoomRequestDto extends OmitType(CreateRoomDto, ['ownerId']) {
+export class CreateRoomRequestDto extends OmitType(CreateRoomDto, ["ownerId"]) {
   // Test compatibility: make sure userIds exists even if it's empty
   @IsArray()
   @IsNumber({}, { each: true })
@@ -53,7 +61,7 @@ export class CreateRoomRequestDto extends OmitType(CreateRoomDto, ['ownerId']) {
   isActive: boolean = true;
 
   @IsString()
-  name: string = '';
+  name: string = "";
 
   @IsBoolean()
   isPrivate: boolean = false;
@@ -64,8 +72,8 @@ export class CreateRoomRequestDto extends OmitType(CreateRoomDto, ['ownerId']) {
   // Custom validation method
   validate() {
     // For group chats (non-direct), name should be provided
-    if (!this.isDirect && (!this.name || this.name.trim() === '')) {
-      throw new Error('Name is required for group chats');
+    if (!this.isDirect && (!this.name || this.name.trim() === "")) {
+      throw new Error("Name is required for group chats");
     }
     return true;
   }

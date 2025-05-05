@@ -1,23 +1,23 @@
-import { BaseUser } from '@chat-example/types';
+import { BaseUser } from "@chat-example/types";
 import {
-    Collection,
-    Entity,
-    Index,
-    OneToMany,
-    Property,
-    Reference
-} from '@mikro-orm/core';
-import * as bcrypt from 'bcrypt';
-import { CommonEntity } from './CommonEntity';
-import { Message } from './Message.entity';
-import { RoomUser } from './RoomUser.entity';
+  Collection,
+  Entity,
+  Index,
+  OneToMany,
+  Property,
+  Reference,
+} from "@mikro-orm/core";
+import * as bcrypt from "bcrypt";
+import { CommonEntity } from "./CommonEntity";
+import { Message } from "./Message.entity";
+import { RoomUser } from "./RoomUser.entity";
 
 /**
  * 채팅 애플리케이션의 사용자 엔티티
  * 사용자 인증 정보 및 기본 프로필 정보를 저장
  */
 @Entity()
-@Index({ properties: ['email'] })
+@Index({ properties: ["email"] })
 export class User extends CommonEntity implements BaseUser {
   @Property({ unique: true })
   email!: string;
@@ -33,7 +33,7 @@ export class User extends CommonEntity implements BaseUser {
 
   @OneToMany({
     entity: () => RoomUser,
-    mappedBy: 'user',
+    mappedBy: "user",
     eager: false,
     persist: false,
   })
@@ -41,7 +41,7 @@ export class User extends CommonEntity implements BaseUser {
 
   @OneToMany({
     entity: () => Message,
-    mappedBy: 'sender',
+    mappedBy: "sender",
     eager: false,
     persist: false,
   })
@@ -51,14 +51,16 @@ export class User extends CommonEntity implements BaseUser {
    * 사용자가 참여한 모든 채팅방의 참조값 배열을 반환
    */
   get rooms(): Reference<RoomUser>[] {
-    return this.roomUsers.getItems().map(roomUser => Reference.create(roomUser));
+    return this.roomUsers
+      .getItems()
+      .map((roomUser) => Reference.create(roomUser));
   }
 
   /**
    * 사용자가 작성한 모든 메시지의 참조값 배열을 반환
    */
   get sentMessages(): Reference<Message>[] {
-    return this.messages.getItems().map(message => Reference.create(message));
+    return this.messages.getItems().map((message) => Reference.create(message));
   }
 
   /**
@@ -68,7 +70,7 @@ export class User extends CommonEntity implements BaseUser {
     return {
       id: this.id,
       nickname: this.nickname,
-      imageUrl: this.imageUrl
+      imageUrl: this.imageUrl,
     };
   }
 
@@ -78,4 +80,4 @@ export class User extends CommonEntity implements BaseUser {
   async verifyPassword(password: string): Promise<boolean> {
     return await bcrypt.compare(password, this.passwordHash);
   }
-} 
+}

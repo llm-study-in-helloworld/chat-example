@@ -1,7 +1,7 @@
-import { EntityManager } from '@mikro-orm/core';
-import { Message, User } from '../../../src/entities';
-import { TestRoomData } from './room.fixtures';
-import { TestUserData } from './user.fixtures';
+import { EntityManager } from "@mikro-orm/core";
+import { Message, User } from "../../../src/entities";
+import { TestRoomData } from "./room.fixtures";
+import { TestUserData } from "./user.fixtures";
 
 export interface CreateMessageOptions {
   content?: string;
@@ -31,29 +31,31 @@ export async function createMessageFixture(
   options: CreateMessageOptions = {},
 ): Promise<TestMessageData> {
   // Generate a unique identifier for test messages
-  const uniqueId = `${Date.now()}-${Math.random().toString(36).substring(2, 7)}`;
-  
+  const uniqueId = `${Date.now()}-${Math.random()
+    .toString(36)
+    .substring(2, 7)}`;
+
   // Default values with overrides from options
   const content = options.content || `Test message ${uniqueId}`;
   const parentId = options.parentId;
   const deletedAt = options.deletedAt;
-  
+
   // Create the message entity
   const message = new Message();
   message.content = content;
   message.room = room.id;
   message.sender = await em.findOneOrFail(User, { id: sender.id });
-  
+
   if (parentId) {
     message.parent = parentId;
   }
-  
+
   if (deletedAt) {
     message.deletedAt = deletedAt;
   }
-  
+
   await em.persistAndFlush(message);
-  
+
   // Return message data
   return {
     id: message.id,
@@ -64,7 +66,7 @@ export async function createMessageFixture(
     createdAt: message.createdAt,
     updatedAt: message.updatedAt,
     deletedAt: message.deletedAt,
-    isDeleted: !!message.deletedAt
+    isDeleted: !!message.deletedAt,
   };
 }
 
@@ -82,9 +84,9 @@ export async function createReplyMessageFixture(
   const replyOptions: CreateMessageOptions = {
     ...options,
     content: options.content || `Reply to message ${parentMessage.id}`,
-    parentId: parentMessage.id
+    parentId: parentMessage.id,
   };
-  
+
   return createMessageFixture(em, room, sender, replyOptions);
 }
 
@@ -99,13 +101,13 @@ export async function createMessagesFixture(
   optionsArray: CreateMessageOptions[] = [],
 ): Promise<TestMessageData[]> {
   const messages: TestMessageData[] = [];
-  
+
   for (let i = 0; i < count; i++) {
     // Use provided options if available, otherwise use empty object
     const options = optionsArray[i] || {};
     messages.push(await createMessageFixture(em, room, sender, options));
   }
-  
+
   return messages;
 }
 
@@ -125,23 +127,34 @@ export async function createConversationFixture(
   replies: TestMessageData[];
 }> {
   // Create parent message
-  const parentMessage = await createMessageFixture(em, room, parentSender, parentOptions);
-  
+  const parentMessage = await createMessageFixture(
+    em,
+    room,
+    parentSender,
+    parentOptions,
+  );
+
   // Create replies
   const replies: TestMessageData[] = [];
-  
+
   for (let i = 0; i < replyCount; i++) {
     const replierIndex = i % repliers.length;
     const replier = repliers[replierIndex];
     const replyOptions = replyOptionsArray[i] || {};
-    
+
     replies.push(
-      await createReplyMessageFixture(em, room, replier, parentMessage, replyOptions)
+      await createReplyMessageFixture(
+        em,
+        room,
+        replier,
+        parentMessage,
+        replyOptions,
+      ),
     );
   }
-  
+
   return {
     parentMessage,
-    replies
+    replies,
   };
-} 
+}

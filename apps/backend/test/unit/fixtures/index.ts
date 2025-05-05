@@ -3,16 +3,16 @@
  */
 
 // User fixtures
-export * from './user.fixtures';
+export * from "./user.fixtures";
 
 // Room fixtures
-export * from './room.fixtures';
+export * from "./room.fixtures";
 
 // Message fixtures
-export * from './message.fixtures';
+export * from "./message.fixtures";
 
 // Reaction fixtures
-export * from './reaction.fixtures';
+export * from "./reaction.fixtures";
 
 // Mention fixtures
-export * from './mention.fixtures';
+export * from "./mention.fixtures";

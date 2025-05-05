@@ -1,5 +1,5 @@
-import { IsNotEmpty, IsOptional, IsString } from 'class-validator';
-import { User } from '../../entities/User.entity';
+import { IsNotEmpty, IsOptional, IsString } from "class-validator";
+import { User } from "../../entities/User.entity";
 
 /**
  * DTO for updating user profile
@@ -16,7 +16,7 @@ export class UpdateUserDto {
   @IsString()
   @IsNotEmpty()
   currentPassword!: string;
-  
+
   /**
    * Apply profile updates to a User entity (excluding password)
    */
@@ -27,4 +27,4 @@ export class UpdateUserDto {
     }
     return user;
   }
-} 
+}

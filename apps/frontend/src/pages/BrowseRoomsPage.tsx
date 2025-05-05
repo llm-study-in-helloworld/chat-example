@@ -1,24 +1,24 @@
-import { useQuery } from '@tanstack/react-query';
-import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { chatService } from '../api/chatService';
-import Avatar from '../components/Common/Avatar';
+import { useQuery } from "@tanstack/react-query";
+import { useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { chatService } from "../api/chatService";
+import Avatar from "../components/Common/Avatar";
 
 const BrowseRoomsPage = () => {
   const navigate = useNavigate();
-  const [searchText, setSearchText] = useState('');
+  const [searchText, setSearchText] = useState("");
   const [page, setPage] = useState(1);
   const limit = 10;
 
   // Fetch public rooms
   const { data, isLoading, error, refetch } = useQuery({
-    queryKey: ['publicRooms', page, limit, searchText],
+    queryKey: ["publicRooms", page, limit, searchText],
     queryFn: async () => {
       // Assume the API supports pagination and search params
       return await chatService.getPublicRooms({
         page,
         limit,
-        search: searchText
+        search: searchText,
       });
     },
   });
@@ -29,7 +29,7 @@ const BrowseRoomsPage = () => {
       await chatService.joinRoom(roomId);
       navigate(`/chat/${roomId}`);
     } catch (error) {
-      console.error('Failed to join room:', error);
+      console.error("Failed to join room:", error);
     }
   };
 
@@ -39,7 +39,7 @@ const BrowseRoomsPage = () => {
   };
 
   const handleCreateRoom = () => {
-    navigate('/chat/create');
+    navigate("/chat/create");
   };
 
   return (
@@ -104,7 +104,10 @@ const BrowseRoomsPage = () => {
       {!isLoading && data?.items.length > 0 && (
         <div className="grid gap-4 sm:grid-cols-1 md:grid-cols-2 lg:grid-cols-3">
           {data.items.map((room) => (
-            <div key={room.id} className="overflow-hidden rounded-lg border border-gray-200 bg-white shadow-sm">
+            <div
+              key={room.id}
+              className="overflow-hidden rounded-lg border border-gray-200 bg-white shadow-sm"
+            >
               <div className="p-4">
                 <div className="flex items-center">
                   <div className="mr-3">
@@ -113,7 +116,9 @@ const BrowseRoomsPage = () => {
                   <div className="flex-1">
                     <h3 className="font-semibold text-gray-900">{room.name}</h3>
                     {room.description && (
-                      <p className="mt-1 line-clamp-2 text-sm text-gray-500">{room.description}</p>
+                      <p className="mt-1 line-clamp-2 text-sm text-gray-500">
+                        {room.description}
+                      </p>
                     )}
                   </div>
                 </div>
@@ -162,4 +167,4 @@ const BrowseRoomsPage = () => {
   );
 };
 
-export default BrowseRoomsPage; 
+export default BrowseRoomsPage;

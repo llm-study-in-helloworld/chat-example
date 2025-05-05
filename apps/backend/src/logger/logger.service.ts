@@ -1,11 +1,15 @@
-import { Inject, Injectable, LoggerService as NestLoggerService } from '@nestjs/common';
-import { WINSTON_MODULE_PROVIDER } from 'nest-winston';
-import { Logger } from 'winston';
+import {
+  Inject,
+  Injectable,
+  LoggerService as NestLoggerService,
+} from "@nestjs/common";
+import { WINSTON_MODULE_PROVIDER } from "nest-winston";
+import { Logger } from "winston";
 
 @Injectable()
 export class LoggerService implements NestLoggerService {
   constructor(
-    @Inject(WINSTON_MODULE_PROVIDER) private readonly logger: Logger
+    @Inject(WINSTON_MODULE_PROVIDER) private readonly logger: Logger,
   ) {}
 
   log(message: string, context?: string): void {
@@ -57,10 +61,15 @@ export class LoggerService implements NestLoggerService {
    * @param details Additional details
    * @param context The class or module context
    */
-  logDatabase(operation: string, entity: string, details?: any, context?: string): void {
+  logDatabase(
+    operation: string,
+    entity: string,
+    details?: any,
+    context?: string,
+  ): void {
     this.debug(`DB ${operation} - ${entity}`, context);
     if (details) {
       this.debug(`Details: ${JSON.stringify(details)}`, context);
     }
   }
-} 
+}

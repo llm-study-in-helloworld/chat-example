@@ -1,15 +1,15 @@
-import { UpdateUserRequest, User } from '@chat-example/types';
-import { useState } from 'react';
+import { UpdateUserRequest, User } from "@chat-example/types";
+import { useState } from "react";
 
 const ProfilePage = () => {
   // Mock user data
   const [user, setUser] = useState<User>({
     id: 1,
-    email: 'john.doe@example.com',
-    nickname: 'JohnDoe',
+    email: "john.doe@example.com",
+    nickname: "JohnDoe",
     imageUrl: null,
     createdAt: new Date().toISOString(),
-    updatedAt: new Date().toISOString()
+    updatedAt: new Date().toISOString(),
   });
 
   const [isEditing, setIsEditing] = useState(false);
@@ -19,30 +19,32 @@ const ProfilePage = () => {
   });
   const [saving, setSaving] = useState(false);
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+  const handleChange = (
+    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>,
+  ) => {
     const { name, value } = e.target;
-    setFormData(prev => ({ ...prev, [name]: value }));
+    setFormData((prev) => ({ ...prev, [name]: value }));
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setSaving(true);
-    
+
     try {
       // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 1000));
-      
+      await new Promise((resolve) => setTimeout(resolve, 1000));
+
       // Update user data
-      setUser(prev => ({
+      setUser((prev) => ({
         ...prev,
         nickname: formData.nickname || prev.nickname,
         email: formData.email || prev.email,
-        updatedAt: new Date().toISOString()
+        updatedAt: new Date().toISOString(),
       }));
-      
+
       setIsEditing(false);
     } catch (error) {
-      console.error('Error updating profile:', error);
+      console.error("Error updating profile:", error);
     } finally {
       setSaving(false);
     }
@@ -62,16 +64,16 @@ const ProfilePage = () => {
         <h1 className="text-2xl font-bold">Profile</h1>
         <p className="text-gray-600">Manage your account information</p>
       </div>
-      
+
       <div className="overflow-hidden rounded-lg bg-white shadow">
         <div className="flex items-center justify-between border-b border-gray-200 px-6 py-4">
           <div className="flex items-center space-x-4">
             <div className="flex h-12 w-12 items-center justify-center rounded-full bg-primary text-center text-2xl text-white">
               {user.imageUrl ? (
-                <img 
-                  src={user.imageUrl} 
-                  alt={user.nickname} 
-                  className="h-full w-full rounded-full object-cover" 
+                <img
+                  src={user.imageUrl}
+                  alt={user.nickname}
+                  className="h-full w-full rounded-full object-cover"
                 />
               ) : (
                 <span>{user.nickname.charAt(0).toUpperCase()}</span>
@@ -82,9 +84,9 @@ const ProfilePage = () => {
               <p className="text-sm text-gray-500">{user.email}</p>
             </div>
           </div>
-          
+
           {!isEditing && (
-            <button 
+            <button
               onClick={() => setIsEditing(true)}
               className="rounded-md bg-primary px-4 py-2 text-sm text-white hover:bg-primary-dark"
             >
@@ -92,12 +94,15 @@ const ProfilePage = () => {
             </button>
           )}
         </div>
-        
+
         <div className="p-6">
           {isEditing ? (
             <form onSubmit={handleSubmit} className="space-y-4">
               <div>
-                <label htmlFor="nickname" className="block text-sm font-medium text-gray-700">
+                <label
+                  htmlFor="nickname"
+                  className="block text-sm font-medium text-gray-700"
+                >
                   Nickname
                 </label>
                 <input
@@ -110,9 +115,12 @@ const ProfilePage = () => {
                   className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 shadow-sm focus:border-primary focus:outline-none focus:ring-primary"
                 />
               </div>
-              
+
               <div>
-                <label htmlFor="email" className="block text-sm font-medium text-gray-700">
+                <label
+                  htmlFor="email"
+                  className="block text-sm font-medium text-gray-700"
+                >
                   Email
                 </label>
                 <input
@@ -125,7 +133,7 @@ const ProfilePage = () => {
                   className="mt-1 block w-full rounded-md border border-gray-300 px-3 py-2 shadow-sm focus:border-primary focus:outline-none focus:ring-primary"
                 />
               </div>
-              
+
               <div className="flex justify-end space-x-2">
                 <button
                   type="button"
@@ -139,7 +147,7 @@ const ProfilePage = () => {
                   disabled={saving}
                   className="rounded-md bg-primary px-4 py-2 text-sm text-white hover:bg-primary-dark"
                 >
-                  {saving ? 'Saving...' : 'Save Changes'}
+                  {saving ? "Saving..." : "Save Changes"}
                 </button>
               </div>
             </form>
@@ -149,7 +157,7 @@ const ProfilePage = () => {
                 <h3 className="text-sm font-medium text-gray-500">Nickname</h3>
                 <p className="mt-1">{user.nickname}</p>
               </div>
-              
+
               <div>
                 <h3 className="text-sm font-medium text-gray-500">Email</h3>
                 <p className="mt-1">{user.email}</p>
@@ -162,4 +170,4 @@ const ProfilePage = () => {
   );
 };
 
-export default ProfilePage; 
+export default ProfilePage;

@@ -1,4 +1,4 @@
-import { randomString } from 'https://jslib.k6.io/k6-utils/1.2.0/index.js';
+import { randomString } from "https://jslib.k6.io/k6-utils/1.2.0/index.js";
 
 /**
  * Generates a random email address for testing
@@ -31,7 +31,7 @@ export function generateRandomSentence(sentences?: string[]): string {
     "Testing, testing, 1, 2, 3.",
     "This is message number " + Math.floor(Math.random() * 1000) + ".",
   ];
-  
+
   const options = sentences || defaultSentences;
   return options[Math.floor(Math.random() * options.length)];
-} 
+}

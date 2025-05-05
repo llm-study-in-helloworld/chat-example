@@ -4,7 +4,7 @@
 
 ### Turbo 레포지토리 초기화
 
-```bash
+````bash
 # 1. 프로젝트 폴더 생성
 mkdir chat-app && cd chat-app
 
@@ -147,7 +147,7 @@ cd ../..
   },
   "packageManager": "pnpm@8.6.0"
 }
-```
+````
 
 ### 백엔드 앱 초기화
 
@@ -177,6 +177,7 @@ pnpm add socket.io-client zustand @tanstack/react-query axios date-fns react-hoo
 ```
 
 ### 프로젝트 구조
+
 - 모노레포: TurboRepo 사용
   - apps/
     - backend/ (NestJS)
@@ -188,6 +189,7 @@ pnpm add socket.io-client zustand @tanstack/react-query axios date-fns react-hoo
     - tsconfig/ (공통 TypeScript 설정)
 
 ### 개발 도구
+
 - pnpm v8.6+ (워크스페이스 관리)
 - Node.js v22+ (최신 ECMAScript 기능, 향상된 성능 및 패키지 관리)
 - TypeScript v5.0+
@@ -195,6 +197,7 @@ pnpm add socket.io-client zustand @tanstack/react-query axios date-fns react-hoo
 - Git + GitHub Actions (CI/CD)
 
 ### Node.js v22 최적화 설정
+
 ```typescript
 // apps/backend/.node-version
 22.1.0
@@ -215,15 +218,15 @@ pnpm add socket.io-client zustand @tanstack/react-query axios date-fns react-hoo
 async function bootstrap() {
   // Node.js v22 성능 최적화
   const app = await NestFactory.create(AppModule, {
-    logger: ['error', 'warn', 'log'],
+    logger: ["error", "warn", "log"],
     cors: true,
     abortOnError: false,
   });
-  
+
   // HTTP/3 (QUIC) 지원 설정
   // Node.js v22의 향상된 HTTP 기능 활용
   app.enableShutdownHooks();
-  
+
   await app.listen(3000);
 }
 ```
@@ -239,27 +242,28 @@ WORKDIR /app
 ## 🔹 2. 백엔드 기술 명세
 
 ### 핵심 라이브러리
-| 라이브러리 | 버전 | 용도 |
-|-----------|------|------|
-| @nestjs/core | ^10.0.0 | NestJS 핵심 프레임워크 |
-| @nestjs/websockets | ^10.0.0 | WebSocket 게이트웨이 구현 |
-| @nestjs/platform-socket.io | ^10.0.0 | Socket.io 통합 |
-| @mikro-orm/core | ^5.7.0 | ORM 코어 |
-| @mikro-orm/postgresql | ^5.7.0 | PostgreSQL 연동 |
-| @mikro-orm/migrations | ^5.7.0 | DB 마이그레이션 |
-| @nestjs/passport | ^10.0.0 | 인증 미들웨어 |
-| passport-jwt | ^4.0.1 | JWT 인증 전략 |
-| passport | ^0.6.0 | 인증 라이브러리 |
-| bcrypt | ^5.1.0 | 비밀번호 해싱 |
-| class-validator | ^0.14.0 | DTO 검증 |
-| class-transformer | ^0.5.1 | 객체 변환 |
+
+| 라이브러리                 | 버전    | 용도                      |
+| -------------------------- | ------- | ------------------------- |
+| @nestjs/core               | ^10.0.0 | NestJS 핵심 프레임워크    |
+| @nestjs/websockets         | ^10.0.0 | WebSocket 게이트웨이 구현 |
+| @nestjs/platform-socket.io | ^10.0.0 | Socket.io 통합            |
+| @mikro-orm/core            | ^5.7.0  | ORM 코어                  |
+| @mikro-orm/postgresql      | ^5.7.0  | PostgreSQL 연동           |
+| @mikro-orm/migrations      | ^5.7.0  | DB 마이그레이션           |
+| @nestjs/passport           | ^10.0.0 | 인증 미들웨어             |
+| passport-jwt               | ^4.0.1  | JWT 인증 전략             |
+| passport                   | ^0.6.0  | 인증 라이브러리           |
+| bcrypt                     | ^5.1.0  | 비밀번호 해싱             |
+| class-validator            | ^0.14.0 | DTO 검증                  |
+| class-transformer          | ^0.5.1  | 객체 변환                 |
 
 ### DB 엔티티 및 관계 설계
 
 ```typescript
 // entities/User.ts
 @Entity()
-@Index({ properties: ['email'] })
+@Index({ properties: ["email"] })
 export class User {
   @PrimaryKey()
   id: number;
@@ -276,15 +280,15 @@ export class User {
   @Property({ nullable: true })
   imageUrl?: string;
 
-  @OneToMany(() => RoomUser, ru => ru.user, { 
-    eager: false, 
-    persistence: false
+  @OneToMany(() => RoomUser, (ru) => ru.user, {
+    eager: false,
+    persistence: false,
   })
   roomUsers = new Collection<RoomUser>(this);
 
-  @OneToMany(() => Message, m => m.sender, { 
-    eager: false, 
-    persistence: false
+  @OneToMany(() => Message, (m) => m.sender, {
+    eager: false,
+    persistence: false,
   })
   messages = new Collection<Message>(this);
 }
@@ -301,23 +305,23 @@ export class Room {
   @Property()
   isGroup: boolean;
 
-  @OneToMany(() => RoomUser, ru => ru.room, { 
-    eager: false, 
-    persistence: false
+  @OneToMany(() => RoomUser, (ru) => ru.room, {
+    eager: false,
+    persistence: false,
   })
   users = new Collection<RoomUser>(this);
 
-  @OneToMany(() => Message, m => m.room, { 
-    eager: false, 
-    persistence: false
+  @OneToMany(() => Message, (m) => m.room, {
+    eager: false,
+    persistence: false,
   })
   messages = new Collection<Message>(this);
 }
 
 // entities/RoomUser.ts
 @Entity()
-@Index({ properties: ['user', 'room'] })
-@Index({ properties: ['room', 'lastSeenAt'] })
+@Index({ properties: ["user", "room"] })
+@Index({ properties: ["room", "lastSeenAt"] })
 export class RoomUser {
   @ManyToOne(() => Room, { primary: true, persistence: false })
   room: Room;
@@ -334,9 +338,9 @@ export class RoomUser {
 
 // entities/Message.ts
 @Entity()
-@Index({ properties: ['room', 'insertedAt'] })
-@Index({ properties: ['parent'] })
-@Index({ properties: ['sender'] })
+@Index({ properties: ["room", "insertedAt"] })
+@Index({ properties: ["parent"] })
+@Index({ properties: ["sender"] })
 export class Message {
   @PrimaryKey()
   id: number;
@@ -362,23 +366,23 @@ export class Message {
   @Property({ nullable: true })
   deletedAt?: Date;
 
-  @OneToMany(() => MessageReaction, mr => mr.message, { 
-    eager: false, 
-    persistence: false
+  @OneToMany(() => MessageReaction, (mr) => mr.message, {
+    eager: false,
+    persistence: false,
   })
   reactions = new Collection<MessageReaction>(this);
 
-  @OneToMany(() => Mention, m => m.message, { 
-    eager: false, 
-    persistence: false
+  @OneToMany(() => Mention, (m) => m.message, {
+    eager: false,
+    persistence: false,
   })
   mentions = new Collection<Mention>(this);
 }
 
 // entities/MessageReaction.ts
 @Entity()
-@Index({ properties: ['message', 'emoji'] })
-@Index({ properties: ['message', 'user'] })
+@Index({ properties: ["message", "emoji"] })
+@Index({ properties: ["message", "user"] })
 export class MessageReaction {
   @PrimaryKey()
   id: number;
@@ -395,7 +399,7 @@ export class MessageReaction {
 
 // entities/Mention.ts
 @Entity()
-@Index({ properties: ['mentionedUser'] })
+@Index({ properties: ["mentionedUser"] })
 export class Mention {
   @PrimaryKey()
   id: number;
@@ -425,27 +429,27 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
 
   async handleConnection(client: Socket) {
     try {
-      const token = client.handshake.headers.authorization?.split(' ')[1];
+      const token = client.handshake.headers.authorization?.split(" ")[1];
       if (!token) {
         client.disconnect();
         return;
       }
-      
+
       const user = await this.authService.validateToken(token);
       if (!user) {
         client.disconnect();
         return;
       }
-      
+
       client.data.user = user;
       // 사용자 참여 룸 자동 연결
       const rooms = await this.roomService.getUserRooms(user.id);
-      rooms.forEach(room => {
+      rooms.forEach((room) => {
         client.join(`room:${room.id}`);
       });
-      
+
       // presence 업데이트
-      this.server.emit('user_presence', { userId: user.id, status: 'online' });
+      this.server.emit("user_presence", { userId: user.id, status: "online" });
     } catch (e) {
       client.disconnect();
     }
@@ -453,102 +457,113 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
 
   async handleDisconnect(client: Socket) {
     if (client.data.user) {
-      this.server.emit('user_presence', { 
-        userId: client.data.user.id, 
-        status: 'offline' 
+      this.server.emit("user_presence", {
+        userId: client.data.user.id,
+        status: "offline",
       });
     }
   }
 
-  @SubscribeMessage('join_room')
+  @SubscribeMessage("join_room")
   async handleJoinRoom(client: Socket, payload: { roomId: number }) {
     // 권한 확인
     const canJoin = await this.roomService.canUserJoinRoom(
-      client.data.user.id, 
-      payload.roomId
+      client.data.user.id,
+      payload.roomId,
     );
-    
+
     if (!canJoin) {
-      return { error: '접근 권한이 없습니다' };
+      return { error: "접근 권한이 없습니다" };
     }
-    
+
     client.join(`room:${payload.roomId}`);
     return { success: true };
   }
 
-  @SubscribeMessage('new_message')
-  async handleNewMessage(client: Socket, payload: { 
-    roomId: number;
-    content: string;
-    parentId?: number;
-  }) {
+  @SubscribeMessage("new_message")
+  async handleNewMessage(
+    client: Socket,
+    payload: {
+      roomId: number;
+      content: string;
+      parentId?: number;
+    },
+  ) {
     const message = await this.messageService.createMessage({
       roomId: payload.roomId,
       senderId: client.data.user.id,
       content: payload.content,
       parentId: payload.parentId,
     });
-    
+
     // 메시지 브로드캐스트
-    this.server.to(`room:${payload.roomId}`).emit('new_message', message);
-    
+    this.server.to(`room:${payload.roomId}`).emit("new_message", message);
+
     // 멘션 처리
     const mentions = this.messageService.extractMentions(payload.content);
     if (mentions.length > 0) {
       await this.messageService.saveMentions(message.id, mentions);
       for (const userId of mentions) {
-        this.server.to(`user:${userId}`).emit('mention_alert', {
+        this.server.to(`user:${userId}`).emit("mention_alert", {
           messageId: message.id,
           roomId: payload.roomId,
         });
       }
     }
-    
+
     return message;
   }
 
-  @SubscribeMessage('edit_message')
-  async handleEditMessage(client: Socket, payload: {
-    messageId: number;
-    content: string;
-  }) {
+  @SubscribeMessage("edit_message")
+  async handleEditMessage(
+    client: Socket,
+    payload: {
+      messageId: number;
+      content: string;
+    },
+  ) {
     const canEdit = await this.messageService.canEditMessage(
       client.data.user.id,
-      payload.messageId
+      payload.messageId,
     );
-    
+
     if (!canEdit) {
-      return { error: '메시지를 수정할 권한이 없습니다' };
+      return { error: "메시지를 수정할 권한이 없습니다" };
     }
-    
+
     const message = await this.messageService.updateMessage(
       payload.messageId,
-      payload.content
+      payload.content,
     );
-    
+
     // 룸에 변경사항 브로드캐스트
-    this.server.to(`room:${message.room.id}`).emit('message_updated', message);
-    
+    this.server.to(`room:${message.room.id}`).emit("message_updated", message);
+
     return message;
   }
 
-  @SubscribeMessage('react_message')
-  async handleReaction(client: Socket, payload: {
-    messageId: number;
-    emoji: string;
-  }) {
+  @SubscribeMessage("react_message")
+  async handleReaction(
+    client: Socket,
+    payload: {
+      messageId: number;
+      emoji: string;
+    },
+  ) {
     const reaction = await this.messageService.toggleReaction(
       payload.messageId,
       client.data.user.id,
-      payload.emoji
+      payload.emoji,
     );
-    
+
     const message = await this.messageService.getMessage(payload.messageId);
-    this.server.to(`room:${message.room.id}`).emit('reaction_updated', {
+    this.server.to(`room:${message.room.id}`).emit("reaction_updated", {
       messageId: payload.messageId,
-      reactions: await this.messageService.getMessageReactions(payload.messageId)
+      reactions: await this.messageService.getMessageReactions(
+        payload.messageId,
+      ),
     });
-    
+
     return reaction;
   }
 }
@@ -557,27 +572,28 @@ export class ChatGateway implements OnGatewayConnection, OnGatewayDisconnect {
 ## 🔹 3. 프론트엔드 기술 명세
 
 ### 핵심 라이브러리
-| 라이브러리 | 버전 | 용도 |
-|-----------|------|------|
-| react | ^18.2.0 | UI 프레임워크 |
-| vite | ^4.3.0 | 빌드 도구 |
-| socket.io-client | ^4.7.0 | WebSocket 클라이언트 |
-| zustand | ^4.3.0 | 상태 관리 |
-| @tanstack/react-query | ^4.29.0 | 서버 상태 관리 |
-| axios | ^1.4.0 | HTTP 클라이언트 |
-| date-fns | ^2.30.0 | 날짜 처리 |
-| react-hook-form | ^7.45.0 | 폼 관리 |
-| zod | ^3.21.0 | 스키마 검증 |
-| framer-motion | ^10.12.0 | 애니메이션 |
-| tailwindcss | ^3.3.0 | CSS 프레임워크 |
-| phosphor-react | ^1.4.1 | 아이콘 |
+
+| 라이브러리            | 버전     | 용도                 |
+| --------------------- | -------- | -------------------- |
+| react                 | ^18.2.0  | UI 프레임워크        |
+| vite                  | ^4.3.0   | 빌드 도구            |
+| socket.io-client      | ^4.7.0   | WebSocket 클라이언트 |
+| zustand               | ^4.3.0   | 상태 관리            |
+| @tanstack/react-query | ^4.29.0  | 서버 상태 관리       |
+| axios                 | ^1.4.0   | HTTP 클라이언트      |
+| date-fns              | ^2.30.0  | 날짜 처리            |
+| react-hook-form       | ^7.45.0  | 폼 관리              |
+| zod                   | ^3.21.0  | 스키마 검증          |
+| framer-motion         | ^10.12.0 | 애니메이션           |
+| tailwindcss           | ^3.3.0   | CSS 프레임워크       |
+| phosphor-react        | ^1.4.1   | 아이콘               |
 
 ### 상태 관리 - Zustand 설계
 
 ```typescript
 // store/chatStore.ts
-import { create } from 'zustand';
-import { immer } from 'zustand/middleware/immer';
+import { create } from "zustand";
+import { immer } from "zustand/middleware/immer";
 
 interface Message {
   id: number;
@@ -613,7 +629,7 @@ interface User {
   id: number;
   nickname: string;
   imageUrl?: string;
-  presence: 'online' | 'offline';
+  presence: "online" | "offline";
 }
 
 interface ChatStore {
@@ -622,8 +638,8 @@ interface ChatStore {
   currentRoomId: number | null;
   messages: Record<number, Message[]>;
   reactions: Record<number, Reaction[]>;
-  presence: Record<number, User['presence']>;
-  
+  presence: Record<number, User["presence"]>;
+
   // 액션
   setRooms: (rooms: Room[]) => void;
   setCurrentRoom: (roomId: number | null) => void;
@@ -633,7 +649,7 @@ interface ChatStore {
   setMessages: (roomId: number, messages: Message[]) => void;
   addReaction: (messageId: number, reaction: Reaction) => void;
   removeReaction: (messageId: number, reactionId: number) => void;
-  setPresence: (userId: number, status: User['presence']) => void;
+  setPresence: (userId: number, status: User["presence"]) => void;
 }
 
 export const useChatStore = create<ChatStore>()(
@@ -643,72 +659,85 @@ export const useChatStore = create<ChatStore>()(
     messages: {},
     reactions: {},
     presence: {},
-    
-    setRooms: (rooms) => set((state) => {
-      state.rooms = rooms;
-    }),
-    
-    setCurrentRoom: (roomId) => set((state) => {
-      state.currentRoomId = roomId;
-    }),
-    
-    addMessage: (roomId, message) => set((state) => {
-      if (!state.messages[roomId]) {
-        state.messages[roomId] = [];
-      }
-      state.messages[roomId].push(message);
-      
-      // lastMessage 업데이트
-      const roomIndex = state.rooms.findIndex(r => r.id === roomId);
-      if (roomIndex !== -1) {
-        state.rooms[roomIndex].lastMessage = message;
-      }
-    }),
-    
-    updateMessage: (messageId, content) => set((state) => {
-      for (const roomId in state.messages) {
-        const index = state.messages[roomId].findIndex(m => m.id === messageId);
-        if (index !== -1) {
-          state.messages[roomId][index].content = content;
-          state.messages[roomId][index].updatedAt = new Date().toISOString();
-          break;
+
+    setRooms: (rooms) =>
+      set((state) => {
+        state.rooms = rooms;
+      }),
+
+    setCurrentRoom: (roomId) =>
+      set((state) => {
+        state.currentRoomId = roomId;
+      }),
+
+    addMessage: (roomId, message) =>
+      set((state) => {
+        if (!state.messages[roomId]) {
+          state.messages[roomId] = [];
         }
-      }
-    }),
-    
-    deleteMessage: (messageId) => set((state) => {
-      for (const roomId in state.messages) {
-        const index = state.messages[roomId].findIndex(m => m.id === messageId);
-        if (index !== -1) {
-          state.messages[roomId][index].deletedAt = new Date().toISOString();
-          break;
+        state.messages[roomId].push(message);
+
+        // lastMessage 업데이트
+        const roomIndex = state.rooms.findIndex((r) => r.id === roomId);
+        if (roomIndex !== -1) {
+          state.rooms[roomIndex].lastMessage = message;
         }
-      }
-    }),
-    
-    setMessages: (roomId, messages) => set((state) => {
-      state.messages[roomId] = messages;
-    }),
-    
-    addReaction: (messageId, reaction) => set((state) => {
-      if (!state.reactions[messageId]) {
-        state.reactions[messageId] = [];
-      }
-      state.reactions[messageId].push(reaction);
-    }),
-    
-    removeReaction: (messageId, reactionId) => set((state) => {
-      if (state.reactions[messageId]) {
-        state.reactions[messageId] = state.reactions[messageId].filter(
-          r => r.id !== reactionId
-        );
-      }
-    }),
-    
-    setPresence: (userId, status) => set((state) => {
-      state.presence[userId] = status;
-    }),
-  }))
+      }),
+
+    updateMessage: (messageId, content) =>
+      set((state) => {
+        for (const roomId in state.messages) {
+          const index = state.messages[roomId].findIndex(
+            (m) => m.id === messageId,
+          );
+          if (index !== -1) {
+            state.messages[roomId][index].content = content;
+            state.messages[roomId][index].updatedAt = new Date().toISOString();
+            break;
+          }
+        }
+      }),
+
+    deleteMessage: (messageId) =>
+      set((state) => {
+        for (const roomId in state.messages) {
+          const index = state.messages[roomId].findIndex(
+            (m) => m.id === messageId,
+          );
+          if (index !== -1) {
+            state.messages[roomId][index].deletedAt = new Date().toISOString();
+            break;
+          }
+        }
+      }),
+
+    setMessages: (roomId, messages) =>
+      set((state) => {
+        state.messages[roomId] = messages;
+      }),
+
+    addReaction: (messageId, reaction) =>
+      set((state) => {
+        if (!state.reactions[messageId]) {
+          state.reactions[messageId] = [];
+        }
+        state.reactions[messageId].push(reaction);
+      }),
+
+    removeReaction: (messageId, reactionId) =>
+      set((state) => {
+        if (state.reactions[messageId]) {
+          state.reactions[messageId] = state.reactions[messageId].filter(
+            (r) => r.id !== reactionId,
+          );
+        }
+      }),
+
+    setPresence: (userId, status) =>
+      set((state) => {
+        state.presence[userId] = status;
+      }),
+  })),
 );
 ```
 
@@ -716,68 +745,68 @@ export const useChatStore = create<ChatStore>()(
 
 ```typescript
 // hooks/useSocket.ts
-import { useEffect, useRef } from 'react';
-import { io, Socket } from 'socket.io-client';
-import { useAuthStore } from '../store/authStore';
-import { useChatStore } from '../store/chatStore';
+import { useEffect, useRef } from "react";
+import { io, Socket } from "socket.io-client";
+import { useAuthStore } from "../store/authStore";
+import { useChatStore } from "../store/chatStore";
 
 export const useSocket = () => {
   const socketRef = useRef<Socket | null>(null);
-  const token = useAuthStore(state => state.token);
-  const addMessage = useChatStore(state => state.addMessage);
-  const updateMessage = useChatStore(state => state.updateMessage);
-  const deleteMessage = useChatStore(state => state.deleteMessage);
-  const setPresence = useChatStore(state => state.setPresence);
-  
+  const token = useAuthStore((state) => state.token);
+  const addMessage = useChatStore((state) => state.addMessage);
+  const updateMessage = useChatStore((state) => state.updateMessage);
+  const deleteMessage = useChatStore((state) => state.deleteMessage);
+  const setPresence = useChatStore((state) => state.setPresence);
+
   useEffect(() => {
     if (!token) return;
-    
+
     const socket = io(import.meta.env.VITE_API_URL, {
       extraHeaders: {
-        Authorization: `Bearer ${token}`
-      }
+        Authorization: `Bearer ${token}`,
+      },
     });
-    
+
     socketRef.current = socket;
-    
-    socket.on('connect', () => {
-      console.log('소켓 연결 성공');
+
+    socket.on("connect", () => {
+      console.log("소켓 연결 성공");
     });
-    
-    socket.on('disconnect', () => {
-      console.log('소켓 연결 종료');
+
+    socket.on("disconnect", () => {
+      console.log("소켓 연결 종료");
     });
-    
-    socket.on('new_message', (message) => {
+
+    socket.on("new_message", (message) => {
       addMessage(message.roomId, message);
     });
-    
-    socket.on('message_updated', (message) => {
+
+    socket.on("message_updated", (message) => {
       updateMessage(message.id, message.content);
     });
-    
-    socket.on('message_deleted', (messageId) => {
+
+    socket.on("message_deleted", (messageId) => {
       deleteMessage(messageId);
     });
-    
-    socket.on('user_presence', ({ userId, status }) => {
+
+    socket.on("user_presence", ({ userId, status }) => {
       setPresence(userId, status);
     });
-    
+
     return () => {
       socket.disconnect();
       socketRef.current = null;
     };
   }, [token]);
-  
+
   const joinRoom = (roomId: number) => {
-    socketRef.current?.emit('join_room', { roomId });
+    socketRef.current?.emit("join_room", { roomId });
   };
-  
+
   const sendMessage = (roomId: number, content: string, parentId?: number) => {
     return new Promise((resolve, reject) => {
       socketRef.current?.emit(
-        'new_message', 
+        "new_message",
         { roomId, content, parentId },
         (response: any) => {
           if (response.error) {
@@ -785,15 +814,15 @@ export const useSocket = () => {
           } else {
             resolve(response);
           }
-        }
+        },
       );
     });
   };
-  
+
   const editMessage = (messageId: number, content: string) => {
     return new Promise((resolve, reject) => {
       socketRef.current?.emit(
-        'edit_message',
+        "edit_message",
         { messageId, content },
         (response: any) => {
           if (response.error) {
@@ -801,15 +830,15 @@ export const useSocket = () => {
           } else {
             resolve(response);
           }
-        }
+        },
       );
     });
   };
-  
+
   const reactToMessage = (messageId: number, emoji: string) => {
-    socketRef.current?.emit('react_message', { messageId, emoji });
+    socketRef.current?.emit("react_message", { messageId, emoji });
   };
-  
+
   return {
     socket: socketRef.current,
     joinRoom,
@@ -823,6 +852,7 @@ export const useSocket = () => {
 ### 주요 컴포넌트 구조
 
 1. **채팅 레이아웃**
+
 ```typescript
 // 폴더 구조
 // components/
@@ -850,25 +880,26 @@ export const useSocket = () => {
 
 ### REST API 엔드포인트
 
-| 엔드포인트 | 메소드 | 설명 | 요청 형식 | 응답 형식 |
-|-----------|-------|------|----------|----------|
-| /api/auth/signup | POST | 회원가입 | { email, password, nickname } | { id, email, nickname, token } |
-| /api/auth/login | POST | 로그인 | { email, password } | { token, user: { id, email, nickname, imageUrl } } |
-| /api/auth/refresh | POST | 토큰 갱신 | { refreshToken } | { token, refreshToken } |
-| /api/users/me | GET | 현재 사용자 정보 | - | { id, email, nickname, imageUrl } |
-| /api/rooms | GET | 참여중인 채팅방 | - | [{ id, name, isGroup, users: [...], lastMessage }] |
-| /api/rooms | POST | 새 채팅방 생성 | { name?, userIds: [] } | { id, name, isGroup, users: [...] } |
-| /api/rooms/:id | GET | 채팅방 정보 | - | { id, name, isGroup, users: [...] } |
-| /api/rooms/:id/messages | GET | 메시지 히스토리 | ?limit=20&offset=0 | { items: [...], total: n } |
-| /api/messages/:id | PATCH | 메시지 수정 | { content } | { id, content, updatedAt, ... } |
-| /api/messages/:id | DELETE | 메시지 삭제 | - | { success: true } |
-| /api/messages/:id/reactions | POST | 이모지 반응 토글 | { emoji } | { id, emoji, user: {...} } |
-| /api/messages/:id/threads | GET | 스레드 메시지 | - | [{ id, content, ... }] |
-| /api/upload | POST | 이미지 업로드 | FormData { file } | { url } |
+| 엔드포인트                  | 메소드 | 설명             | 요청 형식                     | 응답 형식                                          |
+| --------------------------- | ------ | ---------------- | ----------------------------- | -------------------------------------------------- |
+| /api/auth/signup            | POST   | 회원가입         | { email, password, nickname } | { id, email, nickname, token }                     |
+| /api/auth/login             | POST   | 로그인           | { email, password }           | { token, user: { id, email, nickname, imageUrl } } |
+| /api/auth/refresh           | POST   | 토큰 갱신        | { refreshToken }              | { token, refreshToken }                            |
+| /api/users/me               | GET    | 현재 사용자 정보 | -                             | { id, email, nickname, imageUrl }                  |
+| /api/rooms                  | GET    | 참여중인 채팅방  | -                             | [{ id, name, isGroup, users: [...], lastMessage }] |
+| /api/rooms                  | POST   | 새 채팅방 생성   | { name?, userIds: [] }        | { id, name, isGroup, users: [...] }                |
+| /api/rooms/:id              | GET    | 채팅방 정보      | -                             | { id, name, isGroup, users: [...] }                |
+| /api/rooms/:id/messages     | GET    | 메시지 히스토리  | ?limit=20&offset=0            | { items: [...], total: n }                         |
+| /api/messages/:id           | PATCH  | 메시지 수정      | { content }                   | { id, content, updatedAt, ... }                    |
+| /api/messages/:id           | DELETE | 메시지 삭제      | -                             | { success: true }                                  |
+| /api/messages/:id/reactions | POST   | 이모지 반응 토글 | { emoji }                     | { id, emoji, user: {...} }                         |
+| /api/messages/:id/threads   | GET    | 스레드 메시지    | -                             | [{ id, content, ... }]                             |
+| /api/upload                 | POST   | 이미지 업로드    | FormData { file }             | { url }                                            |
 
 ## 🔹 5. 인증 및 권한 관리
 
 ### JWT 토큰 구조
+
 ```typescript
 // 페이로드 구조
 interface JwtPayload {
@@ -881,18 +912,19 @@ interface JwtPayload {
 ```
 
 ### 인증 전략 설정
+
 ```typescript
 // auth/jwt.strategy.ts
 @Injectable()
 export class JwtStrategy extends PassportStrategy(Strategy) {
   constructor(
     private readonly userService: UserService,
-    private readonly configService: ConfigService
+    private readonly configService: ConfigService,
   ) {
     super({
       jwtFromRequest: ExtractJwt.fromAuthHeaderAsBearerToken(),
       ignoreExpiration: false,
-      secretOrKey: configService.get<string>('JWT_SECRET'),
+      secretOrKey: configService.get<string>("JWT_SECRET"),
     });
   }
 
@@ -911,7 +943,7 @@ export class JwtStrategy extends PassportStrategy(Strategy) {
 ```typescript
 // entities/User.ts
 @Entity()
-@Index({ properties: ['email'] })
+@Index({ properties: ["email"] })
 export class User {
   // ... existing code ...
 }
@@ -924,32 +956,32 @@ export class Room {
 
 // entities/RoomUser.ts
 @Entity()
-@Index({ properties: ['user', 'room'] })
-@Index({ properties: ['room', 'lastSeenAt'] })
+@Index({ properties: ["user", "room"] })
+@Index({ properties: ["room", "lastSeenAt"] })
 export class RoomUser {
   // ... existing code ...
 }
 
 // entities/Message.ts
 @Entity()
-@Index({ properties: ['room', 'insertedAt'] })
-@Index({ properties: ['parent'] })
-@Index({ properties: ['sender'] })
+@Index({ properties: ["room", "insertedAt"] })
+@Index({ properties: ["parent"] })
+@Index({ properties: ["sender"] })
 export class Message {
   // ... existing code ...
 }
 
 // entities/MessageReaction.ts
 @Entity()
-@Index({ properties: ['message', 'emoji'] })
-@Index({ properties: ['message', 'user'] })
+@Index({ properties: ["message", "emoji"] })
+@Index({ properties: ["message", "user"] })
 export class MessageReaction {
   // ... existing code ...
 }
 
 // entities/Mention.ts
 @Entity()
-@Index({ properties: ['mentionedUser'] })
+@Index({ properties: ["mentionedUser"] })
 export class Mention {
   // ... existing code ...
 }
@@ -957,15 +989,16 @@ export class Mention {
 
 ### API 요청에 따른 인덱싱 최적화
 
-| API 엔드포인트 | 관련 인덱스 | 최적화 효과 |
-|--------------|-------------|-----------|
-| /api/auth/login | User.email | 로그인 인증 속도 개선 |
-| /api/rooms | RoomUser.user + RoomUser.room | 사용자 참여 채팅방 목록 조회 속도 개선 |
-| /api/rooms/:id/messages | Message.room + Message.insertedAt | 메시지 히스토리 페이지네이션 속도 개선 |
-| /api/messages/:id/reactions | MessageReaction.message | 메시지별 이모지 반응 조회 속도 개선 |
-| /api/messages/:id/threads | Message.parent | 스레드 메시지 조회 속도 개선 |
+| API 엔드포인트              | 관련 인덱스                       | 최적화 효과                            |
+| --------------------------- | --------------------------------- | -------------------------------------- |
+| /api/auth/login             | User.email                        | 로그인 인증 속도 개선                  |
+| /api/rooms                  | RoomUser.user + RoomUser.room     | 사용자 참여 채팅방 목록 조회 속도 개선 |
+| /api/rooms/:id/messages     | Message.room + Message.insertedAt | 메시지 히스토리 페이지네이션 속도 개선 |
+| /api/messages/:id/reactions | MessageReaction.message           | 메시지별 이모지 반응 조회 속도 개선    |
+| /api/messages/:id/threads   | Message.parent                    | 스레드 메시지 조회 속도 개선           |
 
 ### 복합 인덱스 전략
+
 특정 조회 패턴에 대해 최적화된 복합 인덱스를 적용하여 성능을 개선합니다:
 
 1. **최근 메시지 조회**: (room_id, inserted_at DESC) 인덱스로 최신 메시지 빠르게 조회
@@ -979,7 +1012,7 @@ export class Mention {
 
 ```yaml
 # docker-compose.yml
-version: '3.8'
+version: "3.8"
 
 services:
   db:
@@ -1013,7 +1046,7 @@ services:
     deploy:
       resources:
         limits:
-          cpus: '1'
+          cpus: "1"
           memory: 2G
 
   frontend:
@@ -1102,7 +1135,7 @@ server {
     listen 80;
     listen [::]:80;
     server_name example.com;
-    
+
     # HTTP -> HTTPS 리다이렉트
     return 301 https://$host$request_uri;
 }
@@ -1113,28 +1146,28 @@ server {
     # HTTP/3 지원
     listen 443 quic;
     listen [::]:443 quic;
-    
+
     server_name example.com;
-    
+
     # 인증서 설정
     ssl_certificate /etc/nginx/certs/fullchain.pem;
     ssl_certificate_key /etc/nginx/certs/privkey.pem;
-    
+
     # HTTP/3 관련 설정
     add_header Alt-Svc 'h3=":443"; ma=86400';
-    
+
     # 보안 관련 설정
     ssl_protocols TLSv1.2 TLSv1.3;
     ssl_prefer_server_ciphers on;
     ssl_ciphers 'ECDHE-ECDSA-AES256-GCM-SHA384:ECDHE-RSA-AES256-GCM-SHA384:ECDHE-ECDSA-CHACHA20-POLY1305:ECDHE-RSA-CHACHA20-POLY1305';
-    
+
     # 정적 파일 서빙
     location / {
         root /usr/share/nginx/html;
         index index.html index.htm;
         try_files $uri $uri/ /index.html;
     }
-    
+
     # API 요청 프록시
     location /api {
         proxy_pass http://backend:3000;
@@ -1144,7 +1177,7 @@ server {
         proxy_set_header Host $host;
         proxy_cache_bypass $http_upgrade;
     }
-    
+
     # 소켓 연결 프록시
     location /socket.io {
         proxy_pass http://backend:3000;
@@ -1160,17 +1193,20 @@ server {
 ## 🔹 7. 테스트 전략
 
 ### 백엔드 테스트
+
 - 단위 테스트: Jest
 - 통합 테스트: NestJS Testing
 - E2E 테스트: Supertest
 - WebSocket 테스트: Socket.io-client
 
 ### 프론트엔드 테스트
+
 - 단위 테스트: Vitest
 - 컴포넌트 테스트: React Testing Library
 - E2E 테스트: Cypress
 
 ### 테스트 자동화
+
 - GitHub Actions 기반 CI 파이프라인
 - 매 PR 시 테스트 수행
 - 배포 전 통합 테스트 검증
@@ -1178,15 +1214,18 @@ server {
 ## 🔹 8. 모니터링 및 로깅
 
 ### 로깅 설정
+
 - Winston 로거 설정
 - Sentry 에러 트래킹 연동
 - 운영 환경 로그 레벨: info (개발: debug)
 
 ### 성능 모니터링
+
 - Prometheus 기반 측정 지표 수집
 - Grafana 대시보드 구성
 
 ### 측정 지표
+
 - API 응답 시간
 - 웹소켓 연결 수
 - 메시지 처리 성능
@@ -1195,11 +1234,13 @@ server {
 ## 🔹 9. 확장성 및 성능 개선
 
 ### 확장 전략
+
 - 마이크로서비스 아키텍처 고려
 - 메시지 큐 도입 (Redis PubSub)
 - 분산 캐싱 (Redis)
 
 ### 성능 최적화
+
 - DB 인덱싱 전략
 - 쿼리 최적화
 - 메시지 페이지네이션
@@ -1208,18 +1249,21 @@ server {
 ## 🔹 10. 구현 우선순위 및 로드맵
 
 ### 1단계 (MVP)
+
 - 기본 인증 시스템
 - 1:1 채팅 기능
 - 실시간 메시지 전송
 - 메시지 히스토리 조회
 
 ### 2단계
+
 - 그룹 채팅
 - 이모지 반응
 - 스레드 기능
 - 멘션 및 알림
 
 ### 3단계
+
 - 이미지 업로드
 - HTTP/3 최적화
 - 모바일 최적화 UI
@@ -1229,23 +1273,23 @@ server {
 
 ```typescript
 // mikro-orm.config.ts
-import { Options } from '@mikro-orm/core';
-import { PostgreSqlDriver } from '@mikro-orm/postgresql';
+import { Options } from "@mikro-orm/core";
+import { PostgreSqlDriver } from "@mikro-orm/postgresql";
 
 const config: Options<PostgreSqlDriver> = {
   driver: PostgreSqlDriver,
   dbName: process.env.DB_NAME,
   host: process.env.DB_HOST,
-  port: parseInt(process.env.DB_PORT || '5432'),
+  port: parseInt(process.env.DB_PORT || "5432"),
   user: process.env.DB_USER,
   password: process.env.DB_PASSWORD,
-  entities: ['dist/**/*.entity.js'],
-  entitiesTs: ['src/**/*.entity.ts'],
-  debug: process.env.NODE_ENV !== 'production',
+  entities: ["dist/**/*.entity.js"],
+  entitiesTs: ["src/**/*.entity.ts"],
+  debug: process.env.NODE_ENV !== "production",
   migrations: {
-    tableName: 'mikro_migrations',
-    path: 'dist/migrations',
-    pathTs: 'src/migrations',
+    tableName: "mikro_migrations",
+    path: "dist/migrations",
+    pathTs: "src/migrations",
   },
   // 외래키 제약 조건 끄기
   schemaGenerator: {
@@ -1258,4 +1302,4 @@ const config: Options<PostgreSqlDriver> = {
 export default config;
 ```
 
-### DB 인덱싱 전략 
+### DB 인덱싱 전략

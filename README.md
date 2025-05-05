@@ -57,6 +57,7 @@ make stop
 ```
 
 시작 후 접속 가능한 주소:
+
 - 백엔드 API: https://localhost:5002
 - 프론트엔드: http://localhost:5173
 - WebSocket: wss://localhost:5002
@@ -70,7 +71,7 @@ make k6-start
 
 # k6 테스트 실행 (TYPE 파라미터 필수)
 make k6-test TYPE=websocket
-# 가능한 테스트 유형: minimal, websocket, realistic, load, full, 
+# 가능한 테스트 유형: minimal, websocket, realistic, load, full,
 #                   ws-stress, ws-flood, ws-reconnect, high-load, all
 
 # k6 테스트 인프라 중지
@@ -86,4 +87,4 @@ make k6-stop
 
 ## 라이센스
 
-ISC 
+ISC

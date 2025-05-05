@@ -1,12 +1,12 @@
-import { useQuery } from '@tanstack/react-query';
-import React, { useEffect, useState } from 'react';
-import { Outlet, useNavigate } from 'react-router-dom';
-import { chatService } from '../../api/chatService';
-import { useSocket } from '../../hooks/useSocket';
-import { useAuthStore } from '../../store/authStore';
-import { useChatStore } from '../../store/chatStore';
-import RoomList from '../Chat/RoomList';
-import Avatar from '../Common/Avatar';
+import { useQuery } from "@tanstack/react-query";
+import React, { useEffect, useState } from "react";
+import { Outlet, useNavigate } from "react-router-dom";
+import { chatService } from "../../api/chatService";
+import { useSocket } from "../../hooks/useSocket";
+import { useAuthStore } from "../../store/authStore";
+import { useChatStore } from "../../store/chatStore";
+import RoomList from "../Chat/RoomList";
+import Avatar from "../Common/Avatar";
 
 const ChatLayout: React.FC = () => {
   const navigate = useNavigate();
@@ -17,8 +17,12 @@ const ChatLayout: React.FC = () => {
   const [userMenuOpen, setUserMenuOpen] = useState(false);
 
   // Fetch rooms
-  const { data: rooms, isLoading, error } = useQuery({
-    queryKey: ['rooms'],
+  const {
+    data: rooms,
+    isLoading,
+    error,
+  } = useQuery({
+    queryKey: ["rooms"],
     queryFn: chatService.getRooms,
   });
 
@@ -30,16 +34,16 @@ const ChatLayout: React.FC = () => {
 
   const handleLogout = () => {
     logout();
-    navigate('/login');
+    navigate("/login");
   };
 
   const handleCreateRoom = () => {
-    navigate('/chat/create');
+    navigate("/chat/create");
     setIsMobileSidebarOpen(false);
   };
 
   const handleBrowseRooms = () => {
-    navigate('/chat/browse');
+    navigate("/chat/browse");
     setIsMobileSidebarOpen(false);
   };
 
@@ -70,27 +74,27 @@ const ChatLayout: React.FC = () => {
       {/* Sidebar */}
       <div
         className={`fixed inset-y-0 left-0 z-10 w-80 transform bg-white p-4 shadow-md transition-transform duration-300 ease-in-out lg:relative lg:translate-x-0 ${
-          isMobileSidebarOpen ? 'translate-x-0' : '-translate-x-full'
+          isMobileSidebarOpen ? "translate-x-0" : "-translate-x-full"
         }`}
       >
         <div className="flex h-full flex-col">
           {/* Header */}
           <div className="mb-6 flex items-center justify-between">
             <h1 className="text-xl font-bold text-gray-900">Chats</h1>
-            
+
             {/* Connection Status */}
             <div className="flex items-center">
-              <div 
+              <div
                 className={`mr-2 h-2 w-2 rounded-full ${
-                  socket?.connected ? 'bg-green-500' : 'bg-red-500'
-                }`} 
+                  socket?.connected ? "bg-green-500" : "bg-red-500"
+                }`}
               />
               <span className="text-xs text-gray-500">
-                {socket?.connected ? 'Connected' : 'Disconnected'}
+                {socket?.connected ? "Connected" : "Disconnected"}
               </span>
             </div>
           </div>
-          
+
           {/* Action Buttons */}
           <div className="mb-4 flex space-x-2">
             <button
@@ -114,7 +118,7 @@ const ChatLayout: React.FC = () => {
               </svg>
               New
             </button>
-            
+
             <button
               onClick={handleBrowseRooms}
               className="flex flex-1 items-center justify-center rounded-md bg-gray-100 px-3 py-2 text-gray-700 shadow-sm hover:bg-gray-200 focus:outline-none focus:ring-2 focus:ring-gray-300 focus:ring-offset-2"
@@ -137,7 +141,7 @@ const ChatLayout: React.FC = () => {
               Browse
             </button>
           </div>
-          
+
           {/* Rooms List */}
           <div className="flex-1 overflow-y-auto">
             {isLoading ? (
@@ -149,10 +153,13 @@ const ChatLayout: React.FC = () => {
                 Failed to load chats
               </div>
             ) : (
-              <RoomList rooms={rooms || []} onSelectRoom={() => setIsMobileSidebarOpen(false)} />
+              <RoomList
+                rooms={rooms || []}
+                onSelectRoom={() => setIsMobileSidebarOpen(false)}
+              />
             )}
           </div>
-          
+
           {/* User Profile */}
           <div className="mt-4 flex items-center justify-between border-t border-gray-100 pt-4">
             <div className="relative flex items-center">
@@ -160,10 +167,10 @@ const ChatLayout: React.FC = () => {
                 onClick={() => setUserMenuOpen(!userMenuOpen)}
                 className="flex items-center focus:outline-none"
               >
-                <Avatar 
-                  src={user?.imageUrl} 
-                  name={user?.nickname || 'User'} 
-                  size="md" 
+                <Avatar
+                  src={user?.imageUrl}
+                  name={user?.nickname || "User"}
+                  size="md"
                 />
                 <div className="ml-3">
                   <p className="font-medium text-gray-900">{user?.nickname}</p>
@@ -184,12 +191,12 @@ const ChatLayout: React.FC = () => {
                   <polyline points="6 9 12 15 18 9"></polyline>
                 </svg>
               </button>
-              
+
               {userMenuOpen && (
                 <div className="absolute bottom-full left-0 mb-2 w-48 rounded-md bg-white py-1 shadow-lg ring-1 ring-black ring-opacity-5">
                   <button
                     onClick={() => {
-                      navigate('/profile');
+                      navigate("/profile");
                       setUserMenuOpen(false);
                     }}
                     className="flex w-full items-center px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-100"
@@ -211,10 +218,10 @@ const ChatLayout: React.FC = () => {
                     </svg>
                     Profile
                   </button>
-                  
+
                   <button
                     onClick={() => {
-                      navigate('/settings/security');
+                      navigate("/settings/security");
                       setUserMenuOpen(false);
                     }}
                     className="flex w-full items-center px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-100"
@@ -231,12 +238,19 @@ const ChatLayout: React.FC = () => {
                       strokeLinejoin="round"
                       className="mr-2 text-gray-500"
                     >
-                      <rect x="3" y="11" width="18" height="11" rx="2" ry="2"></rect>
+                      <rect
+                        x="3"
+                        y="11"
+                        width="18"
+                        height="11"
+                        rx="2"
+                        ry="2"
+                      ></rect>
                       <path d="M7 11V7a5 5 0 0 1 10 0v4"></path>
                     </svg>
                     Security
                   </button>
-                  
+
                   <button
                     onClick={() => {
                       handleLogout();
@@ -268,7 +282,7 @@ const ChatLayout: React.FC = () => {
           </div>
         </div>
       </div>
-      
+
       {/* Main Content */}
       <div className="flex-1 overflow-hidden">
         <Outlet />
@@ -277,4 +291,4 @@ const ChatLayout: React.FC = () => {
   );
 };
 
-export default ChatLayout; 
+export default ChatLayout;

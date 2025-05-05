@@ -1,4 +1,10 @@
-import { IsEmail, IsNotEmpty, IsOptional, IsString, MinLength } from 'class-validator';
+import {
+  IsEmail,
+  IsNotEmpty,
+  IsOptional,
+  IsString,
+  MinLength,
+} from "class-validator";
 
 /**
  * DTO for user creation (signup)
@@ -20,4 +26,4 @@ export class CreateUserDto {
   @IsString()
   @IsOptional()
   imageUrl?: string;
-} 
+}

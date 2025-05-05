@@ -1,18 +1,18 @@
-import { Suspense, lazy } from 'react';
-import { Navigate, Route, Routes } from 'react-router-dom';
+import { Suspense, lazy } from "react";
+import { Navigate, Route, Routes } from "react-router-dom";
 
 // Auth
-import AuthGuard from './components/Auth/AuthGuard';
-import LoginPage from './pages/LoginPage';
-import RegisterPage from './pages/RegisterPage';
+import AuthGuard from "./components/Auth/AuthGuard";
+import LoginPage from "./pages/LoginPage";
+import RegisterPage from "./pages/RegisterPage";
 
 // Lazy loaded components
-const ChatLayout = lazy(() => import('./components/Layout/ChatLayout'));
-const ChatRoomPage = lazy(() => import('./pages/ChatRoomPage'));
-const ProfilePage = lazy(() => import('./pages/ProfilePage'));
-const SecuritySettingsPage = lazy(() => import('./pages/SecuritySettingsPage'));
-const CreateRoomPage = lazy(() => import('./pages/CreateRoomPage'));
-const BrowseRoomsPage = lazy(() => import('./pages/BrowseRoomsPage'));
+const ChatLayout = lazy(() => import("./components/Layout/ChatLayout"));
+const ChatRoomPage = lazy(() => import("./pages/ChatRoomPage"));
+const ProfilePage = lazy(() => import("./pages/ProfilePage"));
+const SecuritySettingsPage = lazy(() => import("./pages/SecuritySettingsPage"));
+const CreateRoomPage = lazy(() => import("./pages/CreateRoomPage"));
+const BrowseRoomsPage = lazy(() => import("./pages/BrowseRoomsPage"));
 
 // Loading component
 const Loading = () => (
@@ -28,7 +28,7 @@ function App() {
         {/* Public routes */}
         <Route path="/login" element={<LoginPage />} />
         <Route path="/register" element={<RegisterPage />} />
-        
+
         {/* Protected routes */}
         <Route element={<AuthGuard />}>
           <Route element={<ChatLayout />}>
@@ -38,10 +38,13 @@ function App() {
             <Route path="/chat/browse" element={<BrowseRoomsPage />} />
             <Route path="/chat/:roomId" element={<ChatRoomPage />} />
             <Route path="/profile" element={<ProfilePage />} />
-            <Route path="/settings/security" element={<SecuritySettingsPage />} />
+            <Route
+              path="/settings/security"
+              element={<SecuritySettingsPage />}
+            />
           </Route>
         </Route>
-        
+
         {/* Fallback route */}
         <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
@@ -49,4 +52,4 @@ function App() {
   );
 }
 
-export default App; 
+export default App;

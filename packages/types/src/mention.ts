@@ -1,4 +1,4 @@
-import { MessageUser } from './user';
+import { MessageUser } from "./user";
 
 /**
  * Base mention interface for common properties
@@ -21,4 +21,4 @@ export interface Mention extends BaseMention {
  */
 export interface MentionResponse extends Mention {
   mentionedUser: MessageUser;
-} 
+}

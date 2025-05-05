@@ -1,8 +1,8 @@
-import { format } from 'date-fns';
-import React from 'react';
-import { useNavigate } from 'react-router-dom';
-import { Room, useChatStore } from '../../store/chatStore';
-import Avatar from '../Common/Avatar';
+import { format } from "date-fns";
+import React from "react";
+import { useNavigate } from "react-router-dom";
+import { Room, useChatStore } from "../../store/chatStore";
+import Avatar from "../Common/Avatar";
 
 interface RoomListProps {
   rooms: Room[];
@@ -20,9 +20,9 @@ const RoomList: React.FC<RoomListProps> = ({ rooms, onSelectRoom }) => {
   };
 
   const formatTime = (dateString?: string) => {
-    if (!dateString) return '';
+    if (!dateString) return "";
     const date = new Date(dateString);
-    
+
     // If today, show time, otherwise show date
     const today = new Date();
     if (
@@ -30,16 +30,16 @@ const RoomList: React.FC<RoomListProps> = ({ rooms, onSelectRoom }) => {
       date.getMonth() === today.getMonth() &&
       date.getFullYear() === today.getFullYear()
     ) {
-      return format(date, 'HH:mm');
+      return format(date, "HH:mm");
     }
-    
+
     // If this year, show day and month
     if (date.getFullYear() === today.getFullYear()) {
-      return format(date, 'MMM d');
+      return format(date, "MMM d");
     }
-    
+
     // Otherwise show day, month and year
-    return format(date, 'MM/dd/yy');
+    return format(date, "MM/dd/yy");
   };
 
   // Get the other user in a 1:1 chat
@@ -55,9 +55,9 @@ const RoomList: React.FC<RoomListProps> = ({ rooms, onSelectRoom }) => {
     if (room.name) return room.name;
     if (!room.isGroup) {
       const otherUser = getOtherUser(room);
-      return otherUser?.nickname || 'Unknown User';
+      return otherUser?.nickname || "Unknown User";
     }
-    return 'Chat';
+    return "Chat";
   };
 
   if (rooms.length === 0) {
@@ -73,14 +73,12 @@ const RoomList: React.FC<RoomListProps> = ({ rooms, onSelectRoom }) => {
       {rooms.map((room) => {
         const otherUser = getOtherUser(room);
         const isActive = currentRoomId === room.id;
-        
+
         return (
           <div
             key={room.id}
             className={`cursor-pointer rounded-md px-3 py-2 transition-colors ${
-              isActive
-                ? 'bg-primary-50 text-primary-800'
-                : 'hover:bg-gray-50'
+              isActive ? "bg-primary-50 text-primary-800" : "hover:bg-gray-50"
             }`}
             onClick={() => handleRoomSelect(room)}
           >
@@ -88,21 +86,24 @@ const RoomList: React.FC<RoomListProps> = ({ rooms, onSelectRoom }) => {
               {room.isGroup ? (
                 <div className="relative">
                   <div className="flex -space-x-2">
-                    {room.users && room.users.slice(0, 3).map((user) => (
-                      <Avatar
-                        key={user.id}
-                        src={user.imageUrl}
-                        name={user.nickname}
-                        size="sm"
-                        className="ring-2 ring-white"
-                      />
-                    ))}
+                    {room.users &&
+                      room.users
+                        .slice(0, 3)
+                        .map((user) => (
+                          <Avatar
+                            key={user.id}
+                            src={user.imageUrl}
+                            name={user.nickname}
+                            size="sm"
+                            className="ring-2 ring-white"
+                          />
+                        ))}
                   </div>
                 </div>
               ) : (
                 <Avatar
                   src={otherUser?.imageUrl}
-                  name={otherUser?.nickname || 'User'}
+                  name={otherUser?.nickname || "User"}
                   size="md"
                   status={otherUser?.presence}
                 />
@@ -119,9 +120,9 @@ const RoomList: React.FC<RoomListProps> = ({ rooms, onSelectRoom }) => {
                     </span>
                   )}
                 </div>
-                
+
                 <p className="truncate text-sm text-gray-500">
-                  {room.lastMessage?.content || 'No messages yet'}
+                  {room.lastMessage?.content || "No messages yet"}
                 </p>
               </div>
             </div>
@@ -132,4 +133,4 @@ const RoomList: React.FC<RoomListProps> = ({ rooms, onSelectRoom }) => {
   );
 };
 
-export default RoomList; 
+export default RoomList;

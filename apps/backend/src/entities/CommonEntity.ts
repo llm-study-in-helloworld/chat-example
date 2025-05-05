@@ -1,4 +1,4 @@
-import { BaseEntity, PrimaryKey, Property } from '@mikro-orm/core';
+import { BaseEntity, PrimaryKey, Property } from "@mikro-orm/core";
 
 /**
  * 모든 엔티티의 기본이 되는 추상 클래스
@@ -13,4 +13,4 @@ export abstract class CommonEntity extends BaseEntity {
 
   @Property({ onUpdate: () => new Date() })
   updatedAt: Date = new Date();
-} 
+}

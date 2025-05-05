@@ -1,14 +1,14 @@
-import { AuthResponse, User } from '@chat-example/types';
-import { create } from 'zustand';
-import { persist } from 'zustand/middleware';
-import { immer } from 'zustand/middleware/immer';
+import { AuthResponse, User } from "@chat-example/types";
+import { create } from "zustand";
+import { persist } from "zustand/middleware";
+import { immer } from "zustand/middleware/immer";
 
 interface AuthState {
   // State
   user: User | null;
   token: string | null;
   isAuthenticated: boolean;
-  
+
   // Actions
   setAuthFromResponse: (response: AuthResponse) => void;
   updateUser: (user: Partial<User>) => void;
@@ -21,34 +21,37 @@ export const useAuthStore = create<AuthState>()(
       user: null,
       token: null,
       isAuthenticated: false,
-      
-      setAuthFromResponse: (response) => set((state) => {
-        state.user = response.user as User;
-        state.token = response.token.startsWith('Bearer ') 
-          ? response.token.substring(7) 
-          : response.token;
-        state.isAuthenticated = true;
-      }),
-      
-      updateUser: (userData) => set((state) => {
-        if (state.user) {
-          state.user = { ...state.user, ...userData };
-        }
-      }),
-      
-      logout: () => set((state) => {
-        state.user = null;
-        state.token = null;
-        state.isAuthenticated = false;
-      }),
+
+      setAuthFromResponse: (response) =>
+        set((state) => {
+          state.user = response.user as User;
+          state.token = response.token.startsWith("Bearer ")
+            ? response.token.substring(7)
+            : response.token;
+          state.isAuthenticated = true;
+        }),
+
+      updateUser: (userData) =>
+        set((state) => {
+          if (state.user) {
+            state.user = { ...state.user, ...userData };
+          }
+        }),
+
+      logout: () =>
+        set((state) => {
+          state.user = null;
+          state.token = null;
+          state.isAuthenticated = false;
+        }),
     })),
     {
-      name: 'auth-storage',
-      partialize: (state) => ({ 
+      name: "auth-storage",
+      partialize: (state) => ({
         token: state.token,
         user: state.user,
-        isAuthenticated: state.isAuthenticated
+        isAuthenticated: state.isAuthenticated,
       }),
-    }
-  )
-); 
+    },
+  ),
+);

@@ -9,48 +9,52 @@ import {
   Post,
   Put,
   Query,
-  UseGuards
-} from '@nestjs/common';
-import { CurrentUser, JwtAuthGuard } from '../auth';
-import { MessageResponseDto } from '../dto';
-import { User } from '../entities';
-import { CreateMessageDto } from './dto/create-message.dto';
-import { ReactionDto } from './dto/reaction.dto';
-import { UpdateMessageDto } from './dto/update-message.dto';
-import { MessagesService } from './messages.service';
+  UseGuards,
+} from "@nestjs/common";
+import { CurrentUser, JwtAuthGuard } from "../auth";
+import { MessageResponseDto } from "../dto";
+import { User } from "../entities";
+import { CreateMessageDto } from "./dto/create-message.dto";
+import { ReactionDto } from "./dto/reaction.dto";
+import { UpdateMessageDto } from "./dto/update-message.dto";
+import { MessagesService } from "./messages.service";
 
-@Controller('messages')
+@Controller("messages")
 export class MessagesController {
   constructor(private readonly messagesService: MessagesService) {}
 
   @UseGuards(JwtAuthGuard)
-  @Get(':id')
-  async findOne(@Param('id', ParseIntPipe) id: number): Promise<MessageResponseDto> {
+  @Get(":id")
+  async findOne(
+    @Param("id", ParseIntPipe) id: number,
+  ): Promise<MessageResponseDto> {
     const message = await this.messagesService.getMessage(id);
     if (!message) {
-      throw new NotFoundException('Message not found');
+      throw new NotFoundException("Message not found");
     }
- 
+
     return message;
   }
 
   @UseGuards(JwtAuthGuard)
-  @Get(':id/replies')
-  async getReplies(@Param('id', ParseIntPipe) id: number): Promise<MessageResponseDto[]> {
+  @Get(":id/replies")
+  async getReplies(
+    @Param("id", ParseIntPipe) id: number,
+  ): Promise<MessageResponseDto[]> {
     const parentMessage = await this.messagesService.getMessage(id);
     if (!parentMessage) {
-      throw new NotFoundException('Parent message not found');
+      throw new NotFoundException("Parent message not found");
     }
 
     return this.messagesService.findReplies(id);
   }
 
   @UseGuards(JwtAuthGuard)
-  @Get('room/:roomId')
+  @Get("room/:roomId")
   async getRoomMessages(
-    @Param('roomId', ParseIntPipe) roomId: number,
-    @Query('limit', new ParseIntPipe({ optional: true })) limit?: number,
-    @Query('offset', new ParseIntPipe({ optional: true })) offset?: number,
+    @Param("roomId", ParseIntPipe) roomId: number,
+    @Query("limit", new ParseIntPipe({ optional: true })) limit?: number,
+    @Query("offset", new ParseIntPipe({ optional: true })) offset?: number,
   ): Promise<MessageResponseDto[]> {
     return this.messagesService.getRoomMessages(roomId, limit, offset);
   }
@@ -68,10 +72,10 @@ export class MessagesController {
   }
 
   @UseGuards(JwtAuthGuard)
-  @Post(':id/reply')
+  @Post(":id/reply")
   async createReply(
     @CurrentUser() user: User,
-    @Param('id', ParseIntPipe) parentId: number,
+    @Param("id", ParseIntPipe) parentId: number,
     @Body() createReplyDto: CreateMessageDto,
   ): Promise<MessageResponseDto> {
     // Create the reply message
@@ -84,24 +88,27 @@ export class MessagesController {
   }
 
   @UseGuards(JwtAuthGuard)
-  @Put(':id')
+  @Put(":id")
   async update(
     @CurrentUser() user: User,
-    @Param('id', ParseIntPipe) id: number,
+    @Param("id", ParseIntPipe) id: number,
     @Body() updateMessageDto: UpdateMessageDto,
   ): Promise<MessageResponseDto> {
     return this.messagesService.updateMessage(id, user.id, updateMessageDto);
   }
 
   @UseGuards(JwtAuthGuard)
-  @Delete(':id')
-  async remove(@CurrentUser() user: User, @Param('id', ParseIntPipe) id: number) {
+  @Delete(":id")
+  async remove(
+    @CurrentUser() user: User,
+    @Param("id", ParseIntPipe) id: number,
+  ) {
     const result = await this.messagesService.deleteMessage(id, user.id);
     return { success: result };
   }
 
   @UseGuards(JwtAuthGuard)
-  @Post('reaction')
+  @Post("reaction")
   async toggleReaction(
     @CurrentUser() user: User,
     @Body() reactionDto: ReactionDto,
@@ -111,11 +118,11 @@ export class MessagesController {
       user.id,
       reactionDto.emoji,
     );
-    
+
     if (!reaction) {
       return { success: true, removed: true };
     }
-    
+
     return { success: true, removed: false, reaction };
   }
-} 
+}

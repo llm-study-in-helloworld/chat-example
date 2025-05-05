@@ -1,6 +1,6 @@
-import { Mention } from './mention';
-import { Reaction } from './reaction';
-import { MessageUser } from './user';
+import { Mention } from "./mention";
+import { Reaction } from "./reaction";
+import { MessageUser } from "./user";
 
 /**
  * Base message interface for common properties
@@ -49,4 +49,4 @@ export interface CreateMessageRequest {
 export interface UpdateMessageRequest {
   content: string;
   mentionedUserIds?: number[];
-} 
+}

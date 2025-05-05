@@ -1,7 +1,7 @@
-import { useState } from 'react';
-import { useNavigate } from 'react-router-dom';
-import { chatService } from '../api/chatService';
-import { useAuthStore } from '../store/authStore';
+import { useState } from "react";
+import { useNavigate } from "react-router-dom";
+import { chatService } from "../api/chatService";
+import { useAuthStore } from "../store/authStore";
 
 const CreateRoomPage = () => {
   const navigate = useNavigate();
@@ -9,21 +9,24 @@ const CreateRoomPage = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [formData, setFormData] = useState({
-    name: '',
-    description: '',
+    name: "",
+    description: "",
     isPrivate: false,
     isDirect: false,
-    userIds: [] as number[]
+    userIds: [] as number[],
   });
-  
-  // Simple user input for now since we don't have a user search API
-  const [userIdInput, setUserIdInput] = useState('');
 
-  const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
+  // Simple user input for now since we don't have a user search API
+  const [userIdInput, setUserIdInput] = useState("");
+
+  const handleChange = (
+    e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>,
+  ) => {
     const { name, value, type } = e.target as HTMLInputElement;
     setFormData({
       ...formData,
-      [name]: type === 'checkbox' ? (e.target as HTMLInputElement).checked : value,
+      [name]:
+        type === "checkbox" ? (e.target as HTMLInputElement).checked : value,
     });
   };
 
@@ -33,9 +36,9 @@ const CreateRoomPage = () => {
       if (!formData.userIds.includes(userId)) {
         setFormData({
           ...formData,
-          userIds: [...formData.userIds, userId]
+          userIds: [...formData.userIds, userId],
         });
-        setUserIdInput('');
+        setUserIdInput("");
       }
     }
   };
@@ -43,36 +46,36 @@ const CreateRoomPage = () => {
   const handleRemoveUserId = (userId: number) => {
     setFormData({
       ...formData,
-      userIds: formData.userIds.filter(id => id !== userId)
+      userIds: formData.userIds.filter((id) => id !== userId),
     });
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
     if (!formData.name.trim() && !formData.isDirect) {
-      setError('Group chats require a name');
+      setError("Group chats require a name");
       return;
     }
-    
+
     // Removed the validation for userIds, allowing empty array
-    
+
     setIsLoading(true);
     setError(null);
-    
+
     try {
       const response = await chatService.createRoom(
         formData.userIds,
         formData.name,
         formData.isPrivate,
-        formData.isDirect
+        formData.isDirect,
       );
-      
+
       // Navigate to the new room
       navigate(`/chat/${response.id}`);
     } catch (error: any) {
-      console.error('Error creating room:', error);
-      setError(error.response?.data?.message || 'Failed to create room');
+      console.error("Error creating room:", error);
+      setError(error.response?.data?.message || "Failed to create room");
     } finally {
       setIsLoading(false);
     }
@@ -81,13 +84,13 @@ const CreateRoomPage = () => {
   return (
     <div className="container mx-auto max-w-2xl p-4">
       <h1 className="mb-6 text-2xl font-bold">Create New Chat Room</h1>
-      
+
       {error && (
         <div className="mb-4 rounded-md bg-red-100 p-4 text-red-800">
           <p>{error}</p>
         </div>
       )}
-      
+
       <form onSubmit={handleSubmit} className="space-y-6">
         <div className="flex space-x-4">
           <div className="flex-1">
@@ -103,7 +106,7 @@ const CreateRoomPage = () => {
                 />
                 <span className="ml-2">Group Chat</span>
               </label>
-              
+
               <label className="inline-flex items-center">
                 <input
                   type="radio"
@@ -116,7 +119,7 @@ const CreateRoomPage = () => {
               </label>
             </div>
           </div>
-          
+
           {!formData.isDirect && (
             <div className="flex-1">
               <label className="mb-1 block text-sm font-medium">Privacy</label>
@@ -133,7 +136,7 @@ const CreateRoomPage = () => {
             </div>
           )}
         </div>
-        
+
         {!formData.isDirect && (
           <>
             <div>
@@ -150,9 +153,12 @@ const CreateRoomPage = () => {
                 placeholder="Enter room name"
               />
             </div>
-            
+
             <div>
-              <label htmlFor="description" className="mb-1 block text-sm font-medium">
+              <label
+                htmlFor="description"
+                className="mb-1 block text-sm font-medium"
+              >
                 Description (Optional)
               </label>
               <textarea
@@ -167,7 +173,7 @@ const CreateRoomPage = () => {
             </div>
           </>
         )}
-        
+
         <div>
           <label className="mb-1 block text-sm font-medium">
             Add Users (Optional)
@@ -189,19 +195,21 @@ const CreateRoomPage = () => {
             </button>
           </div>
           <p className="mt-1 text-xs text-gray-500">
-            {formData.isDirect 
+            {formData.isDirect
               ? "For direct messages, add at least one user ID"
               : "You can create a room without adding other users initially"}
           </p>
         </div>
-        
+
         {formData.userIds.length > 0 && (
           <div>
-            <label className="mb-1 block text-sm font-medium">Selected Users</label>
+            <label className="mb-1 block text-sm font-medium">
+              Selected Users
+            </label>
             <div className="flex flex-wrap gap-2">
-              {formData.userIds.map(userId => (
-                <div 
-                  key={userId} 
+              {formData.userIds.map((userId) => (
+                <div
+                  key={userId}
                   className="inline-flex items-center rounded-full bg-gray-200 px-3 py-1 text-sm"
                 >
                   User #{userId}
@@ -217,21 +225,23 @@ const CreateRoomPage = () => {
             </div>
           </div>
         )}
-        
+
         <div className="flex justify-end space-x-4">
           <button
             type="button"
-            onClick={() => navigate('/chat')}
+            onClick={() => navigate("/chat")}
             className="rounded-md border border-gray-300 px-4 py-2 text-gray-700 hover:bg-gray-100"
           >
             Cancel
           </button>
           <button
             type="submit"
-            disabled={isLoading || (formData.isDirect && formData.userIds.length === 0)}
+            disabled={
+              isLoading || (formData.isDirect && formData.userIds.length === 0)
+            }
             className="rounded-md bg-primary px-4 py-2 text-white hover:bg-primary-dark disabled:opacity-50"
           >
-            {isLoading ? 'Creating...' : 'Create Room'}
+            {isLoading ? "Creating..." : "Create Room"}
           </button>
         </div>
       </form>
@@ -239,4 +249,4 @@ const CreateRoomPage = () => {
   );
 };
 
-export default CreateRoomPage; 
+export default CreateRoomPage;

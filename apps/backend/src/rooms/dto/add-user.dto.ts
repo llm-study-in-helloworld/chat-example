@@ -1,4 +1,4 @@
-import { IsNotEmpty, IsNumber } from 'class-validator';
+import { IsNotEmpty, IsNumber } from "class-validator";
 
 /**
  * DTO for adding a user to a room request
@@ -9,4 +9,4 @@ export class AddUserDto {
   userId!: number;
 }
 
-export class AddUserRequestDto extends AddUserDto {} 
+export class AddUserRequestDto extends AddUserDto {}

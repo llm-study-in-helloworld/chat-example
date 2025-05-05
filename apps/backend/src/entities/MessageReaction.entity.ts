@@ -1,33 +1,28 @@
-import { BaseReaction } from '@chat-example/types';
-import {
-  Entity,
-  Index,
-  ManyToOne,
-  Property
-} from '@mikro-orm/core';
-import { CommonEntity } from './CommonEntity';
-import { Message } from './Message.entity';
-import { User } from './User.entity';
+import { BaseReaction } from "@chat-example/types";
+import { Entity, Index, ManyToOne, Property } from "@mikro-orm/core";
+import { CommonEntity } from "./CommonEntity";
+import { Message } from "./Message.entity";
+import { User } from "./User.entity";
 
 /**
  * 메시지에 대한 이모티콘 반응 정보를 저장하는 엔티티
  */
 @Entity()
-@Index({ properties: ['messageId', 'emoji'] })
-@Index({ properties: ['messageId', 'user'] })
+@Index({ properties: ["messageId", "emoji"] })
+@Index({ properties: ["messageId", "user"] })
 export class MessageReaction extends CommonEntity implements BaseReaction {
   @ManyToOne({
     entity: () => Message,
     persist: true,
     mapToPk: true,
-    fieldName: 'message_id'
+    fieldName: "message_id",
   })
   messageId!: number;
 
   @ManyToOne({
     entity: () => User,
     persist: true,
-    fieldName: 'user_id'
+    fieldName: "user_id",
   })
   user!: User;
 
@@ -44,4 +39,4 @@ export class MessageReaction extends CommonEntity implements BaseReaction {
   isOwnedBy(userId: number): boolean {
     return this.user.id === userId;
   }
-} 
+}

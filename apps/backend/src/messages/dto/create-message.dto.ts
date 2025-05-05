@@ -1,4 +1,4 @@
-import { IsNotEmpty, IsNumber, IsOptional, IsString } from 'class-validator';
+import { IsNotEmpty, IsNumber, IsOptional, IsString } from "class-validator";
 
 /**
  * DTO for creating a new message
@@ -15,4 +15,4 @@ export class CreateMessageDto {
   @IsNumber()
   @IsOptional()
   parentId?: number;
-} 
+}

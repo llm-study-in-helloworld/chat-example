@@ -40,16 +40,15 @@ export interface RoomUser {
 /**
  * Room User response with user details
  */
-export interface RoomUserResponse extends RoomUser {
-}
+export interface RoomUserResponse extends RoomUser {}
 
 /**
  * Room roles
  */
 export enum RoomRole {
-  OWNER = 'owner',
-  ADMIN = 'admin',
-  MEMBER = 'member'
+  OWNER = "owner",
+  ADMIN = "admin",
+  MEMBER = "member",
 }
 
 /**
@@ -72,7 +71,7 @@ export interface UpdateRoomRequest {
   description?: string;
   imageUrl?: string;
   isPrivate?: boolean;
-} 
+}
 
 export interface JoinRoomRequest {
   roomId: number;
@@ -90,8 +89,8 @@ export interface RemoveUserRequest {
  * Room type enum for filtering
  */
 export enum RoomType {
-  DIRECT = 'direct',
-  GROUP = 'group',
+  DIRECT = "direct",
+  GROUP = "group",
 }
 
 /**
@@ -102,17 +101,17 @@ export interface RoomQueryParams {
    * Filter by room type (direct or group)
    */
   type?: RoomType;
-  
+
   /**
    * Search rooms by name
    */
   search?: string;
-  
+
   /**
    * Page number for pagination (1-based)
    */
   page?: number;
-  
+
   /**
    * Number of items per page
    */
@@ -127,7 +126,7 @@ export interface PaginatedRoomsResponse {
    * List of room items
    */
   items: RoomResponse[];
-  
+
   /**
    * Pagination metadata
    */
@@ -136,22 +135,22 @@ export interface PaginatedRoomsResponse {
      * Total number of items across all pages
      */
     totalItems: number;
-    
+
     /**
      * Number of items in the current page
      */
     itemCount: number;
-    
+
     /**
      * Number of items per page
      */
     itemsPerPage: number;
-    
+
     /**
      * Total number of pages
      */
     totalPages: number;
-    
+
     /**
      * Current page number
      */

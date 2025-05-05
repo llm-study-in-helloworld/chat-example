@@ -1,6 +1,6 @@
-import { RoomQueryParams, RoomType } from '@chat-example/types';
-import { Transform } from 'class-transformer';
-import { IsEnum, IsInt, IsOptional, IsString, Min } from 'class-validator';
+import { RoomQueryParams, RoomType } from "@chat-example/types";
+import { Transform } from "class-transformer";
+import { IsEnum, IsInt, IsOptional, IsString, Min } from "class-validator";
 
 /**
  * DTO for querying rooms
@@ -25,4 +25,4 @@ export class RoomQueryDto implements RoomQueryParams {
   @IsInt()
   @Min(1)
   limit?: number = 10;
-} 
+}

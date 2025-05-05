@@ -19,7 +19,7 @@ export class SocketSuccessDto extends SocketResponseBaseDto {
  * DTO for error socket responses
  */
 export class SocketErrorDto extends SocketResponseBaseDto {
-  error: string = '';
+  error: string = "";
 }
 
 /**
@@ -43,5 +43,5 @@ export class ReactionUpdateEventDto {
  */
 export class UserPresenceEventDto {
   userId: number = 0;
-  status: 'online' | 'offline' = 'offline';
-} 
+  status: "online" | "offline" = "offline";
+}

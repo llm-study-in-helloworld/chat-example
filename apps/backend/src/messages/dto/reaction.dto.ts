@@ -1,4 +1,4 @@
-import { IsNotEmpty, IsNumber, IsString } from 'class-validator';
+import { IsNotEmpty, IsNumber, IsString } from "class-validator";
 
 /**
  * DTO for message reactions
@@ -11,4 +11,4 @@ export class ReactionDto {
   @IsString()
   @IsNotEmpty()
   emoji!: string;
-} 
+}

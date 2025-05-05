@@ -1,21 +1,23 @@
-import { MessageUser, ReactionResponse } from '@chat-example/types';
-import { MessageReaction as MessageReactionEntity } from '../entities';
+import { MessageUser, ReactionResponse } from "@chat-example/types";
+import { MessageReaction as MessageReactionEntity } from "../entities";
 
 /**
  * 응답 시 사용하는 MessageReaction 클래스
  */
 export class MessageReactionResponseDto implements ReactionResponse {
   id: number = 0;
-  emoji: string = '';
+  emoji: string = "";
   userId: number = 0;
   messageId: number = 0;
-  createdAt: string = '';
-  user: MessageUser = { id: 0, nickname: '' };
+  createdAt: string = "";
+  user: MessageUser = { id: 0, nickname: "" };
 
   /**
    * MessageReaction 엔티티를 ResponseDto로 변환
    */
-  static fromEntity(reaction: MessageReactionEntity): MessageReactionResponseDto {
+  static fromEntity(
+    reaction: MessageReactionEntity,
+  ): MessageReactionResponseDto {
     const dto = new MessageReactionResponseDto();
     dto.id = reaction.id;
     dto.emoji = reaction.emoji;
@@ -25,8 +27,8 @@ export class MessageReactionResponseDto implements ReactionResponse {
     dto.user = {
       id: reaction.user.id,
       nickname: reaction.user.nickname,
-      imageUrl: reaction.user.imageUrl
+      imageUrl: reaction.user.imageUrl,
     };
     return dto;
   }
-} 
+}
