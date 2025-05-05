@@ -1,0 +1,12 @@
+{
+  "mcpServers": {
+    "quickchart-server": {
+      "command": "npx",
+      "args": ["@gongrzhe/quickchart-mcp-server"]
+    },
+    "quick-chart-mcp": {
+      "command": "npx",
+      "args": ["quick-chart-mcp"]
+    }
+  }
+}
