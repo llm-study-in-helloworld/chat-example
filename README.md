@@ -80,7 +80,7 @@ make k6-stop
 
 ## 기술 스택
 
-- **백엔드**: NestJS, WebSockets, MikroORM, PostgreSQL
+- **백엔드**: NestJS, WebSockets, MikroORM, ~PostgreSQL~ MySQL
 - **프론트엔드**: React, Socket.io-client, Zustand, TanStack Query
 - **공통**: TypeScript, ESLint, Prettier
 - **테스트/모니터링**: k6, Grafana, Nginx, self-signed certs (로컬 HTTPS)
