@@ -4,6 +4,7 @@ import { ConfigModule } from '@nestjs/config';
 import { AuthModule } from './auth/auth.module';
 import * as entities from './entities';
 import { GatewayModule } from './gateway/gateway.module';
+import { HealthModule } from './health/health.module';
 import { LoggerModule } from './logger';
 import { MessagesModule } from './messages/messages.module';
 import mikroOrmConfig from './mikro-orm.config';
@@ -26,6 +27,7 @@ import { UsersModule } from './users/users.module';
     RoomsModule,
     MessagesModule,
     GatewayModule,
+    HealthModule,
   ],
 })
 export class AppModule {} 
