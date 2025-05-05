@@ -1,0 +1,20 @@
+{
+  "name": "k6-typescript-tests",
+  "version": "1.0.0",
+  "description": "k6 load tests with TypeScript",
+  "scripts": {
+    "clean": "rm -rf dist",
+    "build": "pnpm run clean && node esbuild.config.js",
+    "test:minimal": "pnpm run build && K6_TLS_CERT_IGNORE=1 k6 run ./dist/minimal-test.js",
+    "test:simple": "pnpm run build && K6_TLS_CERT_IGNORE=1 k6 run ./dist/simple-test.js",
+    "test:docker:minimal": "./run-test.sh --minimal",
+    "test:docker:simple": "./run-test.sh --simple"
+  },
+  "devDependencies": {
+    "@types/k6": "^1.0.2",
+    "esbuild": "^0.18.11",
+    "glob": "^10.3.3",
+    "typescript": "^5.2.2"
+  },
+  "packageManager": "pnpm@8.0.0"
+}

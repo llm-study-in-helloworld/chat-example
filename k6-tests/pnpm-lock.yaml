@@ -1,0 +1,30 @@
+lockfileVersion: '6.0'
+
+settings:
+  autoInstallPeers: true
+  excludeLinksFromLockfile: false
+
+dependencies: {}
+
+devDependencies:
+  '@parcel/optimizer-esbuild':
+    specifier: ^2.9.3
+    version: 2.9.3
+  '@parcel/transformer-js':
+    specifier: ^2.9.3
+    version: 2.9.3
+  '@parcel/transformer-react-refresh-wrap':
+    specifier: ^2.9.3
+    version: 2.9.3
+  '@types/k6':
+    specifier: ^0.47.0
+    version: 0.47.0
+  parcel:
+    specifier: ^2.9.3
+    version: 2.9.3
+  parcel-reporter-static-files-copy:
+    specifier: ^1.5.2
+    version: 1.5.2
+  typescript:
+    specifier: ^5.2.2
+    version: 5.2.2 
