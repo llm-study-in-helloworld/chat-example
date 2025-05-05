@@ -6,7 +6,7 @@ set -e
 
 # 기본 설정
 TEST_SCRIPT="./minimal-test.js"
-TEST_TYPE="minimal"
+TEST_TYPE="minimal-test"
 API_HOST="nginx"
 API_PORT="5002"
 CLEANUP_K6_ONLY=true
@@ -17,43 +17,43 @@ while [[ $# -gt 0 ]]; do
   case $1 in
     --websocket)
       TEST_SCRIPT="./websocket-test.js"
-      TEST_TYPE="websocket"
+      TEST_TYPE="websocket-test"
       shift
       ;;
     --ws-stress)
       TEST_SCRIPT="./websocket-stress-test.js"
-      TEST_TYPE="websocket-stress"
+      TEST_TYPE="websocket-stress-test"
       shift
       ;;
     --ws-flood)
       TEST_SCRIPT="./websocket-message-flood-test.js"
-      TEST_TYPE="websocket-message-flood"
+      TEST_TYPE="websocket-message-flood-test"
       shift
       ;;
     --ws-reconnect)
       TEST_SCRIPT="./websocket-reconnect-test.js"
-      TEST_TYPE="websocket-reconnect"
+      TEST_TYPE="websocket-reconnect-test"
       shift
       ;;
     --minimal)
       TEST_SCRIPT="./minimal-test.js"
-      TEST_TYPE="minimal"
+      TEST_TYPE="minimal-test"
       # For minimal test, use very short duration
       shift
       ;;
     --realistic)
       TEST_SCRIPT="./realistic-test.js"
-      TEST_TYPE="realistic"
+      TEST_TYPE="realistic-test"
       shift
       ;;
     --load)
       TEST_SCRIPT="./load-test.js"
-      TEST_TYPE="load"
+      TEST_TYPE="load-test"
       shift
       ;;
     --full)
       TEST_SCRIPT="./full-workflow-test.js"
-      TEST_TYPE="full"
+      TEST_TYPE="full-workflow-test"
       shift
       ;;
     --script=*)
@@ -128,18 +128,25 @@ if ! command -v docker &> /dev/null; then
   exit 1
 fi
 
-# 결과 및 로그 디렉토리 생성
-mkdir -p results
-
-# 이전 테스트 결과 백업
+# 결과 폴더 구조 생성
 TIMESTAMP=$(date "+%Y%m%d_%H%M%S")
-BACKUP_DIR="results/backup_${TIMESTAMP}"
-if [ -e "results/latest" ]; then
-  mkdir -p "${BACKUP_DIR}"
-  cp results/latest/* "${BACKUP_DIR}/" 2>/dev/null || true
-  echo "📁 이전 테스트 결과를 백업했습니다: $(pwd)/${BACKUP_DIR}"
+# 테스트별 폴더 생성
+TEST_RESULTS_DIR="results/${TEST_TYPE}"
+mkdir -p "${TEST_RESULTS_DIR}"
+
+# 백업 폴더 생성 (단일 백업 폴더)
+BACKUPS_DIR="${TEST_RESULTS_DIR}/backups"
+mkdir -p "${BACKUPS_DIR}"
+
+# 현재 실행 로그 파일 경로
+LOG_FILE="${TEST_RESULTS_DIR}/${TIMESTAMP}.log"
+
+# 이전 테스트 결과 백업 (가장 최근 로그 파일만)
+LATEST_LOG=$(ls -t "${TEST_RESULTS_DIR}"/*.log 2>/dev/null | head -n1)
+if [ -n "$LATEST_LOG" ]; then
+  cp "$LATEST_LOG" "${BACKUPS_DIR}/" 2>/dev/null || true
+  echo "📁 이전 테스트 결과를 백업했습니다: ${BACKUPS_DIR}/$(basename "$LATEST_LOG")"
 fi
-mkdir -p results/latest
 
 # TypeScript 빌드 (필요한 경우)
 if [ "$USE_TS" = true ]; then
@@ -151,26 +158,26 @@ fi
 
 # Influxdb와 Grafana 먼저 시작
 echo -e "${YELLOW}🚀 InfluxDB 및 Grafana 컨테이너 시작...${NC}"
-$DOCKER_COMPOSE_CMD -f docker/docker-compose-k6.yml up -d influxdb grafana  --remove-orphans
+$DOCKER_COMPOSE_CMD -f docker/docker-compose.yml --profile standard up -d influxdb grafana --remove-orphans
 echo "Grafana 대시보드가 시작되는 동안 5초 대기합니다..."
 sleep 5  # Grafana가 시작될 때까지 충분히 대기
 
 # k6 테스트 시작
 echo -e "${YELLOW}🚀 k6 부하 테스트 실행 중...${NC}"
-echo -e "${GREEN}   Grafana 대시보드: http://localhost:3002${NC}"
+echo -e "${GREEN}   Grafana 대시보드: http://localhost:3001${NC}"
 echo "   프로세스를 중단하려면 Ctrl+C를 누르세요."
 
-LOG_FILE="results/k6_log_${TEST_TYPE}_${TIMESTAMP}.txt"
-$DOCKER_COMPOSE_CMD -f docker/docker-compose-k6.yml run \
+# 테스트 실행 및 로그 파일 저장
+$DOCKER_COMPOSE_CMD -f docker/docker-compose.yml --profile standard run \
   -e TEST_SCRIPT=$TEST_SCRIPT \
   -e API_HOST=$API_HOST \
   -e API_PORT=$API_PORT \
+  --rm \
   k6 \
   run ${TEST_DIR}/${TEST_SCRIPT} \
   | tee "$LOG_FILE"
 
 TEST_EXIT_CODE=${PIPESTATUS[0]}
-cp "$LOG_FILE" "results/latest/"
 
 # 테스트 결과 분석
 if grep -q "0 scenarios failed" "$LOG_FILE" 2>/dev/null || grep -q "'response code is 200'\s*\S\s*100%" "$LOG_FILE"; then
@@ -188,15 +195,14 @@ fi
 # k6 컨테이너만 정리하고 Grafana와 InfluxDB는 유지
 if [ "$CLEANUP_K6_ONLY" = true ]; then
   echo "k6 컨테이너를 정리합니다. Grafana와 InfluxDB는 유지됩니다."
-  $DOCKER_COMPOSE_CMD -f docker/docker-compose-k6.yml rm -f k6 --remove-orphans
 else
   echo "모든 테스트 컨테이너를 정리합니다."
-  $DOCKER_COMPOSE_CMD -f docker/docker-compose-k6.yml down --remove-orphans
+  $DOCKER_COMPOSE_CMD -f docker/docker-compose.yml down --remove-orphans
 fi
 
 echo -e "${GREEN}부하 테스트가 완료되었습니다.${NC}"
-echo -e "${YELLOW}Grafana 대시보드를 계속 사용하려면 브라우저에서 http://localhost:3002을 열어주세요.${NC}"
-echo "모든 컨테이너를 정리하려면 다음 명령을 실행하세요: $DOCKER_COMPOSE_CMD -f docker/docker-compose-k6.yml down"
+echo -e "${YELLOW}Grafana 대시보드를 계속 사용하려면 브라우저에서 http://localhost:3001을 열어주세요.${NC}"
+echo "모든 컨테이너를 정리하려면 다음 명령을 실행하세요: $DOCKER_COMPOSE_CMD -f docker/docker-compose.yml down"
 
 # 테스트 결과 코드 반환
 exit $TEST_EXIT_CODE 
