@@ -16,7 +16,7 @@
 - `documents/`
   - `tech-spec.md`, `prd.md` - 기술 명세 및 기획 문서
 - `k6-tests/` - k6 기반 부하 테스트 스크립트 및 결과, 부하테스트 관련 문서
-- `grafana/` - Grafana 대시보드 및 데이터소스 설정 (모니터링/시각화)
+  - `grafana/` - Grafana 대시보드 및 데이터소스 설정 (모니터링/시각화)
 - `nginx/` - Nginx 리버스 프록시 및 개발/운영 환경용 설정
 - `certs/` - 로컬 HTTPS 개발을 위한 인증서 저장 디렉토리
 - `.husky/` - Git hooks (커밋, 푸시 등 자동화 스크립트)
