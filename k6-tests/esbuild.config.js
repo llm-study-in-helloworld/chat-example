@@ -2,7 +2,7 @@ const { build } = require('esbuild');
 const glob = require('glob');
 
 // Find all test files
-const entryPoints = glob.sync('scripts/**/*.ts');
+const entryPoints = glob.sync('tests/**/*.ts');
 
 build({
   entryPoints,

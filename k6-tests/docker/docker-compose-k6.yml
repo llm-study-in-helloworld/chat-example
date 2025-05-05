@@ -5,8 +5,7 @@ services:
     ports:
       - "6565:6565"
     volumes:
-      - ./scripts:/scripts
-      - ./dist:/dist
+      - ../dist:/dist
     environment:
       - K6_OUT=influxdb
       - K6_INFLUXDB_ADDR=http://influxdb:8086
@@ -35,7 +34,7 @@ services:
   influxdb:
     image: influxdb:1.8
     ports:
-      - "8086:8086"
+      - "8087:8086"
     environment:
       - INFLUXDB_DB=k6
     networks:
@@ -47,15 +46,15 @@ services:
   grafana:
     image: grafana/grafana:latest
     ports:
-      - "3001:3000"
+      - "3002:3000"
     environment:
       - GF_AUTH_ANONYMOUS_ENABLED=true
       - GF_AUTH_ANONYMOUS_ORG_ROLE=Admin
       - GF_DASHBOARDS_DEFAULT_HOME_DASHBOARD_PATH=/var/lib/grafana/dashboards/dashboard.json
     volumes:
-      - ./grafana/grafana-dashboard.json:/var/lib/grafana/dashboards/dashboard.json
-      - ./grafana/grafana-datasource.yml:/etc/grafana/provisioning/datasources/datasource.yml
-      - ./grafana/grafana-dashboard-provider.yml:/etc/grafana/provisioning/dashboards/dashboard_provider.yml
+      - ../grafana/dashboards:/var/lib/grafana/dashboards
+      - ../grafana/provisioning/datasources:/etc/grafana/provisioning/datasources
+      - ../grafana/provisioning/dashboards:/etc/grafana/provisioning/dashboards
       - grafana_data:/var/lib/grafana
     networks:
       - k6-network

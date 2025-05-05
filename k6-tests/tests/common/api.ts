@@ -1,6 +1,6 @@
 import { check } from 'k6';
 import http from 'k6/http';
-import { AuthResponse } from '../../../packages/types/dist';
+import { AuthResponse } from '../../../packages/types';
 import { generateRandomEmail, generateRandomNickname } from './utils';
 
 // Types

@@ -151,17 +151,17 @@ fi
 
 # Influxdb와 Grafana 먼저 시작
 echo -e "${YELLOW}🚀 InfluxDB 및 Grafana 컨테이너 시작...${NC}"
-$DOCKER_COMPOSE_CMD -f docker-compose-k6.yml up -d influxdb grafana  --remove-orphans
+$DOCKER_COMPOSE_CMD -f docker/docker-compose-k6.yml up -d influxdb grafana  --remove-orphans
 echo "Grafana 대시보드가 시작되는 동안 5초 대기합니다..."
 sleep 5  # Grafana가 시작될 때까지 충분히 대기
 
 # k6 테스트 시작
 echo -e "${YELLOW}🚀 k6 부하 테스트 실행 중...${NC}"
-echo -e "${GREEN}   Grafana 대시보드: http://localhost:3001${NC}"
+echo -e "${GREEN}   Grafana 대시보드: http://localhost:3002${NC}"
 echo "   프로세스를 중단하려면 Ctrl+C를 누르세요."
 
 LOG_FILE="results/k6_log_${TEST_TYPE}_${TIMESTAMP}.txt"
-$DOCKER_COMPOSE_CMD -f docker-compose-k6.yml run \
+$DOCKER_COMPOSE_CMD -f docker/docker-compose-k6.yml run \
   -e TEST_SCRIPT=$TEST_SCRIPT \
   -e API_HOST=$API_HOST \
   -e API_PORT=$API_PORT \
@@ -188,15 +188,15 @@ fi
 # k6 컨테이너만 정리하고 Grafana와 InfluxDB는 유지
 if [ "$CLEANUP_K6_ONLY" = true ]; then
   echo "k6 컨테이너를 정리합니다. Grafana와 InfluxDB는 유지됩니다."
-  $DOCKER_COMPOSE_CMD -f docker-compose-k6.yml rm -f k6 --remove-orphans
+  $DOCKER_COMPOSE_CMD -f docker/docker-compose-k6.yml rm -f k6 --remove-orphans
 else
   echo "모든 테스트 컨테이너를 정리합니다."
-  $DOCKER_COMPOSE_CMD -f docker-compose-k6.yml down --remove-orphans
+  $DOCKER_COMPOSE_CMD -f docker/docker-compose-k6.yml down --remove-orphans
 fi
 
 echo -e "${GREEN}부하 테스트가 완료되었습니다.${NC}"
-echo -e "${YELLOW}Grafana 대시보드를 계속 사용하려면 브라우저에서 http://localhost:3001을 열어주세요.${NC}"
-echo "모든 컨테이너를 정리하려면 다음 명령을 실행하세요: $DOCKER_COMPOSE_CMD -f docker-compose-k6.yml down"
+echo -e "${YELLOW}Grafana 대시보드를 계속 사용하려면 브라우저에서 http://localhost:3002을 열어주세요.${NC}"
+echo "모든 컨테이너를 정리하려면 다음 명령을 실행하세요: $DOCKER_COMPOSE_CMD -f docker/docker-compose-k6.yml down"
 
 # 테스트 결과 코드 반환
 exit $TEST_EXIT_CODE 
